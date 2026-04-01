@@ -12,8 +12,8 @@ app.use("/api/products", productRoutes);
 app.use("/api/auth", authRoutes);
 
 // Test route
-app.get("/api/health", (req, res) => {
-  res.json({ message: "API working ✅" });
+app.get("/api/test", (req, res) => {
+  res.json({ message: "API funcionando 🚀" });
 });
 
 module.exports = app;
