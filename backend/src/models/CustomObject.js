@@ -1,54 +1,74 @@
 const mongoose = require("mongoose");
 
 const fieldSchema = new mongoose.Schema({
-  label: String,
+  label: {
+    type: String,
+    default: "Name"
+  },
   apiName: {
-      type: String,
-      required: true,
-      default: function() {
-        return this.label.toLowerCase().replace(/\s+/g, "_");
-      },
-      unique: true
+    type: String,
+    required: true,
+    default: function() {
+      return this.label.toLowerCase().replace(/\s+/g, "_");
     },
-  type: String, // text, number, select
-  required: Boolean,
-  options: [String],
+    // ⚠️ Unique a nivel global puede causar conflicto; mejor manejarlo en la app
+  },
+  type: {
+    type: String,
+    default: "text"
+  },
+  required: {
+    type: Boolean,
+    default: false
+  },
+  options: {
+    type: [String],
+    default: []
+  }
 });
+
 const sectionSchema = new mongoose.Schema({
-    label:{
-        type:String,
-        required: true,
-    },
-    columns:{
-        type:Number,
-        required: true,
-        default: 1,
-    },
-    fields:[String]
+  label: {
+    type: String,
+    required: true,
+    default: "Detalles"
+  },
+  columns: {
+    type: Number,
+    required: true,
+    default: 1
+  },
+  fields: {
+    type: [String],
+    default: ["name"]
+  }
 });
+
 const layoutSchema = new mongoose.Schema({
-    label:{
-        type:String,
-        required: true
-    },
-    apiName: {
-      type: String,
-      required: true,
-      default: function() {
-        return this.label.toLowerCase().replace(/\s+/g, "_");
-      },
-      unique: true
-    },
-    sections: {
-      type:[sectionSchema],
-      default:[{"label":"Detalles","columns":2,"fields":["name"]}]:
-    },
+  label: {
+    type: String,
+    required: true,
+    default: "principal"
+  },
+  apiName: {
+    type: String,
+    required: true,
+    default: function() {
+      return this.label.toLowerCase().replace(/\s+/g, "_");
+    }
+  },
+  sections: {
+    type: [sectionSchema],
+    default: [{ label: "Detalles", columns: 2, fields: ["name"] }]
+  }
 });
+
 const customObjectSchema = new mongoose.Schema(
   {
     name: {
       type: String,
       required: true,
+      default: "Nuevo Objeto"
     },
     apiName: {
       type: String,
@@ -59,13 +79,17 @@ const customObjectSchema = new mongoose.Schema(
       unique: true
     },
     fields: {
-        type:[fieldSchema],
-        default:[{"label":"Name","type":"text"}]
-    }, 
-    layout: {
-      type:[layoutSchema],
-      default:[{"label":"principal"}]
+      type: [fieldSchema],
+      default: [{ label: "Name", type: "text" }]
     },
+    layout: {
+      type: [layoutSchema],
+      default: [{
+        label: "principal",
+        apiName: "principal",
+        sections: [{ label: "Detalles", columns: 2, fields: ["name"] }]
+      }]
+    }
   },
   { timestamps: true }
 );
