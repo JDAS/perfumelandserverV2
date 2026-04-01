@@ -7,7 +7,10 @@ const fieldSchema = new mongoose.Schema({
   required: Boolean,
   options: [String],
 });
-
+const layoutSchema = new mongoose.Schema({
+  section: String,
+  fields: [String], // nombres de campos
+});
 const customObjectSchema = new mongoose.Schema(
   {
     name: {
