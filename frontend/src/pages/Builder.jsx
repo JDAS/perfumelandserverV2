@@ -30,6 +30,7 @@ function Builder() {
     setApiName("");
     setFields([]);
   };
+  
 
   return (
     <div className="p-10 max-w-2xl mx-auto">
@@ -79,8 +80,21 @@ function Builder() {
         >
           <option value="text">Text</option>
           <option value="number">Number</option>
+          <option value="select">Select</option>
+          <option value="date">Date</option>
         </select>
-
+        {field.type === "select" && (
+  <input
+    placeholder="Opciones separadas por coma"
+    className="border p-2 col-span-2"
+    onChange={(e) =>
+      setField({
+        ...field,
+        options: e.target.value.split(","),
+      })
+    }
+  />
+)}
         <label className="flex items-center">
           <input
             type="checkbox"

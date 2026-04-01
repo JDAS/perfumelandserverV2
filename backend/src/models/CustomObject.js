@@ -5,6 +5,7 @@ const fieldSchema = new mongoose.Schema({
   name: String,
   type: String, // text, number, select
   required: Boolean,
+  options: [String],
 });
 
 const customObjectSchema = new mongoose.Schema(
@@ -19,6 +20,7 @@ const customObjectSchema = new mongoose.Schema(
       unique: true,
     },
     fields: [fieldSchema],
+    layout: [layoutSchema],
   },
   { timestamps: true }
 );
