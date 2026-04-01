@@ -4,6 +4,7 @@ import MainLayout from "./layouts/MainLayout";
 import Cart from "./pages/Cart";
 import Admin from "./pages/Admin";
 import ProtectedRoute from "./components/ProtectedRoute";
+import DynamicForm from "./pages/DynamicForm";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/admin/:object/new" element={<DynamicForm />} />
         </Routes>
       </MainLayout>
     </BrowserRouter>
