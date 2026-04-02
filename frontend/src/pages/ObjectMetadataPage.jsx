@@ -5,6 +5,7 @@ import {
     updateObject,
 } from "../services/customService";
 import LayoutEditor from "../components/LayoutEditor";
+import FieldModal from "../components/FieldModal";
 
 function ObjectMetadataPage() {
     const { apiName } = useParams();
@@ -13,6 +14,8 @@ function ObjectMetadataPage() {
     const [activeSection, setActiveSection] = useState("details");
     const [loading, setLoading] = useState(true);
     const [editingLayout, setEditingLayout] = useState(null);
+    const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
+    const [editingField, setEditingField] = useState(null);
 
     const [newField, setNewField] = useState({
         label: "",
@@ -48,6 +51,7 @@ function ObjectMetadataPage() {
         value.toLowerCase().trim().replace(/\s+/g, "_");
 
     const addField = async () => {
+
         if (!newField.label.trim()) {
             alert("El label es obligatorio");
             return;
@@ -159,6 +163,72 @@ function ObjectMetadataPage() {
         setObjectData(saved);
         setEditingLayout(null);
     };
+    const openCreateFieldModal = () => {
+        setEditingField(null);
+        setIsFieldModalOpen(true);
+    };
+
+    const openEditFieldModal = (field) => {
+        setEditingField(field);
+        setIsFieldModalOpen(true);
+    };
+
+    const saveField = async (fieldData) => {
+        const exists = (objectData.fields || []).some(
+            (f) =>
+                f.apiName === fieldData.apiName &&
+                (!editingField || f.apiName !== editingField.apiName)
+        );
+
+        if (exists) {
+            alert("Ya existe un campo con ese API Name");
+            return;
+        }
+        let updatedFields = [];
+
+        if (editingField) {
+            const oldApiName = editingField.apiName;
+            const newApiName = fieldData.apiName;
+
+            updatedFields = objectData.fields.map((f) =>
+                f.apiName === oldApiName ? fieldData : f
+            );
+
+            let updatedLayouts = objectData.layout || [];
+
+            if (oldApiName !== newApiName) {
+                updatedLayouts = updatedLayouts.map((layout) => ({
+                    ...layout,
+                    sections: (layout.sections || []).map((section) => ({
+                        ...section,
+                        fields: (section.fields || []).map((item) =>
+                            item === oldApiName ? newApiName : item
+                        ),
+                    })),
+                }));
+            }
+
+            const saved = await updateObject(apiName, {
+                ...objectData,
+                fields: updatedFields,
+                layout: updatedLayouts,
+            });
+
+            setObjectData(saved);
+        } else {
+            updatedFields = [...(objectData.fields || []), fieldData];
+
+            const saved = await updateObject(apiName, {
+                ...objectData,
+                fields: updatedFields,
+            });
+
+            setObjectData(saved);
+        }
+
+        setEditingField(null);
+        setIsFieldModalOpen(false);
+    };
 
     if (loading) {
         return <div className="p-6">Cargando...</div>;
@@ -257,7 +327,16 @@ function ObjectMetadataPage() {
                 {activeSection === "fields" && (
                     <div className="space-y-6">
                         <div className="bg-white rounded-xl shadow p-6">
-                            <h1 className="text-2xl font-bold mb-4">Campos</h1>
+                            <div className="flex justify-between items-center mb-4">
+                                <h1 className="text-2xl font-bold">Campos</h1>
+
+                                <button
+                                    className="bg-black text-white px-4 py-2 rounded"
+                                    onClick={openCreateFieldModal}
+                                >
+                                    Nuevo campo
+                                </button>
+                            </div>
 
                             <div className="space-y-3 mb-6">
                                 {objectData.fields?.map((field) => (
@@ -275,21 +354,7 @@ function ObjectMetadataPage() {
                                         <div className="flex gap-2">
                                             <button
                                                 className="px-3 py-1 bg-yellow-500 text-white rounded"
-                                                onClick={() => {
-                                                    const newLabel = prompt("Nuevo label", field.label);
-                                                    if (!newLabel) return;
-
-                                                    const updated = {
-                                                        ...objectData,
-                                                        fields: objectData.fields.map((f) =>
-                                                            f.apiName === field.apiName
-                                                                ? { ...f, label: newLabel }
-                                                                : f
-                                                        ),
-                                                    };
-
-                                                    updateObject(apiName, updated).then(setObjectData);
-                                                }}
+                                                onClick={() => openEditFieldModal(field)}
                                             >
                                                 Editar
                                             </button>
@@ -304,79 +369,6 @@ function ObjectMetadataPage() {
                                     </div>
                                 ))}
                             </div>
-
-                            <h2 className="text-lg font-bold mb-3">Nuevo campo</h2>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <input
-                                    className="border p-2"
-                                    placeholder="Label"
-                                    value={newField.label}
-                                    onChange={(e) =>
-                                        setNewField({ ...newField, label: e.target.value })
-                                    }
-                                />
-
-                                <input
-                                    className="border p-2"
-                                    placeholder="API Name"
-                                    value={newField.apiName}
-                                    onChange={(e) =>
-                                        setNewField({ ...newField, apiName: e.target.value })
-                                    }
-                                />
-
-                                <select
-                                    className="border p-2"
-                                    value={newField.type}
-                                    onChange={(e) =>
-                                        setNewField({
-                                            ...newField,
-                                            type: e.target.value,
-                                            options: [],
-                                        })
-                                    }
-                                >
-                                    <option value="text">Text</option>
-                                    <option value="number">Number</option>
-                                    <option value="select">Select</option>
-                                    <option value="date">Date</option>
-                                </select>
-
-                                <label className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={newField.required}
-                                        onChange={(e) =>
-                                            setNewField({ ...newField, required: e.target.checked })
-                                        }
-                                    />
-                                    Requerido
-                                </label>
-
-                                {newField.type === "select" && (
-                                    <input
-                                        className="border p-2 col-span-2"
-                                        placeholder="Opciones separadas por coma"
-                                        onChange={(e) =>
-                                            setNewField({
-                                                ...newField,
-                                                options: e.target.value
-                                                    .split(",")
-                                                    .map((opt) => opt.trim())
-                                                    .filter(Boolean),
-                                            })
-                                        }
-                                    />
-                                )}
-                            </div>
-
-                            <button
-                                className="mt-4 bg-black text-white px-4 py-2 rounded"
-                                onClick={addField}
-                            >
-                                Crear campo
-                            </button>
                         </div>
                     </div>
                 )}
@@ -453,6 +445,15 @@ function ObjectMetadataPage() {
                         </div>
                     </div>
                 )}
+                <FieldModal
+                    open={isFieldModalOpen}
+                    initialData={editingField}
+                    onClose={() => {
+                        setIsFieldModalOpen(false);
+                        setEditingField(null);
+                    }}
+                    onSave={saveField}
+                />
             </main>
         </div>
     );

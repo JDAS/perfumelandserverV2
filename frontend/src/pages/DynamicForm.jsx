@@ -117,7 +117,7 @@ function DynamicForm() {
       return (
         <div
           key={`${item}-${index}`}
-          className="h-[72px] rounded border-2 border-dashed border-gray-200 bg-gray-50"
+          className="h-[72px]"
         />
       );
     }
