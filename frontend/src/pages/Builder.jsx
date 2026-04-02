@@ -8,29 +8,94 @@ function Builder() {
 
   const [field, setField] = useState({
     label: "",
-    name: "",
+    apiName: "",
     type: "text",
     required: false,
+    options: [],
   });
 
+  const normalizeApiName = (value) =>
+    value.toLowerCase().trim().replace(/\s+/g, "_");
+
   const addField = () => {
-    setFields([...fields, field]);
-    setField({ label: "", name: "", type: "text", required: false });
+    if (!field.label.trim()) {
+      alert("El label del campo es obligatorio");
+      return;
+    }
+
+    const finalApiName = field.apiName?.trim()
+      ? normalizeApiName(field.apiName)
+      : normalizeApiName(field.label);
+
+    const newField = {
+      label: field.label.trim(),
+      apiName: finalApiName,
+      type: field.type,
+      required: field.required,
+      options: field.type === "select" ? field.options || [] : [],
+    };
+
+    setFields((prev) => [...prev, newField]);
+    setField({
+      label: "",
+      apiName: "",
+      type: "text",
+      required: false,
+      options: [],
+    });
   };
 
   const createObject = async () => {
-    await axios.post("/api/custom-objects", {
-      name,
-      apiName,
-      fields,
-    });
+    if (!name.trim()) {
+      alert("El nombre del objeto es obligatorio");
+      return;
+    }
 
-    alert("Objeto creado 🚀");
-    setName("");
-    setApiName("");
-    setFields([]);
+    const finalApiName = apiName.trim()
+      ? normalizeApiName(apiName)
+      : normalizeApiName(name);
+
+    try {
+      await axios.post("/api/custom-objects", {
+        name: name.trim(),
+        apiName: finalApiName,
+        fields,
+        layout: [
+          {
+            label: "principal",
+            apiName: "principal",
+            sections: [
+              {
+                label: "Detalles",
+                columns: 2,
+                fields:
+                  fields.length > 0
+                    ? fields.map((f) => f.apiName)
+                    : ["name"],
+              },
+            ],
+          },
+        ],
+      });
+
+      alert("Objeto creado 🚀");
+      setName("");
+      setApiName("");
+      setFields([]);
+      setField({
+        label: "",
+        apiName: "",
+        type: "text",
+        required: false,
+        options: [],
+      });
+    } catch (error) {
+      console.error(error);
+      alert(
+        error?.response?.data?.error || "Error al crear el objeto"
+      );
+    }
   };
-  
 
   return (
     <div className="p-10 max-w-2xl mx-auto">
@@ -63,11 +128,11 @@ function Builder() {
         />
 
         <input
-          placeholder="Name"
+          placeholder="API Name"
           className="border p-2"
-          value={field.name}
+          value={field.apiName}
           onChange={(e) =>
-            setField({ ...field, name: e.target.value })
+            setField({ ...field, apiName: e.target.value })
           }
         />
 
@@ -75,7 +140,7 @@ function Builder() {
           className="border p-2"
           value={field.type}
           onChange={(e) =>
-            setField({ ...field, type: e.target.value })
+            setField({ ...field, type: e.target.value, options: [] })
           }
         >
           <option value="text">Text</option>
@@ -83,18 +148,7 @@ function Builder() {
           <option value="select">Select</option>
           <option value="date">Date</option>
         </select>
-        {field.type === "select" && (
-  <input
-    placeholder="Opciones separadas por coma"
-    className="border p-2 col-span-2"
-    onChange={(e) =>
-      setField({
-        ...field,
-        options: e.target.value.split(","),
-      })
-    }
-  />
-)}
+
         <label className="flex items-center">
           <input
             type="checkbox"
@@ -105,19 +159,36 @@ function Builder() {
           />
           <span className="ml-2">Required</span>
         </label>
+
+        {field.type === "select" && (
+          <input
+            placeholder="Opciones separadas por coma"
+            className="border p-2 col-span-2"
+            onChange={(e) =>
+              setField({
+                ...field,
+                options: e.target.value
+                  .split(",")
+                  .map((opt) => opt.trim())
+                  .filter(Boolean),
+              })
+            }
+          />
+        )}
       </div>
 
       <button
         onClick={addField}
         className="bg-gray-200 px-4 py-2 mb-6"
+        type="button"
       >
         Agregar campo
       </button>
 
       <div className="mb-6">
         {fields.map((f, i) => (
-          <div key={i} className="text-sm">
-            {f.label} ({f.type})
+          <div key={`${f.apiName}-${i}`} className="text-sm">
+            {f.label} - {f.apiName} ({f.type})
           </div>
         ))}
       </div>
@@ -125,6 +196,7 @@ function Builder() {
       <button
         onClick={createObject}
         className="bg-black text-white w-full py-2"
+        type="button"
       >
         Crear Objeto
       </button>

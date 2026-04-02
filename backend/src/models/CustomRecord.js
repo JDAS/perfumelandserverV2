@@ -1,17 +1,21 @@
 const mongoose = require("mongoose");
 
-const customRecordSchema = new mongoose.Schema(
-  {
-    object: {
-      type: String, // apiName del objeto (ej: "product")
-      required: true,
-    },
-    data: {
-      type: mongoose.Schema.Types.Mixed, // 🔥 dinámico
-      required: true,
-    },
-  },
-  { timestamps: true }
-);
+function getCustomRecordModel(collectionName) {
+  const modelName = `CustomRecord_${collectionName}`;
 
-module.exports = mongoose.model("CustomRecord", customRecordSchema);
+  if (mongoose.models[modelName]) {
+    return mongoose.models[modelName];
+  }
+
+  const customRecordSchema = new mongoose.Schema(
+    {},
+    {
+      strict: false,
+      timestamps: true,
+    }
+  );
+
+  return mongoose.model(modelName, customRecordSchema, collectionName);
+}
+
+module.exports = getCustomRecordModel;
