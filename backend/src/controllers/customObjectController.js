@@ -68,3 +68,20 @@ exports.updateObject = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.deleteObject = async (req, res) => {
+  try {
+    const { apiName } = req.params;
+
+    const deleted = await CustomObject.findOneAndDelete({ apiName });
+
+    if (!deleted) {
+      return res.status(404).json({ error: "Objeto no encontrado" });
+    }
+
+    res.json({ message: "Objeto eliminado correctamente" });
+  } catch (error) {
+    console.error("deleteObject error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};

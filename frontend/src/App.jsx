@@ -7,6 +7,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import DynamicForm from "./pages/DynamicForm";
 import Builder from "./pages/Builder";
 import ObjectMetadataPage from "./pages/ObjectMetadataPage";
+import SettingsPage from "./pages/SettingsPage";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route path="/admin/:object/new" element={<DynamicForm />} />
           <Route path="/admin/builder" element={<Builder />} />
           <Route path="/admin/object/:apiName" element={<ObjectMetadataPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </MainLayout>
     </BrowserRouter>
