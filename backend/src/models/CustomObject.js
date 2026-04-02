@@ -84,11 +84,7 @@ const customObjectSchema = new mongoose.Schema(
     },
     layout: {
       type: [layoutSchema],
-      default: [{
-        label: "principal",
-        apiName: "principal",
-        sections: [{ label: "Detalles", columns: 2, fields: ["name"] }]
-      }]
+      default: [{label: "principal"}]
     }
   },
   { timestamps: true }
