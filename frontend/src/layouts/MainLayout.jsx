@@ -1,5 +1,7 @@
 import { useCartStore } from "../store/cartStore";
 import { Link } from "react-router-dom";
+import UserMenu from "../components/UserMenu";
+
 function MainLayout({ children }) {
   const cart = useCartStore((state) => state.cart);
 
@@ -13,11 +15,11 @@ function MainLayout({ children }) {
         <Link to="/cart">
           🛒 <span className="font-bold">{totalItems}</span>
         </Link>
-        <Link to="/settings" className="text-sm">
+        <Link to="/admin/settings" className="text-sm">
           Configuración
         </Link>
       </header>
-
+      <UserMenu />
       {/* Contenido */}
       <main className="p-6">{children}</main>
     </div>
