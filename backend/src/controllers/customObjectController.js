@@ -28,3 +28,43 @@ exports.getObjects = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Obtener un objeto por apiName
+exports.getObjectByApiName = async (req, res) => {
+  try {
+    const { apiName } = req.params;
+
+    const object = await CustomObject.findOne({ apiName });
+
+    if (!object) {
+      return res.status(404).json({ error: "Objeto no encontrado" });
+    }
+
+    res.json(object);
+  } catch (error) {
+    console.error("getObjectByApiName error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Actualizar objeto completo
+exports.updateObject = async (req, res) => {
+  try {
+    const { apiName } = req.params;
+
+    const updated = await CustomObject.findOneAndUpdate(
+      { apiName },
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ error: "Objeto no encontrado" });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    console.error("updateObject error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};

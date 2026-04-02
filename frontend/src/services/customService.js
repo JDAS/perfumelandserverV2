@@ -5,6 +5,16 @@ export const getObjects = async () => {
   return res.data;
 };
 
+export const getObjectByApiName = async (apiName) => {
+  const res = await axios.get(`/api/custom-objects/${apiName}`);
+  return res.data;
+};
+
+export const updateObject = async (apiName, data) => {
+  const res = await axios.put(`/api/custom-objects/${apiName}`, data);
+  return res.data;
+};
+
 export const createRecord = async (object, data) => {
   const res = await axios.post(`/api/custom-records/${object}`, data);
   return res.data;
