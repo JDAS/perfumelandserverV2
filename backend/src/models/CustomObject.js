@@ -89,7 +89,7 @@ const customObjectSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-customObjectSchema.pre("save", function(next) {
+customObjectSchema.pre("save", async function() {
   if (!this.fields || this.fields.length === 0) {
     this.fields = [{
       label: "Name",
@@ -109,8 +109,6 @@ customObjectSchema.pre("save", function(next) {
       }]
     }];
   }
-
-  next();
 });
 
 module.exports = mongoose.model("CustomObject", customObjectSchema);
