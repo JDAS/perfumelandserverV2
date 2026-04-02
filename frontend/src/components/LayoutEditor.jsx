@@ -22,8 +22,16 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
     normalizeSections(localLayout.sections || [])
   );
 
+  const isBlankBlock = (value) =>
+    typeof value === "string" && value.startsWith("__blank__");
+
+  const getFieldByApiName = (apiName) =>
+    allFields.find((field) => field.apiName === apiName);
+
   const assignedFieldApiNames = useMemo(() => {
-    return sections.flatMap((section) => section.fields);
+    return sections.flatMap((section) =>
+      (section.fields || []).filter((item) => !isBlankBlock(item))
+    );
   }, [sections]);
 
   const availableFields = useMemo(() => {
@@ -31,9 +39,6 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
       (field) => !assignedFieldApiNames.includes(field.apiName)
     );
   }, [allFields, assignedFieldApiNames]);
-
-  const getFieldByApiName = (apiName) =>
-    allFields.find((field) => field.apiName === apiName);
 
   const addSection = () => {
     setSections((prev) => [
@@ -59,10 +64,23 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
     setSections((prev) => prev.filter((section) => section.id !== sectionId));
   };
 
-  const removeFieldFromAllSections = (fieldApiName, sourceSections) => {
+  const addBlankBlock = (sectionId) => {
+    setSections((prev) =>
+      prev.map((section) =>
+        section.id === sectionId
+          ? {
+              ...section,
+              fields: [...(section.fields || []), `__blank__${Date.now()}`],
+            }
+          : section
+      )
+    );
+  };
+
+  const removeItemFromAllSections = (value, sourceSections) => {
     return sourceSections.map((section) => ({
       ...section,
-      fields: section.fields.filter((f) => f !== fieldApiName),
+      fields: (section.fields || []).filter((item) => item !== value),
     }));
   };
 
@@ -73,46 +91,116 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
     return result;
   };
 
+  const splitFieldsIntoColumns = (fieldList = []) => {
+    const col1 = [];
+    const col2 = [];
+
+    fieldList.forEach((item, index) => {
+      if (index % 2 === 0) {
+        col1.push({ value: item, originalIndex: index });
+      } else {
+        col2.push({ value: item, originalIndex: index });
+      }
+    });
+
+    return { col1, col2 };
+  };
+
+  const mergeColumns = (col1 = [], col2 = []) => {
+    const merged = [];
+    const max = Math.max(col1.length, col2.length);
+
+    for (let i = 0; i < max; i++) {
+      if (col1[i] !== undefined) merged.push(col1[i]);
+      if (col2[i] !== undefined) merged.push(col2[i]);
+    }
+
+    return merged;
+  };
+
+  const parseDroppableId = (id) => {
+    if (id === "available") return { type: "available" };
+
+    const [sectionId, column] = id.split("__");
+    return { type: "section", sectionId, column };
+  };
+
   const onDragEnd = (result) => {
     const { source, destination, draggableId } = result;
 
     if (!destination) return;
 
-    const sourceId = source.droppableId;
-    const destinationId = destination.droppableId;
+    const sourceMeta = parseDroppableId(source.droppableId);
+    const destinationMeta = parseDroppableId(destination.droppableId);
 
-    if (sourceId === destinationId) {
-      if (sourceId === "available") return;
-
+    // Reordenar dentro de la misma columna visual
+    if (
+      source.droppableId === destination.droppableId &&
+      sourceMeta.type === "section"
+    ) {
       setSections((prev) =>
-        prev.map((section) =>
-          section.id === sourceId
-            ? {
-                ...section,
-                fields: reorder(
-                  section.fields,
-                  source.index,
-                  destination.index
-                ),
-              }
-            : section
-        )
+        prev.map((section) => {
+          if (section.id !== sourceMeta.sectionId) return section;
+
+          const { col1, col2 } = splitFieldsIntoColumns(section.fields || []);
+          const sourceColumnItems =
+            sourceMeta.column === "col1"
+              ? col1.map((x) => x.value)
+              : col2.map((x) => x.value);
+
+          const reorderedColumn = reorder(
+            sourceColumnItems,
+            source.index,
+            destination.index
+          );
+
+          const newCol1 =
+            sourceMeta.column === "col1"
+              ? reorderedColumn
+              : col1.map((x) => x.value);
+
+          const newCol2 =
+            sourceMeta.column === "col2"
+              ? reorderedColumn
+              : col2.map((x) => x.value);
+
+          return {
+            ...section,
+            fields: mergeColumns(newCol1, newCol2),
+          };
+        })
       );
       return;
     }
 
-    let updatedSections = removeFieldFromAllSections(draggableId, sections);
+    let updatedSections = removeItemFromAllSections(draggableId, sections);
 
-    if (destinationId !== "available") {
+    if (destinationMeta.type === "section") {
       updatedSections = updatedSections.map((section) => {
-        if (section.id !== destinationId) return section;
+        if (section.id !== destinationMeta.sectionId) return section;
 
-        const newFields = [...section.fields];
-        newFields.splice(destination.index, 0, draggableId);
+        const { col1, col2 } = splitFieldsIntoColumns(section.fields || []);
+
+        const targetCol =
+          destinationMeta.column === "col1"
+            ? col1.map((x) => x.value)
+            : col2.map((x) => x.value);
+
+        targetCol.splice(destination.index, 0, draggableId);
+
+        const newCol1 =
+          destinationMeta.column === "col1"
+            ? targetCol
+            : col1.map((x) => x.value);
+
+        const newCol2 =
+          destinationMeta.column === "col2"
+            ? targetCol
+            : col2.map((x) => x.value);
 
         return {
           ...section,
-          fields: newFields,
+          fields: mergeColumns(newCol1, newCol2),
         };
       });
     }
@@ -120,7 +208,66 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
     setSections(updatedSections);
   };
 
+  const renderItemCard = (value, providedDraggable, snapshotDraggable) => {
+    if (isBlankBlock(value)) {
+      return (
+        <div
+          ref={providedDraggable.innerRef}
+          {...providedDraggable.draggableProps}
+          {...providedDraggable.dragHandleProps}
+          className={`rounded border-2 border-dashed bg-gray-50 p-3 shadow-sm ${
+            snapshotDraggable.isDragging ? "opacity-70" : ""
+          }`}
+        >
+          <p className="font-medium text-gray-500">Bloque vacío</p>
+          <p className="text-xs text-gray-400">Separador visual</p>
+        </div>
+      );
+    }
+
+    const field = getFieldByApiName(value);
+    if (!field) return null;
+
+    return (
+      <div
+        ref={providedDraggable.innerRef}
+        {...providedDraggable.draggableProps}
+        {...providedDraggable.dragHandleProps}
+        className={`rounded border bg-white p-3 shadow-sm ${
+          snapshotDraggable.isDragging ? "opacity-70" : ""
+        }`}
+      >
+        <p className="font-medium">{field.label}</p>
+        <p className="text-xs text-gray-500">
+          {field.apiName} · {field.type}
+          {field.required ? " · requerido" : ""}
+        </p>
+      </div>
+    );
+  };
+
   const handleSave = () => {
+    const assignedFields = sections.flatMap((section) =>
+      (section.fields || []).filter((item) => !isBlankBlock(item))
+    );
+
+    const requiredFields = allFields
+      .filter((field) => field.required)
+      .map((field) => field.apiName);
+
+    const missingRequired = requiredFields.filter(
+      (apiName) => !assignedFields.includes(apiName)
+    );
+
+    if (missingRequired.length > 0) {
+      alert(
+        `Estos campos requeridos deben estar en alguna sección: ${missingRequired.join(
+          ", "
+        )}`
+      );
+      return;
+    }
+
     const cleanedLayout = {
       ...localLayout,
       sections: sections.map(({ id, ...section }) => ({
@@ -142,7 +289,7 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
 
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Campos disponibles */}
+          {/* Disponibles */}
           <div className="lg:col-span-1">
             <h3 className="font-semibold mb-3">Campos disponibles</h3>
 
@@ -161,21 +308,13 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
                       draggableId={field.apiName}
                       index={index}
                     >
-                      {(providedDraggable, snapshotDraggable) => (
-                        <div
-                          ref={providedDraggable.innerRef}
-                          {...providedDraggable.draggableProps}
-                          {...providedDraggable.dragHandleProps}
-                          className={`rounded border bg-white p-3 shadow-sm ${
-                            snapshotDraggable.isDragging ? "opacity-70" : ""
-                          }`}
-                        >
-                          <p className="font-medium">{field.label}</p>
-                          <p className="text-xs text-gray-500">
-                            {field.apiName} · {field.type}
-                          </p>
-                        </div>
-                      )}
+                      {(providedDraggable, snapshotDraggable) =>
+                        renderItemCard(
+                          field.apiName,
+                          providedDraggable,
+                          snapshotDraggable
+                        )
+                      }
                     </Draggable>
                   ))}
                   {provided.placeholder}
@@ -202,90 +341,181 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
               </button>
             </div>
 
-            {sections.map((section) => (
-              <div key={section.id} className="border rounded-lg p-4 space-y-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
-                    <input
-                      className="border p-2 rounded"
-                      placeholder="Nombre de sección"
-                      value={section.label}
-                      onChange={(e) =>
-                        updateSection(section.id, { label: e.target.value })
-                      }
-                    />
+            {sections.map((section) => {
+              const { col1, col2 } = splitFieldsIntoColumns(section.fields || []);
 
-                    <select
-                      className="border p-2 rounded"
-                      value={section.columns}
-                      onChange={(e) =>
-                        updateSection(section.id, {
-                          columns: Number(e.target.value),
-                        })
-                      }
+              return (
+                <div
+                  key={section.id}
+                  className="border rounded-lg p-4 space-y-4 bg-white"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
+                      <input
+                        className="border p-2 rounded"
+                        placeholder="Nombre de sección"
+                        value={section.label}
+                        onChange={(e) =>
+                          updateSection(section.id, { label: e.target.value })
+                        }
+                      />
+
+                      <select
+                        className="border p-2 rounded"
+                        value={section.columns}
+                        onChange={(e) =>
+                          updateSection(section.id, {
+                            columns: Number(e.target.value),
+                          })
+                        }
+                      >
+                        <option value={1}>1 columna</option>
+                        <option value={2}>2 columnas</option>
+                      </select>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => deleteSection(section.id)}
+                      className="bg-red-600 text-white px-3 py-2 rounded"
                     >
-                      <option value={1}>1 columna</option>
-                      <option value={2}>2 columnas</option>
-                    </select>
+                      Eliminar
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => deleteSection(section.id)}
-                    className="bg-red-600 text-white px-3 py-2 rounded"
-                  >
-                    Eliminar
-                  </button>
-                </div>
-
-                <Droppable droppableId={section.id}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={`min-h-[120px] rounded-lg border p-3 space-y-2 ${
-                        snapshot.isDraggingOver ? "bg-blue-50" : "bg-gray-50"
-                      }`}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => addBlankBlock(section.id)}
+                      className="bg-gray-200 px-3 py-2 rounded"
                     >
-                      {section.fields.map((fieldApiName, index) => {
-                        const field = getFieldByApiName(fieldApiName);
-                        if (!field) return null;
+                      Agregar bloque vacío
+                    </button>
+                  </div>
 
-                        return (
-                          <Draggable
-                            key={field.apiName}
-                            draggableId={field.apiName}
-                            index={index}
+                  {section.columns === 1 ? (
+                    <div>
+                      <h4 className="font-medium mb-2">Contenido</h4>
+                      <Droppable droppableId={`${section.id}__col1`}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className={`min-h-[120px] rounded-lg border p-3 space-y-2 ${
+                              snapshot.isDraggingOver
+                                ? "bg-blue-50"
+                                : "bg-gray-50"
+                            }`}
                           >
-                            {(providedDraggable, snapshotDraggable) => (
-                              <div
-                                ref={providedDraggable.innerRef}
-                                {...providedDraggable.draggableProps}
-                                {...providedDraggable.dragHandleProps}
-                                className={`rounded border bg-white p-3 shadow-sm ${
-                                  snapshotDraggable.isDragging ? "opacity-70" : ""
-                                }`}
+                            {(section.fields || []).map((value, index) => (
+                              <Draggable
+                                key={value}
+                                draggableId={value}
+                                index={index}
                               >
-                                <p className="font-medium">{field.label}</p>
-                                <p className="text-xs text-gray-500">
-                                  {field.apiName} · {field.type}
-                                </p>
-                              </div>
+                                {(providedDraggable, snapshotDraggable) =>
+                                  renderItemCard(
+                                    value,
+                                    providedDraggable,
+                                    snapshotDraggable
+                                  )
+                                }
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                            {(section.fields || []).length === 0 && (
+                              <p className="text-sm text-gray-500">
+                                Arrastra campos aquí
+                              </p>
                             )}
-                          </Draggable>
-                        );
-                      })}
-                      {provided.placeholder}
-                      {section.fields.length === 0 && (
-                        <p className="text-sm text-gray-500">
-                          Arrastra campos aquí
-                        </p>
-                      )}
+                          </div>
+                        )}
+                      </Droppable>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-medium mb-2">Columna 1</h4>
+                        <Droppable droppableId={`${section.id}__col1`}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.droppableProps}
+                              className={`min-h-[120px] rounded-lg border p-3 space-y-2 ${
+                                snapshot.isDraggingOver
+                                  ? "bg-blue-50"
+                                  : "bg-gray-50"
+                              }`}
+                            >
+                              {col1.map((item, index) => (
+                                <Draggable
+                                  key={item.value}
+                                  draggableId={item.value}
+                                  index={index}
+                                >
+                                  {(providedDraggable, snapshotDraggable) =>
+                                    renderItemCard(
+                                      item.value,
+                                      providedDraggable,
+                                      snapshotDraggable
+                                    )
+                                  }
+                                </Draggable>
+                              ))}
+                              {provided.placeholder}
+                              {col1.length === 0 && (
+                                <p className="text-sm text-gray-500">
+                                  Arrastra campos aquí
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </Droppable>
+                      </div>
+
+                      <div>
+                        <h4 className="font-medium mb-2">Columna 2</h4>
+                        <Droppable droppableId={`${section.id}__col2`}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.droppableProps}
+                              className={`min-h-[120px] rounded-lg border p-3 space-y-2 ${
+                                snapshot.isDraggingOver
+                                  ? "bg-blue-50"
+                                  : "bg-gray-50"
+                              }`}
+                            >
+                              {col2.map((item, index) => (
+                                <Draggable
+                                  key={item.value}
+                                  draggableId={item.value}
+                                  index={index}
+                                >
+                                  {(providedDraggable, snapshotDraggable) =>
+                                    renderItemCard(
+                                      item.value,
+                                      providedDraggable,
+                                      snapshotDraggable
+                                    )
+                                  }
+                                </Draggable>
+                              ))}
+                              {provided.placeholder}
+                              {col2.length === 0 && (
+                                <p className="text-sm text-gray-500">
+                                  Arrastra campos aquí
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </Droppable>
+                      </div>
                     </div>
                   )}
-                </Droppable>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         </div>
       </DragDropContext>

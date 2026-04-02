@@ -59,9 +59,27 @@ function DynamicForm() {
     }
   };
 
+  const isBlankBlock = (value) =>
+    typeof value === "string" && value.startsWith("__blank__");
+
+  const splitFieldsIntoColumns = (fieldList = []) => {
+    const col1 = [];
+    const col2 = [];
+
+    fieldList.forEach((item, index) => {
+      if (index % 2 === 0) {
+        col1.push(item);
+      } else {
+        col2.push(item);
+      }
+    });
+
+    return { col1, col2 };
+  };
+
   const renderField = (field) => {
     const commonProps = {
-      className: "w-full border p-2",
+      className: "w-full border p-2 rounded",
       value: formData[field.apiName] || "",
       onChange: (e) => handleChange(field.apiName, e.target.value),
     };
@@ -94,6 +112,32 @@ function DynamicForm() {
     return <input {...commonProps} type="text" />;
   };
 
+  const renderFieldOrBlank = (item, index) => {
+    if (isBlankBlock(item)) {
+      return (
+        <div
+          key={`${item}-${index}`}
+          className="h-[72px] rounded border-2 border-dashed border-gray-200 bg-gray-50"
+        />
+      );
+    }
+
+    const field = fields.find((f) => f.apiName === item);
+    if (!field) return null;
+
+    return (
+      <div key={field.apiName} className="mb-3">
+        <label className="block mb-1 font-medium">
+          {field.label}
+          {field.required && (
+            <span className="text-red-500 ml-1">*</span>
+          )}
+        </label>
+        {renderField(field)}
+      </div>
+    );
+  };
+
   if (loading) {
     return <div className="p-10">Cargando...</div>;
   }
@@ -101,41 +145,48 @@ function DynamicForm() {
   const activeLayout = layout?.[0];
 
   return (
-    <div className="p-10 max-w-xl mx-auto">
+    <div className="p-10 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Nuevo {object}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {activeLayout?.sections?.length > 0 ? (
-          activeLayout.sections.map((section) => (
-            <div key={section.apiName || section.label} className="mb-6">
-              <h2 className="font-bold mb-3 text-lg">{section.label}</h2>
+          activeLayout.sections.map((section, idx) => {
+            const sectionFields = section.fields || [];
+            const { col1, col2 } = splitFieldsIntoColumns(sectionFields);
 
+            return (
               <div
-                className={`grid gap-4 ${
-                  section.columns === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
-                }`}
+                key={`${section.label}-${idx}`}
+                className="bg-white rounded-xl shadow p-6"
               >
-                {section.fields.map((fieldApiName) => {
-                  const field = fields.find((f) => f.apiName === fieldApiName);
-                  if (!field) return null;
+                <h2 className="font-bold mb-4 text-lg">{section.label}</h2>
 
-                  return (
-                    <div key={field.apiName} className="mb-3">
-                      <label className="block mb-1 font-medium">
-                        {field.label}
-                        {field.required && (
-                          <span className="text-red-500 ml-1">*</span>
-                        )}
-                      </label>
-                      {renderField(field)}
+                {section.columns === 2 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      {col1.map((item, index) =>
+                        renderFieldOrBlank(item, index)
+                      )}
                     </div>
-                  );
-                })}
+
+                    <div>
+                      {col2.map((item, index) =>
+                        renderFieldOrBlank(item, index)
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    {sectionFields.map((item, index) =>
+                      renderFieldOrBlank(item, index)
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
-          <div className="grid gap-4">
+          <div className="bg-white rounded-xl shadow p-6">
             {fields.map((field) => (
               <div key={field.apiName} className="mb-3">
                 <label className="block mb-1 font-medium">
@@ -150,7 +201,10 @@ function DynamicForm() {
           </div>
         )}
 
-        <button type="submit" className="bg-black text-white w-full py-2 rounded">
+        <button
+          type="submit"
+          className="bg-black text-white w-full py-3 rounded"
+        >
           Guardar
         </button>
       </form>
