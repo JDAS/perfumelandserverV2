@@ -43,7 +43,7 @@ function LoginPage() {
         token: res.data.token,
       });
 
-      navigate(res.data.user?.isAdmin ? "/admin/settings" : "/");
+      navigate(res.data.user?.isAdmin ? "/admin" : "/");
     } catch (error) {
       console.error(error);
       alert(error?.response?.data?.message || "Error al iniciar sesión");
