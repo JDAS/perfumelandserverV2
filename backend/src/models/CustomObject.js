@@ -89,5 +89,28 @@ const customObjectSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+customObjectSchema.pre("save", function(next) {
+  if (!this.fields || this.fields.length === 0) {
+    this.fields = [{
+      label: "Name",
+      type: "text",
+      apiName: "name"
+    }];
+  }
+
+  if (!this.layout || this.layout.length === 0) {
+    this.layout = [{
+      label: "principal",
+      apiName: "principal",
+      sections: [{
+        label: "Detalles",
+        columns: 2,
+        fields: ["name"]
+      }]
+    }];
+  }
+
+  next();
+});
 
 module.exports = mongoose.model("CustomObject", customObjectSchema);
