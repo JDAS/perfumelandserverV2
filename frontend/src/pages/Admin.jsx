@@ -1,58 +1,77 @@
 import { useState } from "react";
-import { createProduct } from "../services/productService";
 
 function Admin() {
-  const [form, setForm] = useState({
-    name: "",
-    brand: "",
-    price: "",
-  });
+  const tabs = [
+    { id: "inicio", label: "Inicio" },
+    { id: "reportes", label: "Reportes" },
+    { id: "dashboards", label: "Dashboards" },
+  ];
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const [activeTab, setActiveTab] = useState("inicio");
 
-    try {
-      await createProduct(form);
-      alert("Producto creado ✅");
-    } catch (error) {
-      alert("Error ❌");
+  const renderContent = () => {
+    switch (activeTab) {
+      case "inicio":
+        return (
+          <div className="bg-white rounded-xl shadow p-6">
+            <h2 className="text-2xl font-bold mb-3">Inicio</h2>
+            <p className="text-gray-600">
+              Aquí definiremos el contenido principal del panel administrativo.
+            </p>
+          </div>
+        );
+
+      case "reportes":
+        return (
+          <div className="bg-white rounded-xl shadow p-6">
+            <h2 className="text-2xl font-bold mb-3">Reportes</h2>
+            <p className="text-gray-600">
+              Esta sección se desarrollará después.
+            </p>
+          </div>
+        );
+
+      case "dashboards":
+        return (
+          <div className="bg-white rounded-xl shadow p-6">
+            <h2 className="text-2xl font-bold mb-3">Dashboards</h2>
+            <p className="text-gray-600">
+              Aquí irán los dashboards administrativos.
+            </p>
+          </div>
+        );
+
+      default:
+        return null;
     }
   };
 
   return (
-    <div className="p-10 max-w-md mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Admin Panel</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Admin Panel</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Panel principal de administración
+        </p>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          placeholder="Nombre"
-          className="w-full border p-2"
-          onChange={(e) =>
-            setForm({ ...form, name: e.target.value })
-          }
-        />
+      <div className="bg-white rounded-xl shadow p-2 flex gap-2 w-fit">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+              activeTab === tab.id
+                ? "bg-black text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-        <input
-          placeholder="Marca"
-          className="w-full border p-2"
-          onChange={(e) =>
-            setForm({ ...form, brand: e.target.value })
-          }
-        />
-
-        <input
-          placeholder="Precio"
-          type="number"
-          className="w-full border p-2"
-          onChange={(e) =>
-            setForm({ ...form, price: e.target.value })
-          }
-        />
-
-        <button className="bg-black text-white w-full py-2">
-          Crear Producto
-        </button>
-      </form>
+      {renderContent()}
     </div>
   );
 }
