@@ -1,21 +1,23 @@
 const mongoose = require("mongoose");
 
-function getCustomRecordModel(collectionName) {
-  const modelName = `CustomRecord_${collectionName}`;
+const customRecordSchema = new mongoose.Schema(
+  {},
+  {
+    strict: false,
+    timestamps: true,
+  }
+);
+
+function getCustomRecordModel(objectName) {
+  const modelName = `custom_${objectName}`;
 
   if (mongoose.models[modelName]) {
     return mongoose.models[modelName];
   }
 
-  const customRecordSchema = new mongoose.Schema(
-    {},
-    {
-      strict: false,
-      timestamps: true,
-    }
-  );
-
-  return mongoose.model(modelName, customRecordSchema, collectionName);
+  return mongoose.model(modelName, customRecordSchema, objectName);
 }
 
-module.exports = getCustomRecordModel;
+module.exports = {
+  getCustomRecordModel,
+};
