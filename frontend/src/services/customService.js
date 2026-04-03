@@ -15,6 +15,11 @@ export const updateObject = async (apiName, data) => {
   return res.data;
 };
 
+export const createObject = async (data) => {
+  const res = await axios.post("/api/custom-objects", data);
+  return res.data;
+};
+
 export const deleteObject = async (apiName) => {
   const res = await axios.delete(`/api/custom-objects/${apiName}`);
   return res.data;
@@ -25,10 +30,11 @@ export const createRecord = async (object, data) => {
   return res.data;
 };
 
-export const getRecords = async (object) => {
-  const res = await axios.get(`/api/custom-records/${object}`);
+export const getRecords = async (object, params = {}) => {
+  const res = await axios.get(`/api/custom-records/${object}`, { params });
   return res.data;
 };
+
 export const getRecordById = async (object, id) => {
   const res = await axios.get(`/api/custom-records/${object}/${id}`);
   return res.data;

@@ -1,203 +1,111 @@
-import { useEffect, useState } from "react";
-import {
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from "react-router-dom";
-import {
-  getObjects,
-  createRecord,
-  getRecordById,
-  updateRecord,
-} from "../services/customService";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { createRecord, getRecordById, updateRecord } from "../services/customService";
+import { useObjectMetadata } from "../context/ObjectMetadataContext";
+import { getBackToListSearch, getFormFields, isBlankBlock, splitFieldsIntoColumns } from "../engine/metadataEngine";
+import { renderFieldInput } from "../components/fields/FieldRegistry";
 
 function DynamicForm() {
   const { object, id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { getObjectByApiNameFromCache } = useObjectMetadata();
 
-  const [fields, setFields] = useState([]);
   const [formData, setFormData] = useState({});
-  const [layout, setLayout] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const isEditMode = !!id;
-  const returnTab = searchParams.get("tab") || object;
+  const objectDef = getObjectByApiNameFromCache(object);
+  const fields = useMemo(() => getFormFields(objectDef), [objectDef]);
+  const activeLayout = objectDef?.layout?.[0];
+  const isEditMode = Boolean(id);
+  const backToListQuery = getBackToListSearch(searchParams, object);
 
   useEffect(() => {
-    loadObject();
-  }, [object, id]);
-
-  const loadObject = async () => {
-    try {
-      setLoading(true);
-
-      const objects = await getObjects();
-      const current = objects.find((o) => o.apiName === object);
-
-      if (current) {
-        setFields(current.fields || []);
-        setLayout(current.layout || []);
+    async function loadRecord() {
+      if (!objectDef) {
+        setLoading(false);
+        return;
       }
 
-      if (id && current) {
-        const record = await getRecordById(object, id);
+      try {
+        setLoading(true);
+        const initialState = Object.fromEntries(fields.map((field) => [field.apiName, field.type === "boolean" ? false : ""]));
 
-        const allowedFieldNames = (current.fields || []).map(
-          (f) => f.apiName
-        );
-
-        const cleanRecord = Object.fromEntries(
-          Object.entries(record || {}).filter(([key]) =>
-            allowedFieldNames.includes(key)
-          )
-        );
-
-        setFormData(cleanRecord);
+        if (isEditMode) {
+          const record = await getRecordById(object, id);
+          const allowedFieldNames = new Set(fields.map((field) => field.apiName));
+          const cleanRecord = Object.fromEntries(Object.entries(record || {}).filter(([key]) => allowedFieldNames.has(key)));
+          setFormData({ ...initialState, ...cleanRecord });
+        } else {
+          setFormData(initialState);
+        }
+      } catch (error) {
+        console.error("Error cargando objeto o registro:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error cargando objeto o registro:", error);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    loadRecord();
+  }, [objectDef, fields, object, id, isEditMode]);
 
   const handleChange = (apiName, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [apiName]: value,
-    }));
-  };
-  const handleCancel = () => {
-    navigate(`/admin?tab=${returnTab}`);
+    setFormData((prev) => ({ ...prev, [apiName]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    for (const f of fields) {
-      if (f.required && !formData[f.apiName]) {
-        alert(`${f.label} es requerido`);
+    for (const field of fields) {
+      if (field.required && (formData[field.apiName] === undefined || formData[field.apiName] === null || formData[field.apiName] === "")) {
+        alert(`${field.label} es requerido`);
         return;
       }
     }
 
     try {
-      const allowedFieldNames = fields.map((f) => f.apiName);
-
-      const cleanFormData = Object.fromEntries(
-        Object.entries(formData).filter(([key]) =>
-          allowedFieldNames.includes(key)
-        )
-      );
-
+      const payload = Object.fromEntries(fields.map((field) => [field.apiName, formData[field.apiName]]));
       if (isEditMode) {
-        await updateRecord(object, id, cleanFormData);
+        await updateRecord(object, id, payload);
         alert("Registro actualizado 🚀");
       } else {
-        await createRecord(object, cleanFormData);
+        await createRecord(object, payload);
         alert("Registro creado 🚀");
       }
-
-      navigate(`/admin?tab=${returnTab}`);
+      navigate(`/admin?${backToListQuery}`);
     } catch (error) {
       console.error("Error guardando registro:", error);
-      alert(
-        error?.response?.data?.error || "Error al guardar el registro"
-      );
+      alert(error?.response?.data?.error || "Error al guardar el registro");
     }
-  };
-
-  const isBlankBlock = (value) =>
-    typeof value === "string" && value.startsWith("__blank__");
-
-  const splitFieldsIntoColumns = (fieldList = []) => {
-    const col1 = [];
-    const col2 = [];
-
-    fieldList.forEach((item, index) => {
-      if (index % 2 === 0) {
-        col1.push(item);
-      } else {
-        col2.push(item);
-      }
-    });
-
-    return { col1, col2 };
-  };
-
-  const renderField = (field) => {
-    const commonProps = {
-      className: "w-full border p-2 rounded",
-      value: formData[field.apiName] || "",
-      onChange: (e) => handleChange(field.apiName, e.target.value),
-    };
-
-    if (field.type === "text") {
-      return <input {...commonProps} type="text" />;
-    }
-
-    if (field.type === "number") {
-      return <input {...commonProps} type="number" />;
-    }
-
-    if (field.type === "date") {
-      return <input {...commonProps} type="date" />;
-    }
-
-    if (field.type === "select") {
-      return (
-        <select {...commonProps}>
-          <option value="">Seleccione</option>
-          {field.options?.map((opt, i) => (
-            <option key={i} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
-      );
-    }
-
-    return <input {...commonProps} type="text" />;
   };
 
   const renderFieldOrBlank = (item, index) => {
     if (isBlankBlock(item)) {
-      return (
-        <div
-          key={`${item}-${index}`}
-          className="h-[72px] rounded border-2 border-dashed border-gray-200 bg-gray-50"
-        />
-      );
+      return <div key={`${item}-${index}`} className="h-[72px] rounded border-2 border-dashed border-gray-200 bg-gray-50" />;
     }
 
-    const field = fields.find((f) => f.apiName === item);
+    const field = fields.find((currentField) => currentField.apiName === item);
     if (!field) return null;
 
     return (
       <div key={field.apiName} className="mb-3">
-        <label className="block mb-1 font-medium">
-          {field.label}
-          {field.required && (
-            <span className="text-red-500 ml-1">*</span>
-          )}
-        </label>
-        {renderField(field)}
+        {field.type !== "boolean" && (
+          <label className="block mb-1 font-medium">
+            {field.label}
+            {field.required && <span className="text-red-500 ml-1">*</span>}
+          </label>
+        )}
+        {renderFieldInput(field, formData[field.apiName], (value) => handleChange(field.apiName, value))}
       </div>
     );
   };
 
-  if (loading) {
-    return <div className="p-10">Cargando...</div>;
-  }
-
-  const activeLayout = layout?.[0];
+  if (loading) return <div className="p-10">Cargando...</div>;
+  if (!objectDef) return <div className="p-10">Objeto no encontrado.</div>;
 
   return (
     <div className="p-10 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">
-        {isEditMode ? `Editar ${object}` : `Nuevo ${object}`}
-      </h1>
+      <h1 className="text-2xl font-bold mb-6">{isEditMode ? `Editar ${objectDef.name}` : `Nuevo ${objectDef.name}`}</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {activeLayout?.sections?.length > 0 ? (
@@ -206,67 +114,28 @@ function DynamicForm() {
             const { col1, col2 } = splitFieldsIntoColumns(sectionFields);
 
             return (
-              <div
-                key={`${section.label}-${idx}`}
-                className="bg-white rounded-xl shadow p-6"
-              >
+              <div key={`${section.label}-${idx}`} className="bg-white rounded-xl shadow p-6">
                 <h2 className="font-bold mb-4 text-lg">{section.label}</h2>
-
                 {section.columns === 2 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      {col1.map((item, index) =>
-                        renderFieldOrBlank(item, index)
-                      )}
-                    </div>
-
-                    <div>
-                      {col2.map((item, index) =>
-                        renderFieldOrBlank(item, index)
-                      )}
-                    </div>
+                    <div>{col1.map((item, index) => renderFieldOrBlank(item, index))}</div>
+                    <div>{col2.map((item, index) => renderFieldOrBlank(item, index))}</div>
                   </div>
                 ) : (
-                  <div>
-                    {sectionFields.map((item, index) =>
-                      renderFieldOrBlank(item, index)
-                    )}
-                  </div>
+                  <div>{sectionFields.map((item, index) => renderFieldOrBlank(item, index))}</div>
                 )}
               </div>
             );
           })
         ) : (
           <div className="bg-white rounded-xl shadow p-6">
-            {fields.map((field) => (
-              <div key={field.apiName} className="mb-3">
-                <label className="block mb-1 font-medium">
-                  {field.label}
-                  {field.required && (
-                    <span className="text-red-500 ml-1">*</span>
-                  )}
-                </label>
-                {renderField(field)}
-              </div>
-            ))}
+            {fields.map((field, index) => renderFieldOrBlank(field.apiName, index))}
           </div>
         )}
 
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="w-full bg-gray-200 text-black py-3 rounded"
-          >
-            Cancelar
-          </button>
-
-          <button
-            type="submit"
-            className="w-full bg-black text-white py-3 rounded"
-          >
-            {isEditMode ? "Actualizar" : "Guardar"}
-          </button>
+        <div className="flex gap-3 justify-end">
+          <button type="button" onClick={() => navigate(`/admin?${backToListQuery}`)} className="px-4 py-2 rounded bg-gray-200">Cancelar</button>
+          <button type="submit" className="px-4 py-2 rounded bg-black text-white">Guardar</button>
         </div>
       </form>
     </div>
