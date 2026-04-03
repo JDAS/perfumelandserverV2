@@ -1,17 +1,37 @@
 const CustomObject = require("../models/CustomObject");
 const { getCustomRecordModel } = require("../models/CustomRecord");
 
+exports.createRecord = async (req, res) => {
+  try {
+    const { object } = req.params;
+    const RecordModel = getCustomRecordModel(object);
+
+    const record = await RecordModel.create(req.body);
+    res.status(201).json(record);
+  } catch (error) {
+    console.error("createRecord error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.getRecords = async (req, res) => {
   try {
     const { object } = req.params;
+
     const {
       view = "all",
       search = "",
-      sort = "createdAt",
-      order = "desc",
       page = 1,
       limit = 10,
+      sort,
+      order,
+      sortBy,
+      sortOrder,
+      filters,
     } = req.query;
+
+    const finalSort = sort || sortBy || "createdAt";
+    const finalOrder = order || sortOrder || "desc";
 
     const customObject = await CustomObject.findOne({ apiName: object });
 
@@ -32,46 +52,93 @@ exports.getRecords = async (req, res) => {
       customObject.listViews?.find((v) => v.isDefault) ||
       null;
 
-    if (search && search.trim()) {
+    if (search && String(search).trim()) {
       const searchableFields = (customObject.fields || [])
-        .filter((f) => ["text", "textarea", "select", "date", "number", "email", "phone"].includes(f.type))
+        .filter((f) =>
+          ["text", "textarea", "select", "date", "number", "email", "phone"].includes(f.type)
+        )
         .map((f) => f.apiName);
 
       if (searchableFields.length > 0) {
         mongoQuery.$or = searchableFields.map((field) => ({
-          [field]: { $regex: search.trim(), $options: "i" },
+          [field]: { $regex: String(search).trim(), $options: "i" },
         }));
       }
     }
 
-    if (activeView && Array.isArray(activeView.filters) && activeView.filters.length > 0) {
-      const filterConditions = [];
+    const parsedFilterConditions = [];
 
+    if (filters) {
+      let parsedFilters = [];
+
+      try {
+        parsedFilters = typeof filters === "string" ? JSON.parse(filters) : filters;
+      } catch (e) {
+        console.error("Error parseando filters:", e);
+      }
+
+      if (Array.isArray(parsedFilters)) {
+        parsedFilters.forEach((filter) => {
+          const { field, operator, value } = filter || {};
+          if (!field || value === undefined || value === null || value === "") return;
+
+          switch (operator) {
+            case "eq":
+              parsedFilterConditions.push({ [field]: value });
+              break;
+            case "ne":
+              parsedFilterConditions.push({ [field]: { $ne: value } });
+              break;
+            case "gt":
+              parsedFilterConditions.push({ [field]: { $gt: value } });
+              break;
+            case "gte":
+              parsedFilterConditions.push({ [field]: { $gte: value } });
+              break;
+            case "lt":
+              parsedFilterConditions.push({ [field]: { $lt: value } });
+              break;
+            case "lte":
+              parsedFilterConditions.push({ [field]: { $lte: value } });
+              break;
+            case "contains":
+              parsedFilterConditions.push({
+                [field]: { $regex: String(value), $options: "i" },
+              });
+              break;
+            default:
+              break;
+          }
+        });
+      }
+    }
+
+    if (activeView && Array.isArray(activeView.filters) && activeView.filters.length > 0) {
       activeView.filters.forEach((filter) => {
         const { field, operator, value } = filter || {};
         if (!field || value === undefined || value === null || value === "") return;
 
         switch (operator) {
           case "eq":
-            filterConditions.push({ [field]: value });
+            parsedFilterConditions.push({ [field]: value });
             break;
           case "ne":
-            filterConditions.push({ [field]: { $ne: value } });
+            parsedFilterConditions.push({ [field]: { $ne: value } });
             break;
           case "gt":
-            filterConditions.push({ [field]: { $gt: value } });
+            parsedFilterConditions.push({ [field]: { $gt: value } });
             break;
           case "gte":
-            filterConditions.push({ [field]: { $gte: value } });
+            parsedFilterConditions.push({ [field]: { $gte: value } });
             break;
           case "lt":
-            filterConditions.push({ [field]: { $lt: value } });
+            parsedFilterConditions.push({ [field]: { $lt: value } });
             break;
           case "lte":
-            filterConditions.push({ [field]: { $lte: value } });
+            parsedFilterConditions.push({ [field]: { $lte: value } });
             break;
           case "contains":
-            filterConditions.push({
+            parsedFilterConditions.push({
               [field]: { $regex: String(value), $options: "i" },
             });
             break;
@@ -79,18 +146,15 @@ exports.getRecords = async (req, res) => {
             break;
         }
       });
-
-      if (filterConditions.length > 0) {
-        if (mongoQuery.$and) {
-          mongoQuery.$and.push(...filterConditions);
-        } else {
-          mongoQuery.$and = filterConditions;
-        }
-      }
     }
 
-    const sortConfig = {};
-    sortConfig[sort] = order === "asc" ? 1 : -1;
+    if (parsedFilterConditions.length > 0) {
+      mongoQuery.$and = parsedFilterConditions;
+    }
+
+    const sortConfig = {
+      [finalSort]: finalOrder === "asc" ? 1 : -1,
+    };
 
     const total = await RecordModel.countDocuments(mongoQuery);
 
@@ -105,13 +169,16 @@ exports.getRecords = async (req, res) => {
       page: numericPage,
       pages: Math.ceil(total / numericLimit),
       view,
-      sort,
-      order,
+      sort: finalSort,
+      order: finalOrder,
       limit: numericLimit,
     });
   } catch (error) {
     console.error("getRecords error:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+      stack: process.env.NODE_ENV !== "production" ? error.stack : undefined,
+    });
   }
 };
 
@@ -119,6 +186,7 @@ exports.getRecordById = async (req, res) => {
   try {
     const { object, id } = req.params;
     const RecordModel = getCustomRecordModel(object);
+
     const record = await RecordModel.findById(id);
 
     if (!record) {
@@ -128,19 +196,6 @@ exports.getRecordById = async (req, res) => {
     res.json(record);
   } catch (error) {
     console.error("getRecordById error:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.createRecord = async (req, res) => {
-  try {
-    const { object } = req.params;
-    const RecordModel = getCustomRecordModel(object);
-
-    const record = await RecordModel.create(req.body);
-    res.status(201).json(record);
-  } catch (error) {
-    console.error("createRecord error:", error);
     res.status(500).json({ error: error.message });
   }
 };
