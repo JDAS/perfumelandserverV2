@@ -170,14 +170,14 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-xl rounded-2xl bg-white shadow-xl">
-        <div className="border-b px-6 py-4">
+      <div className="w-full max-w-xl max-h-[90vh] rounded-2xl bg-white shadow-xl flex flex-col">
+        <div className="border-b px-6 py-4 shrink-0">
           <h2 className="text-xl font-bold">
             {initialData ? "Editar campo" : "Nuevo campo"}
           </h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5 overflow-y-auto">
           <div>
             <label className="mb-1 block text-sm font-medium">Label</label>
             <input
@@ -574,7 +574,7 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
             </label>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-end gap-3 pt-2 border-t mt-4 sticky bottom-0 bg-white py-4">
             <button
               type="button"
               className="rounded bg-gray-200 px-4 py-2"
