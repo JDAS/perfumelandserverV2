@@ -19,8 +19,18 @@ const fieldSchema = new mongoose.Schema(
 const sectionSchema = new mongoose.Schema(
   {
     label: { type: String, required: true, trim: true },
+    type: {
+      type: String,
+      default: "fields",
+      enum: ["fields", "relatedList"],
+    },
     columns: { type: Number, required: true, default: 1 },
+
     fields: { type: [String], default: [] },
+
+    relatedObject: { type: String, default: "", trim: true },
+    relatedField: { type: String, default: "", trim: true },
+    relatedColumns: { type: [String], default: [] },
   },
   { _id: false }
 );
