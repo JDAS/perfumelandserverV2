@@ -14,6 +14,7 @@ import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
 
 import AdminRoute from "./components/AdminRoute";
+import RecordDetailPage from "./pages/RecordDetailPage";
 
 function App() {
   return (
@@ -77,6 +78,14 @@ function App() {
           element={
             <AdminRoute>
               <AdminLayout><DynamicForm /></AdminLayout>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/:object/:id/view"
+          element={
+            <AdminRoute>
+              <AdminLayout><RecordDetailPage /></AdminLayout>
             </AdminRoute>
           }
         />
