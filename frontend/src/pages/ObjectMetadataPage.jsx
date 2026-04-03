@@ -6,6 +6,7 @@ import {
 } from "../services/customService";
 import LayoutEditor from "../components/LayoutEditor";
 import FieldModal from "../components/FieldModal";
+import ListViewsEditor from "../components/ListViewsEditor";
 
 function ObjectMetadataPage() {
   const { apiName } = useParams();
@@ -31,7 +32,12 @@ function ObjectMetadataPage() {
     try {
       setLoading(true);
       const data = await getObjectByApiName(apiName);
-      setObjectData(data);
+      setObjectData({
+        ...data,
+        fields: data.fields || [],
+        layout: data.layout || [],
+        listViews: data.listViews || [],
+      });
     } catch (error) {
       console.error(error);
       alert("Error cargando objeto");
@@ -61,10 +67,20 @@ function ObjectMetadataPage() {
           ),
         })),
       })),
+      listViews: (objectData.listViews || []).map((view) => ({
+        ...view,
+        columns: (view.columns || []).filter((col) => col !== fieldApiName),
+        filters: (view.filters || []).filter((filter) => filter.field !== fieldApiName),
+      })),
     };
 
     const saved = await updateObject(apiName, updated);
-    setObjectData(saved);
+    setObjectData({
+      ...saved,
+      fields: saved.fields || [],
+      layout: saved.layout || [],
+      listViews: saved.listViews || [],
+    });
   };
 
   const addLayout = async () => {
@@ -93,7 +109,12 @@ function ObjectMetadataPage() {
     };
 
     const saved = await updateObject(apiName, updated);
-    setObjectData(saved);
+    setObjectData({
+      ...saved,
+      fields: saved.fields || [],
+      layout: saved.layout || [],
+      listViews: saved.listViews || [],
+    });
     setNewLayout({
       label: "",
       apiName: "",
@@ -112,7 +133,12 @@ function ObjectMetadataPage() {
     };
 
     const saved = await updateObject(apiName, updated);
-    setObjectData(saved);
+    setObjectData({
+      ...saved,
+      fields: saved.fields || [],
+      layout: saved.layout || [],
+      listViews: saved.listViews || [],
+    });
   };
 
   const saveEditedLayout = async (updatedLayout) => {
@@ -124,7 +150,12 @@ function ObjectMetadataPage() {
     };
 
     const saved = await updateObject(apiName, updated);
-    setObjectData(saved);
+    setObjectData({
+      ...saved,
+      fields: saved.fields || [],
+      layout: saved.layout || [],
+      listViews: saved.listViews || [],
+    });
     setEditingLayout(null);
   };
 
@@ -152,6 +183,7 @@ function ObjectMetadataPage() {
 
     let updatedFields = [];
     let updatedLayouts = objectData.layout || [];
+    let updatedListViews = objectData.listViews || [];
 
     if (editingField) {
       const oldApiName = editingField.apiName;
@@ -171,6 +203,17 @@ function ObjectMetadataPage() {
             ),
           })),
         }));
+
+        updatedListViews = updatedListViews.map((view) => ({
+          ...view,
+          columns: (view.columns || []).map((col) =>
+            col === oldApiName ? newApiName : col
+          ),
+          filters: (view.filters || []).map((filter) => ({
+            ...filter,
+            field: filter.field === oldApiName ? newApiName : filter.field,
+          })),
+        }));
       }
     } else {
       updatedFields = [...(objectData.fields || []), fieldData];
@@ -180,11 +223,69 @@ function ObjectMetadataPage() {
       ...objectData,
       fields: updatedFields,
       layout: updatedLayouts,
+      listViews: updatedListViews,
     });
 
-    setObjectData(saved);
+    setObjectData({
+      ...saved,
+      fields: saved.fields || [],
+      layout: saved.layout || [],
+      listViews: saved.listViews || [],
+    });
     setEditingField(null);
     setIsFieldModalOpen(false);
+  };
+
+  const saveListViews = async (nextViews) => {
+    const normalizedViews = (nextViews || []).map((view, index) => ({
+      ...view,
+      name: view.name || "",
+      apiName: view.apiName?.trim()
+        ? normalizeApiName(view.apiName)
+        : normalizeApiName(view.name || `view_${index + 1}`),
+      columns: view.columns || [],
+      filters: view.filters || [],
+      isDefault: !!view.isDefault,
+    }));
+
+    const defaultCount = normalizedViews.filter((view) => view.isDefault).length;
+
+    if (normalizedViews.length > 0 && defaultCount === 0) {
+      normalizedViews[0].isDefault = true;
+    }
+
+    if (defaultCount > 1) {
+      let foundDefault = false;
+      normalizedViews.forEach((view) => {
+        if (view.isDefault && !foundDefault) {
+          foundDefault = true;
+        } else {
+          view.isDefault = false;
+        }
+      });
+    }
+
+    const duplicatedApiNames = normalizedViews
+      .map((view) => view.apiName)
+      .filter((api, index, arr) => api && arr.indexOf(api) !== index);
+
+    if (duplicatedApiNames.length > 0) {
+      alert("Hay vistas con API Name repetido");
+      return;
+    }
+
+    const saved = await updateObject(apiName, {
+      ...objectData,
+      listViews: normalizedViews,
+    });
+
+    setObjectData({
+      ...saved,
+      fields: saved.fields || [],
+      layout: saved.layout || [],
+      listViews: saved.listViews || [],
+    });
+    alert("Views actualizadas");
   };
 
   if (loading) {
@@ -261,6 +362,17 @@ function ObjectMetadataPage() {
             >
               Layouts
             </button>
+
+            <button
+              className={`block w-full text-left px-3 py-2 rounded ${
+                activeSection === "views"
+                  ? "bg-black text-white"
+                  : "bg-gray-100"
+              }`}
+              onClick={() => setActiveSection("views")}
+            >
+              Views
+            </button>
           </div>
         </div>
       </aside>
@@ -319,7 +431,12 @@ function ObjectMetadataPage() {
                     ...objectData,
                     apiName: objectData.apiName,
                   });
-                  setObjectData(saved);
+                  setObjectData({
+                    ...saved,
+                    fields: saved.fields || [],
+                    layout: saved.layout || [],
+                    listViews: saved.listViews || [],
+                  });
                   alert("Objeto actualizado");
                 }}
               >
@@ -478,6 +595,34 @@ function ObjectMetadataPage() {
               >
                 Crear layout
               </button>
+            </div>
+          </div>
+        )}
+
+        {activeSection === "views" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h1 className="text-2xl font-bold">Views</h1>
+
+                <button
+                  className="bg-black text-white px-4 py-2 rounded"
+                  onClick={() => saveListViews(objectData.listViews || [])}
+                >
+                  Guardar views
+                </button>
+              </div>
+
+              <ListViewsEditor
+                objectDef={objectData}
+                value={objectData.listViews || []}
+                onChange={(nextViews) =>
+                  setObjectData((prev) => ({
+                    ...prev,
+                    listViews: nextViews,
+                  }))
+                }
+              />
             </div>
           </div>
         )}

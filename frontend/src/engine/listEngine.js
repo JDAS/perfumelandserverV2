@@ -27,3 +27,12 @@ export function buildRecordListRequest({ objectDef, listState }) {
     filters: JSON.stringify(listState.currentView?.filters || []),
   };
 }
+export function getColumns(object, viewApiName) {
+  const view = object.listViews?.find(v => v.apiName === viewApiName);
+
+  if (!view) return [];
+
+  return view.columns.map(col =>
+    object.fields.find(f => f.apiName === col)
+  );
+}
