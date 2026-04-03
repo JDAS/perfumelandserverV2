@@ -117,9 +117,9 @@ function ListViewsEditor({ objectDef, value = [], onChange }) {
                 <label className="mb-1 block text-sm font-medium">Nombre</label>
                 <input
                   type="text"
-                  value={view.name || ""}
+                  value={view.label || ""}
                   onChange={(e) =>
-                    handleUpdateView(viewIndex, { name: e.target.value })
+                    handleUpdateView(viewIndex, { label: e.target.value })
                   }
                   className="w-full rounded border px-3 py-2"
                 />
