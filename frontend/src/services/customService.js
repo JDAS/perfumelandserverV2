@@ -4,30 +4,48 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "",
 });
 
-export const getCustomObjects = async () => {
+/* =========================
+   Objetos personalizados
+========================= */
+
+export const getObjects = async () => {
   const res = await api.get("/api/custom-objects");
   return res.data;
 };
 
-export const getCustomObjectByApiName = async (apiName) => {
+export const getObjectByApiName = async (apiName) => {
   const res = await api.get(`/api/custom-objects/${apiName}`);
   return res.data;
 };
 
-export const createCustomObject = async (payload) => {
+export const createObject = async (payload) => {
   const res = await api.post("/api/custom-objects", payload);
   return res.data;
 };
 
-export const updateCustomObject = async (apiName, payload) => {
+export const updateObject = async (apiName, payload) => {
   const res = await api.put(`/api/custom-objects/${apiName}`, payload);
   return res.data;
 };
 
-export const deleteCustomObject = async (apiName) => {
+export const deleteObject = async (apiName) => {
   const res = await api.delete(`/api/custom-objects/${apiName}`);
   return res.data;
 };
+
+/* =========================
+   Alias para compatibilidad
+========================= */
+
+export const getCustomObjects = getObjects;
+export const getCustomObjectByApiName = getObjectByApiName;
+export const createCustomObject = createObject;
+export const updateCustomObject = updateObject;
+export const deleteCustomObject = deleteObject;
+
+/* =========================
+   Registros dinámicos
+========================= */
 
 export const getRecords = async (object, params = {}) => {
   const res = await api.get(`/api/custom-records/${object}`, { params });
