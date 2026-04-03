@@ -34,9 +34,20 @@ function DynamicForm() {
         setLayout(current.layout || []);
       }
 
-      if (id) {
+      if (id && current) {
         const record = await getRecordById(object, id);
-        setFormData(record || {});
+
+        const allowedFieldNames = (current.fields || []).map(
+          (f) => f.apiName
+        );
+
+        const cleanRecord = Object.fromEntries(
+          Object.entries(record || {}).filter(([key]) =>
+            allowedFieldNames.includes(key)
+          )
+        );
+
+        setFormData(cleanRecord);
       }
     } catch (error) {
       console.error("Error cargando objeto o registro:", error);
@@ -63,11 +74,19 @@ function DynamicForm() {
     }
 
     try {
+      const allowedFieldNames = fields.map((f) => f.apiName);
+
+      const cleanFormData = Object.fromEntries(
+        Object.entries(formData).filter(([key]) =>
+          allowedFieldNames.includes(key)
+        )
+      );
+
       if (isEditMode) {
-        await updateRecord(object, id, formData);
+        await updateRecord(object, id, cleanFormData);
         alert("Registro actualizado 🚀");
       } else {
-        await createRecord(object, formData);
+        await createRecord(object, cleanFormData);
         alert("Registro creado 🚀");
       }
 
@@ -105,9 +124,17 @@ function DynamicForm() {
       onChange: (e) => handleChange(field.apiName, e.target.value),
     };
 
-    if (field.type === "text") return <input {...commonProps} type="text" />;
-    if (field.type === "number") return <input {...commonProps} type="number" />;
-    if (field.type === "date") return <input {...commonProps} type="date" />;
+    if (field.type === "text") {
+      return <input {...commonProps} type="text" />;
+    }
+
+    if (field.type === "number") {
+      return <input {...commonProps} type="number" />;
+    }
+
+    if (field.type === "date") {
+      return <input {...commonProps} type="date" />;
+    }
 
     if (field.type === "select") {
       return (
