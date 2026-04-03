@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getRecords } from "../services/customService";
+import { getRecords, deleteRecord } from "../services/customService";
 
 function ObjectListView({ objectDef }) {
   const [records, setRecords] = useState([]);
@@ -20,6 +20,21 @@ function ObjectListView({ objectDef }) {
       setRecords([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const confirmed = window.confirm("¿Eliminar este registro?");
+    if (!confirmed) return;
+
+    try {
+      await deleteRecord(objectDef.apiName, id);
+      setRecords((prev) => prev.filter((r) => r._id !== id));
+    } catch (error) {
+      console.error(error);
+      alert(
+        error?.response?.data?.error || "Error eliminando el registro"
+      );
     }
   };
 
@@ -65,6 +80,7 @@ function ObjectListView({ objectDef }) {
                   </th>
                 ))}
                 <th className="p-3 border-b">Creado</th>
+                <th className="p-3 border-b">Acciones</th>
               </tr>
             </thead>
 
@@ -80,6 +96,23 @@ function ObjectListView({ objectDef }) {
                     {record.createdAt
                       ? new Date(record.createdAt).toLocaleString()
                       : "-"}
+                  </td>
+                  <td className="p-3 border-b">
+                    <div className="flex gap-2">
+                      <Link
+                        to={`/admin/${objectDef.apiName}/${record._id}`}
+                        className="px-3 py-1 bg-yellow-500 text-white rounded"
+                      >
+                        Editar
+                      </Link>
+
+                      <button
+                        onClick={() => handleDelete(record._id)}
+                        className="px-3 py-1 bg-red-600 text-white rounded"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

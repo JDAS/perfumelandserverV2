@@ -1,21 +1,31 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { getObjects, createRecord } from "../services/customService";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  getObjects,
+  createRecord,
+  getRecordById,
+  updateRecord,
+} from "../services/customService";
 
 function DynamicForm() {
-  const { object } = useParams();
+  const { object, id } = useParams();
+  const navigate = useNavigate();
 
   const [fields, setFields] = useState([]);
   const [formData, setFormData] = useState({});
   const [layout, setLayout] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const isEditMode = !!id;
+
   useEffect(() => {
     loadObject();
-  }, [object]);
+  }, [object, id]);
 
   const loadObject = async () => {
     try {
+      setLoading(true);
+
       const objects = await getObjects();
       const current = objects.find((o) => o.apiName === object);
 
@@ -23,8 +33,13 @@ function DynamicForm() {
         setFields(current.fields || []);
         setLayout(current.layout || []);
       }
+
+      if (id) {
+        const record = await getRecordById(object, id);
+        setFormData(record || {});
+      }
     } catch (error) {
-      console.error("Error cargando objeto:", error);
+      console.error("Error cargando objeto o registro:", error);
     } finally {
       setLoading(false);
     }
@@ -48,13 +63,19 @@ function DynamicForm() {
     }
 
     try {
-      await createRecord(object, formData);
-      alert("Registro creado 🚀");
-      setFormData({});
+      if (isEditMode) {
+        await updateRecord(object, id, formData);
+        alert("Registro actualizado 🚀");
+      } else {
+        await createRecord(object, formData);
+        alert("Registro creado 🚀");
+      }
+
+      navigate("/admin");
     } catch (error) {
-      console.error("Error creando registro:", error);
+      console.error("Error guardando registro:", error);
       alert(
-        error?.response?.data?.error || "Error al crear el registro"
+        error?.response?.data?.error || "Error al guardar el registro"
       );
     }
   };
@@ -84,13 +105,9 @@ function DynamicForm() {
       onChange: (e) => handleChange(field.apiName, e.target.value),
     };
 
-    if (field.type === "text") {
-      return <input {...commonProps} type="text" />;
-    }
-
-    if (field.type === "number") {
-      return <input {...commonProps} type="number" />;
-    }
+    if (field.type === "text") return <input {...commonProps} type="text" />;
+    if (field.type === "number") return <input {...commonProps} type="number" />;
+    if (field.type === "date") return <input {...commonProps} type="date" />;
 
     if (field.type === "select") {
       return (
@@ -105,10 +122,6 @@ function DynamicForm() {
       );
     }
 
-    if (field.type === "date") {
-      return <input {...commonProps} type="date" />;
-    }
-
     return <input {...commonProps} type="text" />;
   };
 
@@ -117,7 +130,7 @@ function DynamicForm() {
       return (
         <div
           key={`${item}-${index}`}
-          className="h-[72px]"
+          className="h-[72px] rounded border-2 border-dashed border-gray-200 bg-gray-50"
         />
       );
     }
@@ -146,7 +159,9 @@ function DynamicForm() {
 
   return (
     <div className="p-10 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Nuevo {object}</h1>
+      <h1 className="text-2xl font-bold mb-6">
+        {isEditMode ? `Editar ${object}` : `Nuevo ${object}`}
+      </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {activeLayout?.sections?.length > 0 ? (
@@ -205,7 +220,7 @@ function DynamicForm() {
           type="submit"
           className="bg-black text-white w-full py-3 rounded"
         >
-          Guardar
+          {isEditMode ? "Actualizar" : "Guardar"}
         </button>
       </form>
     </div>

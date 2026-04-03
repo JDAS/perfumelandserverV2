@@ -72,6 +72,14 @@ function App() {
             </AdminRoute>
           }
         />
+        <Route
+          path="/admin/:object/:id"
+          element={
+            <AdminRoute>
+              <AdminLayout><DynamicForm /></AdminLayout>
+            </AdminRoute>
+          }
+        />
 
       </Routes>
     </BrowserRouter>
