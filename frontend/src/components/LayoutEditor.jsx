@@ -1,371 +1,337 @@
 import { useMemo, useState } from "react";
-import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-} from "@hello-pangea/dnd";
+import { normalizeApiName } from "../engine/metadataEngine";
+import { useObjectMetadata } from "../context/ObjectMetadataContext";
 
-function LayoutEditor({ layout, allFields, onSave, onCancel }) {
-  const [localLayout, setLocalLayout] = useState(
-    JSON.parse(JSON.stringify(layout))
-  );
+function createEmptyFieldSection() {
+  return {
+    label: "Nueva sección",
+    type: "fields",
+    columns: 2,
+    fields: [],
+    relatedObject: "",
+    relatedField: "",
+    relatedColumns: [],
+  };
+}
 
-  const normalizeSections = (sections = []) =>
-    sections.map((section, index) => ({
-      id: section.id || `section_${index}_${section.apiName || section.label}`,
-      label: section.label || "Nueva sección",
-      columns: section.columns || 1,
-      fields: section.fields || [],
+function createEmptyRelatedListSection() {
+  return {
+    label: "Nueva lista relacionada",
+    type: "relatedList",
+    columns: 1,
+    fields: [],
+    relatedObject: "",
+    relatedField: "",
+    relatedColumns: [],
+  };
+}
+
+function LayoutEditor({ layout, allFields = [], onSave, onCancel }) {
+  const { objects = [] } = useObjectMetadata();
+  const [draft, setDraft] = useState(() => ({
+    ...layout,
+    label: layout?.label || "",
+    apiName: layout?.apiName || "",
+    sections: (layout?.sections || []).map((section) => ({
+      label: section.label || "",
+      type: section.type === "relatedList" ? "relatedList" : "fields",
+      columns: Number(section.columns) === 2 ? 2 : 1,
+      fields: Array.isArray(section.fields) ? section.fields : [],
+      relatedObject: section.relatedObject || "",
+      relatedField: section.relatedField || "",
+      relatedColumns: Array.isArray(section.relatedColumns)
+        ? section.relatedColumns
+        : [],
+    })),
+  }));
+
+  const objectOptions = useMemo(() => {
+    return objects.map((obj) => ({
+      apiName: obj.apiName,
+      label: obj.name || obj.label || obj.apiName,
+      fields: obj.fields || [],
     }));
+  }, [objects]);
 
-  const [sections, setSections] = useState(
-    normalizeSections(localLayout.sections || [])
-  );
+  const getRelatedObjectDef = (apiName) =>
+    objectOptions.find((obj) => obj.apiName === apiName);
 
-  const isBlankBlock = (value) =>
-    typeof value === "string" && value.startsWith("__blank__");
-
-  const getFieldByApiName = (apiName) =>
-    allFields.find((field) => field.apiName === apiName);
-
-  const assignedFieldApiNames = useMemo(() => {
-    return sections.flatMap((section) =>
-      (section.fields || []).filter((item) => !isBlankBlock(item))
-    );
-  }, [sections]);
-
-  const availableFields = useMemo(() => {
-    return allFields.filter(
-      (field) => !assignedFieldApiNames.includes(field.apiName)
-    );
-  }, [allFields, assignedFieldApiNames]);
-
-  const addSection = () => {
-    setSections((prev) => [
-      ...prev,
-      {
-        id: `section_${Date.now()}`,
-        label: "Nueva sección",
-        columns: 2,
-        fields: [],
-      },
-    ]);
-  };
-
-  const updateSection = (sectionId, changes) => {
-    setSections((prev) =>
-      prev.map((section) =>
-        section.id === sectionId ? { ...section, ...changes } : section
-      )
-    );
-  };
-
-  const deleteSection = (sectionId) => {
-    setSections((prev) => prev.filter((section) => section.id !== sectionId));
-  };
-
-  const addBlankBlock = (sectionId) => {
-    setSections((prev) =>
-      prev.map((section) =>
-        section.id === sectionId
-          ? {
-              ...section,
-              fields: [...(section.fields || []), `__blank__${Date.now()}`],
-            }
-          : section
-      )
-    );
-  };
-
-  const removeItemFromAllSections = (value, sourceSections) => {
-    return sourceSections.map((section) => ({
-      ...section,
-      fields: (section.fields || []).filter((item) => item !== value),
-    }));
-  };
-
-  const reorder = (list, startIndex, endIndex) => {
-    const result = [...list];
-    const [removed] = result.splice(startIndex, 1);
-    result.splice(endIndex, 0, removed);
-    return result;
-  };
-
-  const splitFieldsIntoColumns = (fieldList = []) => {
-    const col1 = [];
-    const col2 = [];
-
-    fieldList.forEach((item, index) => {
-      if (index % 2 === 0) {
-        col1.push({ value: item, originalIndex: index });
-      } else {
-        col2.push({ value: item, originalIndex: index });
-      }
+  const updateSection = (index, patch) => {
+    setDraft((prev) => {
+      const nextSections = [...(prev.sections || [])];
+      nextSections[index] = {
+        ...nextSections[index],
+        ...patch,
+      };
+      return {
+        ...prev,
+        sections: nextSections,
+      };
     });
-
-    return { col1, col2 };
   };
 
-  const mergeColumns = (col1 = [], col2 = []) => {
-    const merged = [];
-    const max = Math.max(col1.length, col2.length);
-
-    for (let i = 0; i < max; i++) {
-      if (col1[i] !== undefined) merged.push(col1[i]);
-      if (col2[i] !== undefined) merged.push(col2[i]);
-    }
-
-    return merged;
+  const addFieldSection = () => {
+    setDraft((prev) => ({
+      ...prev,
+      sections: [...(prev.sections || []), createEmptyFieldSection()],
+    }));
   };
 
-  const parseDroppableId = (id) => {
-    if (id === "available") return { type: "available" };
-
-    const [sectionId, column] = id.split("__");
-    return { type: "section", sectionId, column };
+  const addRelatedListSection = () => {
+    setDraft((prev) => ({
+      ...prev,
+      sections: [...(prev.sections || []), createEmptyRelatedListSection()],
+    }));
   };
 
-  const onDragEnd = (result) => {
-    const { source, destination, draggableId } = result;
-
-    if (!destination) return;
-
-    const sourceMeta = parseDroppableId(source.droppableId);
-    const destinationMeta = parseDroppableId(destination.droppableId);
-
-    // Reordenar dentro de la misma columna visual
-    if (
-      source.droppableId === destination.droppableId &&
-      sourceMeta.type === "section"
-    ) {
-      setSections((prev) =>
-        prev.map((section) => {
-          if (section.id !== sourceMeta.sectionId) return section;
-
-          const { col1, col2 } = splitFieldsIntoColumns(section.fields || []);
-          const sourceColumnItems =
-            sourceMeta.column === "col1"
-              ? col1.map((x) => x.value)
-              : col2.map((x) => x.value);
-
-          const reorderedColumn = reorder(
-            sourceColumnItems,
-            source.index,
-            destination.index
-          );
-
-          const newCol1 =
-            sourceMeta.column === "col1"
-              ? reorderedColumn
-              : col1.map((x) => x.value);
-
-          const newCol2 =
-            sourceMeta.column === "col2"
-              ? reorderedColumn
-              : col2.map((x) => x.value);
-
-          return {
-            ...section,
-            fields: mergeColumns(newCol1, newCol2),
-          };
-        })
-      );
-      return;
-    }
-
-    let updatedSections = removeItemFromAllSections(draggableId, sections);
-
-    if (destinationMeta.type === "section") {
-      updatedSections = updatedSections.map((section) => {
-        if (section.id !== destinationMeta.sectionId) return section;
-
-        const { col1, col2 } = splitFieldsIntoColumns(section.fields || []);
-
-        const targetCol =
-          destinationMeta.column === "col1"
-            ? col1.map((x) => x.value)
-            : col2.map((x) => x.value);
-
-        targetCol.splice(destination.index, 0, draggableId);
-
-        const newCol1 =
-          destinationMeta.column === "col1"
-            ? targetCol
-            : col1.map((x) => x.value);
-
-        const newCol2 =
-          destinationMeta.column === "col2"
-            ? targetCol
-            : col2.map((x) => x.value);
-
-        return {
-          ...section,
-          fields: mergeColumns(newCol1, newCol2),
-        };
-      });
-    }
-
-    setSections(updatedSections);
+  const removeSection = (index) => {
+    setDraft((prev) => ({
+      ...prev,
+      sections: (prev.sections || []).filter((_, i) => i !== index),
+    }));
   };
 
-  const renderItemCard = (value, providedDraggable, snapshotDraggable) => {
-    if (isBlankBlock(value)) {
-      return (
-        <div
-          ref={providedDraggable.innerRef}
-          {...providedDraggable.draggableProps}
-          {...providedDraggable.dragHandleProps}
-          className={`rounded border-2 border-dashed bg-gray-50 p-3 shadow-sm ${
-            snapshotDraggable.isDragging ? "opacity-70" : ""
-          }`}
-        >
-          <p className="font-medium text-gray-500">Bloque vacío</p>
-          <p className="text-xs text-gray-400">Separador visual</p>
-        </div>
-      );
-    }
+  const moveSection = (index, direction) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= (draft.sections || []).length) return;
 
-    const field = getFieldByApiName(value);
-    if (!field) return null;
+    const next = [...draft.sections];
+    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
 
-    return (
-      <div
-        ref={providedDraggable.innerRef}
-        {...providedDraggable.draggableProps}
-        {...providedDraggable.dragHandleProps}
-        className={`rounded border bg-white p-3 shadow-sm ${
-          snapshotDraggable.isDragging ? "opacity-70" : ""
-        }`}
-      >
-        <p className="font-medium">{field.label}</p>
-        <p className="text-xs text-gray-500">
-          {field.apiName} · {field.type}
-          {field.required ? " · requerido" : ""}
-        </p>
-      </div>
-    );
+    setDraft((prev) => ({
+      ...prev,
+      sections: next,
+    }));
+  };
+
+  const toggleFieldInSection = (sectionIndex, fieldApiName) => {
+    const section = draft.sections[sectionIndex];
+    const current = section.fields || [];
+    const exists = current.includes(fieldApiName);
+
+    updateSection(sectionIndex, {
+      fields: exists
+        ? current.filter((item) => item !== fieldApiName)
+        : [...current, fieldApiName],
+    });
+  };
+
+  const toggleRelatedColumn = (sectionIndex, fieldApiName) => {
+    const section = draft.sections[sectionIndex];
+    const current = section.relatedColumns || [];
+    const exists = current.includes(fieldApiName);
+
+    updateSection(sectionIndex, {
+      relatedColumns: exists
+        ? current.filter((item) => item !== fieldApiName)
+        : [...current, fieldApiName],
+    });
+  };
+
+  const addBlankBlock = (sectionIndex) => {
+    const section = draft.sections[sectionIndex];
+    const current = section.fields || [];
+    const blankId = `__blank__${Date.now()}`;
+
+    updateSection(sectionIndex, {
+      fields: [...current, blankId],
+    });
+  };
+
+  const removeFieldItem = (sectionIndex, itemValue) => {
+    const section = draft.sections[sectionIndex];
+    updateSection(sectionIndex, {
+      fields: (section.fields || []).filter((item) => item !== itemValue),
+    });
+  };
+
+  const moveFieldItem = (sectionIndex, itemIndex, direction) => {
+    const section = draft.sections[sectionIndex];
+    const items = [...(section.fields || [])];
+    const targetIndex = itemIndex + direction;
+
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+
+    [items[itemIndex], items[targetIndex]] = [items[targetIndex], items[itemIndex]];
+
+    updateSection(sectionIndex, { fields: items });
   };
 
   const handleSave = () => {
-    const assignedFields = sections.flatMap((section) =>
-      (section.fields || []).filter((item) => !isBlankBlock(item))
-    );
-
-    const requiredFields = allFields
-      .filter((field) => field.required)
-      .map((field) => field.apiName);
-
-    const missingRequired = requiredFields.filter(
-      (apiName) => !assignedFields.includes(apiName)
-    );
-
-    if (missingRequired.length > 0) {
-      alert(
-        `Estos campos requeridos deben estar en alguna sección: ${missingRequired.join(
-          ", "
-        )}`
-      );
+    if (!draft.label.trim()) {
+      alert("El layout debe tener label");
       return;
     }
 
-    const cleanedLayout = {
-      ...localLayout,
-      sections: sections.map(({ id, ...section }) => ({
-        ...section,
+    const finalLayout = {
+      ...draft,
+      label: draft.label.trim(),
+      apiName: draft.apiName?.trim()
+        ? normalizeApiName(draft.apiName)
+        : normalizeApiName(draft.label),
+      sections: (draft.sections || []).map((section, index) => ({
+        label: String(section.label || `Sección ${index + 1}`).trim(),
+        type: section.type === "relatedList" ? "relatedList" : "fields",
+        columns: section.type === "fields" ? (Number(section.columns) === 2 ? 2 : 1) : 1,
+        fields:
+          section.type === "fields"
+            ? Array.isArray(section.fields)
+              ? section.fields
+              : []
+            : [],
+        relatedObject:
+          section.type === "relatedList"
+            ? normalizeApiName(section.relatedObject || "")
+            : "",
+        relatedField:
+          section.type === "relatedList"
+            ? normalizeApiName(section.relatedField || "")
+            : "",
+        relatedColumns:
+          section.type === "relatedList" && Array.isArray(section.relatedColumns)
+            ? section.relatedColumns
+            : [],
       })),
     };
 
-    onSave(cleanedLayout);
+    const invalidRelated = finalLayout.sections.find(
+      (section) =>
+        section.type === "relatedList" &&
+        (!section.relatedObject || !section.relatedField)
+    );
+
+    if (invalidRelated) {
+      alert(`La sección "${invalidRelated.label}" debe tener objeto y campo relacionado`);
+      return;
+    }
+
+    onSave(finalLayout);
   };
 
   return (
-    <div className="bg-white rounded-xl shadow p-6 space-y-6">
-      <div>
-        <h2 className="text-xl font-bold">Editar layout</h2>
-        <p className="text-sm text-gray-500">
-          {localLayout.label} · {localLayout.apiName}
-        </p>
+    <div className="space-y-6 rounded-xl bg-white p-6 shadow">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-2xl font-bold">Editar layout</h2>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="rounded bg-gray-200 px-4 py-2"
+            onClick={onCancel}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="rounded bg-black px-4 py-2 text-white"
+            onClick={handleSave}
+          >
+            Guardar layout
+          </button>
+        </div>
       </div>
 
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Disponibles */}
-          <div className="lg:col-span-1">
-            <h3 className="font-semibold mb-3">Campos disponibles</h3>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-sm font-medium">Label</label>
+          <input
+            className="w-full rounded border p-2"
+            value={draft.label}
+            onChange={(e) =>
+              setDraft((prev) => ({ ...prev, label: e.target.value }))
+            }
+          />
+        </div>
 
-            <Droppable droppableId="available">
-              {(provided, snapshot) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  className={`min-h-[200px] rounded-lg border p-3 space-y-2 ${
-                    snapshot.isDraggingOver ? "bg-gray-100" : "bg-gray-50"
-                  }`}
-                >
-                  {availableFields.map((field, index) => (
-                    <Draggable
-                      key={field.apiName}
-                      draggableId={field.apiName}
-                      index={index}
-                    >
-                      {(providedDraggable, snapshotDraggable) =>
-                        renderItemCard(
-                          field.apiName,
-                          providedDraggable,
-                          snapshotDraggable
-                        )
+        <div>
+          <label className="mb-1 block text-sm font-medium">API Name</label>
+          <input
+            className="w-full rounded border p-2"
+            value={draft.apiName}
+            onChange={(e) =>
+              setDraft((prev) => ({ ...prev, apiName: e.target.value }))
+            }
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="rounded bg-gray-100 px-4 py-2"
+          onClick={addFieldSection}
+        >
+          Agregar sección de campos
+        </button>
+
+        <button
+          type="button"
+          className="rounded bg-gray-100 px-4 py-2"
+          onClick={addRelatedListSection}
+        >
+          Agregar lista relacionada
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        {(draft.sections || []).map((section, sectionIndex) => {
+          const relatedObjectDef = getRelatedObjectDef(section.relatedObject);
+          const relatedFields = relatedObjectDef?.fields || [];
+
+          return (
+            <div
+              key={`${section.label}-${sectionIndex}`}
+              className="space-y-4 rounded-lg border p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Label</label>
+                    <input
+                      className="w-full rounded border p-2"
+                      value={section.label || ""}
+                      onChange={(e) =>
+                        updateSection(sectionIndex, { label: e.target.value })
                       }
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                  {availableFields.length === 0 && (
-                    <p className="text-sm text-gray-500">
-                      No hay campos disponibles
-                    </p>
-                  )}
-                </div>
-              )}
-            </Droppable>
-          </div>
+                    />
+                  </div>
 
-          {/* Secciones */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Secciones del layout</h3>
-              <button
-                type="button"
-                onClick={addSection}
-                className="bg-gray-200 px-4 py-2 rounded"
-              >
-                Agregar sección
-              </button>
-            </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Tipo</label>
+                    <select
+                      className="w-full rounded border p-2"
+                      value={section.type || "fields"}
+                      onChange={(e) => {
+                        const nextType = e.target.value;
 
-            {sections.map((section) => {
-              const { col1, col2 } = splitFieldsIntoColumns(section.fields || []);
+                        updateSection(sectionIndex, {
+                          type: nextType,
+                          columns: nextType === "fields" ? 2 : 1,
+                          fields: nextType === "fields" ? section.fields || [] : [],
+                          relatedObject:
+                            nextType === "relatedList" ? section.relatedObject || "" : "",
+                          relatedField:
+                            nextType === "relatedList" ? section.relatedField || "" : "",
+                          relatedColumns:
+                            nextType === "relatedList"
+                              ? section.relatedColumns || []
+                              : [],
+                        });
+                      }}
+                    >
+                      <option value="fields">Campos</option>
+                      <option value="relatedList">Lista relacionada</option>
+                    </select>
+                  </div>
 
-              return (
-                <div
-                  key={section.id}
-                  className="border rounded-lg p-4 space-y-4 bg-white"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
-                      <input
-                        className="border p-2 rounded"
-                        placeholder="Nombre de sección"
-                        value={section.label}
-                        onChange={(e) =>
-                          updateSection(section.id, { label: e.target.value })
-                        }
-                      />
-
+                  {section.type === "fields" ? (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Columnas</label>
                       <select
-                        className="border p-2 rounded"
-                        value={section.columns}
+                        className="w-full rounded border p-2"
+                        value={Number(section.columns) === 2 ? 2 : 1}
                         onChange={(e) =>
-                          updateSection(section.id, {
-                            columns: Number(e.target.value),
+                          updateSection(sectionIndex, {
+                            columns: Number(e.target.value) === 2 ? 2 : 1,
                           })
                         }
                       >
@@ -373,169 +339,216 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
                         <option value={2}>2 columnas</option>
                       </select>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => deleteSection(section.id)}
-                      className="bg-red-600 text-white px-3 py-2 rounded"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => addBlankBlock(section.id)}
-                      className="bg-gray-200 px-3 py-2 rounded"
-                    >
-                      Agregar bloque vacío
-                    </button>
-                  </div>
-
-                  {section.columns === 1 ? (
-                    <div>
-                      <h4 className="font-medium mb-2">Contenido</h4>
-                      <Droppable droppableId={`${section.id}__col1`}>
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.droppableProps}
-                            className={`min-h-[120px] rounded-lg border p-3 space-y-2 ${
-                              snapshot.isDraggingOver
-                                ? "bg-blue-50"
-                                : "bg-gray-50"
-                            }`}
-                          >
-                            {(section.fields || []).map((value, index) => (
-                              <Draggable
-                                key={value}
-                                draggableId={value}
-                                index={index}
-                              >
-                                {(providedDraggable, snapshotDraggable) =>
-                                  renderItemCard(
-                                    value,
-                                    providedDraggable,
-                                    snapshotDraggable
-                                  )
-                                }
-                              </Draggable>
-                            ))}
-                            {provided.placeholder}
-                            {(section.fields || []).length === 0 && (
-                              <p className="text-sm text-gray-500">
-                                Arrastra campos aquí
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </Droppable>
-                    </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="font-medium mb-2">Columna 1</h4>
-                        <Droppable droppableId={`${section.id}__col1`}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.droppableProps}
-                              className={`min-h-[120px] rounded-lg border p-3 space-y-2 ${
-                                snapshot.isDraggingOver
-                                  ? "bg-blue-50"
-                                  : "bg-gray-50"
-                              }`}
-                            >
-                              {col1.map((item, index) => (
-                                <Draggable
-                                  key={item.value}
-                                  draggableId={item.value}
-                                  index={index}
-                                >
-                                  {(providedDraggable, snapshotDraggable) =>
-                                    renderItemCard(
-                                      item.value,
-                                      providedDraggable,
-                                      snapshotDraggable
-                                    )
-                                  }
-                                </Draggable>
-                              ))}
-                              {provided.placeholder}
-                              {col1.length === 0 && (
-                                <p className="text-sm text-gray-500">
-                                  Arrastra campos aquí
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </Droppable>
-                      </div>
-
-                      <div>
-                        <h4 className="font-medium mb-2">Columna 2</h4>
-                        <Droppable droppableId={`${section.id}__col2`}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.droppableProps}
-                              className={`min-h-[120px] rounded-lg border p-3 space-y-2 ${
-                                snapshot.isDraggingOver
-                                  ? "bg-blue-50"
-                                  : "bg-gray-50"
-                              }`}
-                            >
-                              {col2.map((item, index) => (
-                                <Draggable
-                                  key={item.value}
-                                  draggableId={item.value}
-                                  index={index}
-                                >
-                                  {(providedDraggable, snapshotDraggable) =>
-                                    renderItemCard(
-                                      item.value,
-                                      providedDraggable,
-                                      snapshotDraggable
-                                    )
-                                  }
-                                </Draggable>
-                              ))}
-                              {provided.placeholder}
-                              {col2.length === 0 && (
-                                <p className="text-sm text-gray-500">
-                                  Arrastra campos aquí
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </Droppable>
-                      </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        Objeto relacionado
+                      </label>
+                      <select
+                        className="w-full rounded border p-2"
+                        value={section.relatedObject || ""}
+                        onChange={(e) =>
+                          updateSection(sectionIndex, {
+                            relatedObject: e.target.value,
+                            relatedField: "",
+                            relatedColumns: [],
+                          })
+                        }
+                      >
+                        <option value="">Seleccione</option>
+                        {objectOptions.map((obj) => (
+                          <option key={obj.apiName} value={obj.apiName}>
+                            {obj.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   )}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </DragDropContext>
 
-      <div className="flex gap-3">
-        <button
-          className="bg-black text-white px-4 py-2 rounded"
-          onClick={handleSave}
-          type="button"
-        >
-          Guardar layout
-        </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded bg-gray-100 px-3 py-2"
+                    onClick={() => moveSection(sectionIndex, -1)}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded bg-gray-100 px-3 py-2"
+                    onClick={() => moveSection(sectionIndex, 1)}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded bg-red-600 px-3 py-2 text-white"
+                    onClick={() => removeSection(sectionIndex)}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
 
-        <button
-          className="bg-gray-300 px-4 py-2 rounded"
-          onClick={onCancel}
-          type="button"
-        >
-          Cancelar
-        </button>
+              {section.type === "fields" ? (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="rounded border px-3 py-2 text-sm"
+                      onClick={() => addBlankBlock(sectionIndex)}
+                    >
+                      Agregar espacio en blanco
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">
+                      Campos disponibles
+                    </label>
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                      {allFields.map((field) => (
+                        <label
+                          key={field.apiName}
+                          className="flex items-center gap-2 rounded border px-3 py-2 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={(section.fields || []).includes(field.apiName)}
+                            onChange={() =>
+                              toggleFieldInSection(sectionIndex, field.apiName)
+                            }
+                          />
+                          {field.label} ({field.apiName})
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">
+                      Orden actual de la sección
+                    </label>
+                    <div className="space-y-2">
+                      {(section.fields || []).map((item, itemIndex) => {
+                        const fieldDef = allFields.find((f) => f.apiName === item);
+                        const label = String(item).startsWith("__blank__")
+                          ? "Espacio en blanco"
+                          : fieldDef
+                          ? `${fieldDef.label} (${fieldDef.apiName})`
+                          : item;
+
+                        return (
+                          <div
+                            key={`${item}-${itemIndex}`}
+                            className="flex items-center justify-between rounded border px-3 py-2"
+                          >
+                            <span className="text-sm">{label}</span>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                className="rounded bg-gray-100 px-2 py-1"
+                                onClick={() =>
+                                  moveFieldItem(sectionIndex, itemIndex, -1)
+                                }
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded bg-gray-100 px-2 py-1"
+                                onClick={() =>
+                                  moveFieldItem(sectionIndex, itemIndex, 1)
+                                }
+                              >
+                                ↓
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded bg-red-600 px-2 py-1 text-white"
+                                onClick={() =>
+                                  removeFieldItem(sectionIndex, item)
+                                }
+                              >
+                                X
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {!(section.fields || []).length && (
+                        <p className="text-sm text-gray-500">
+                          Esta sección no tiene campos todavía.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        Campo relacionado
+                      </label>
+                      <input
+                        className="w-full rounded border p-2"
+                        value={section.relatedField || ""}
+                        onChange={(e) =>
+                          updateSection(sectionIndex, {
+                            relatedField: e.target.value,
+                          })
+                        }
+                        placeholder="Ej: customerId"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Campo del objeto relacionado que guarda el id del registro actual.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">
+                      Columnas a mostrar
+                    </label>
+
+                    {section.relatedObject ? (
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                        {relatedFields.map((field) => (
+                          <label
+                            key={field.apiName}
+                            className="flex items-center gap-2 rounded border px-3 py-2 text-sm"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={(section.relatedColumns || []).includes(
+                                field.apiName
+                              )}
+                              onChange={() =>
+                                toggleRelatedColumn(sectionIndex, field.apiName)
+                              }
+                            />
+                            {field.label} ({field.apiName})
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        Seleccioná primero el objeto relacionado.
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+
+        {!(draft.sections || []).length && (
+          <p className="text-sm text-gray-500">No hay secciones en este layout.</p>
+        )}
       </div>
     </div>
   );

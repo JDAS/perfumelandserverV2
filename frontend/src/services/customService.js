@@ -78,5 +78,17 @@ export const deleteRecord = async (object, id) => {
   return res.data;
 };
 
+export const getRelatedRecords = async (
+  object,
+  id,
+  relatedObject,
+  relatedField
+) => {
+  const res = await api.get(
+    `/api/custom-records/${object}/${id}/related/${relatedObject}/${relatedField}`
+  );
+  return res.data;
+};
+
 
 export default api;

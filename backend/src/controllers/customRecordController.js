@@ -323,3 +323,42 @@ exports.deleteRecord = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.getRelatedRecords = async (req, res) => {
+  try {
+    const { object, id, relatedObject, relatedField } = req.params;
+
+    const ParentObject = await CustomObject.findOne({ apiName: object });
+    if (!ParentObject) {
+      return res.status(404).json({ error: "Objeto padre no encontrado" });
+    }
+
+    const RelatedObject = await CustomObject.findOne({ apiName: relatedObject });
+    if (!RelatedObject) {
+      return res.status(404).json({ error: "Objeto relacionado no encontrado" });
+    }
+
+    const ParentModel = getCustomRecordModel(object);
+    const parentRecord = await ParentModel.findById(id);
+
+    if (!parentRecord) {
+      return res.status(404).json({ error: "Registro padre no encontrado" });
+    }
+
+    const RelatedModel = getCustomRecordModel(relatedObject);
+
+    const records = await RelatedModel.find({
+      [relatedField]: String(parentRecord._id),
+    }).sort({ createdAt: -1 });
+
+    const enriched = await resolveLookupData(records, RelatedObject);
+
+    res.json({
+      records: enriched,
+      total: enriched.length,
+    });
+  } catch (error) {
+    console.error("getRelatedRecords error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};

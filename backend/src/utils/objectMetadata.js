@@ -56,8 +56,12 @@ function createDefaultLayout(fields = ["name"]) {
       sections: [
         {
           label: "Detalles",
+          type: "fields",
           columns: 2,
           fields,
+          relatedObject: "",
+          relatedField: "",
+          relatedColumns: [],
         },
       ],
     },
@@ -165,8 +169,22 @@ function sanitizeObjectPayload(payload = {}, existingObject = null) {
       Array.isArray(layoutItem.sections) && layoutItem.sections.length > 0
         ? layoutItem.sections.map((section, sectionIndex) => ({
             label: String(section.label || `Sección ${sectionIndex + 1}`).trim(),
+            type: section.type === "relatedList" ? "relatedList" : "fields",
             columns: Number(section.columns) === 2 ? 2 : 1,
             fields: Array.isArray(section.fields) ? section.fields : [],
+            relatedObject:
+              section.type === "relatedList"
+                ? normalizeApiName(section.relatedObject || "")
+                : "",
+            relatedField:
+              section.type === "relatedList"
+                ? normalizeApiName(section.relatedField || "")
+                : "",
+            relatedColumns:
+              section.type === "relatedList" &&
+              Array.isArray(section.relatedColumns)
+                ? section.relatedColumns
+                : [],
           }))
         : createDefaultLayout(fields.map((field) => field.apiName))[0].sections,
   }));
@@ -242,9 +260,7 @@ function validateObjectMetadata(payload = {}) {
     }
 
     if (field.type === "lookup" && !field.referenceTo) {
-      errors.push(
-        `El campo lookup ${field.apiName} debe tener referenceTo`
-      );
+      errors.push(`El campo lookup ${field.apiName} debe tener referenceTo`);
     }
   }
 
@@ -258,6 +274,31 @@ function validateObjectMetadata(payload = {}) {
     layoutApiNames.add(layout.apiName);
 
     for (const section of layout.sections || []) {
+      if (section.type === "relatedList") {
+        if (!section.relatedObject) {
+          errors.push(
+            `La sección relacionada ${section.label || "sin nombre"} debe tener relatedObject`
+          );
+        }
+
+        if (!section.relatedField) {
+          errors.push(
+            `La sección relacionada ${section.label || "sin nombre"} debe tener relatedField`
+          );
+        }
+
+        if (
+          section.relatedColumns &&
+          !Array.isArray(section.relatedColumns)
+        ) {
+          errors.push(
+            `La sección relacionada ${section.label || "sin nombre"} tiene relatedColumns inválido`
+          );
+        }
+
+        continue;
+      }
+
       for (const item of section.fields || []) {
         if (typeof item === "string" && item.startsWith("__blank__")) {
           continue;
