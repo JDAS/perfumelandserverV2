@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { getObjects } from "../services/customService";
 import ObjectListView from "../components/ObjectListView";
 
 function Admin() {
   const [objects, setObjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const activeTab = searchParams.get("tab");
 
   useEffect(() => {
     loadObjects();
@@ -17,15 +20,21 @@ function Admin() {
       const data = await getObjects();
       setObjects(data || []);
 
-      if (data?.length > 0) {
-        setActiveTab(data[0].apiName);
-      } else {
-        setActiveTab("reportes");
+      const currentTab = searchParams.get("tab");
+
+      if (!currentTab) {
+        if (data?.length > 0) {
+          setSearchParams({ tab: data[0].apiName });
+        } else {
+          setSearchParams({ tab: "reportes" });
+        }
       }
     } catch (error) {
       console.error(error);
+      if (!searchParams.get("tab")) {
+        setSearchParams({ tab: "reportes" });
+      }
       setObjects([]);
-      setActiveTab("reportes");
     } finally {
       setLoading(false);
     }
@@ -103,7 +112,7 @@ function Admin() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => setSearchParams({ tab: tab.id })}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                   activeTab === tab.id
                     ? "bg-black text-white"

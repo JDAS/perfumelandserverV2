@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import {
   getObjects,
   createRecord,
@@ -10,6 +14,7 @@ import {
 function DynamicForm() {
   const { object, id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [fields, setFields] = useState([]);
   const [formData, setFormData] = useState({});
@@ -17,6 +22,7 @@ function DynamicForm() {
   const [loading, setLoading] = useState(true);
 
   const isEditMode = !!id;
+  const returnTab = searchParams.get("tab") || object;
 
   useEffect(() => {
     loadObject();
@@ -90,7 +96,7 @@ function DynamicForm() {
         alert("Registro creado 🚀");
       }
 
-      navigate("/admin");
+      navigate(`/admin?tab=${returnTab}`);
     } catch (error) {
       console.error("Error guardando registro:", error);
       alert(
