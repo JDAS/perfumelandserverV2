@@ -84,6 +84,17 @@ export function renderFieldInput(field, value, onValueChange, context = {}) {
         />
       );
 
+    case "formula":
+      return (
+        <input
+          type="text"
+          value={formData?.[field.apiName] ?? value ?? ""}
+          disabled
+          readOnly
+          className="w-full rounded border bg-gray-100 px-3 py-2 text-gray-700"
+        />
+      );
+
     default:
       return <BaseInput type="text" {...commonProps} />;
   }

@@ -1,5 +1,9 @@
 const CustomObject = require("../models/CustomObject");
 const { getCustomRecordModel } = require("../models/CustomRecord");
+const {
+  applyFormulaFields,
+  removeFormulaFields,
+} = require("../utils/formulaEngine");
 
 async function resolveLookupData(records, customObject) {
   const lookupFields = (customObject?.fields || []).filter(
@@ -65,7 +69,20 @@ exports.createRecord = async (req, res) => {
     const { object } = req.params;
     const RecordModel = getCustomRecordModel(object);
 
-    const record = await RecordModel.create(req.body);
+    const customObject = await CustomObject.findOne({ apiName: object });
+
+    if (!customObject) {
+      return res.status(404).json({ error: "Objeto no encontrado" });
+    }
+
+    // 1. eliminar campos fórmula del input
+    const cleaned = removeFormulaFields(customObject.fields, req.body);
+
+    // 2. aplicar fórmulas
+    const finalData = applyFormulaFields(customObject.fields, cleaned);
+
+    // 3. guardar
+    const record = await RecordModel.create(finalData);
     res.status(201).json(record);
   } catch (error) {
     console.error("createRecord error:", error);
@@ -238,7 +255,12 @@ exports.getRecords = async (req, res) => {
       .skip(skip)
       .limit(numericLimit);
 
-    const records = await resolveLookupData(rawRecords, customObject);
+    const lookupResolved = await resolveLookupData(rawRecords, customObject);
+
+    // 👇 aplicar fórmulas después de lookup
+    const records = lookupResolved.map((record) =>
+      applyFormulaFields(customObject.fields, record)
+    );
 
     res.json({
       records,
@@ -327,7 +349,14 @@ exports.getRecordById = async (req, res) => {
 
     const [enrichedRecord] = await resolveLookupData([record], customObject);
 
-    res.json(enrichedRecord);
+    const finalRecord = applyFormulaFields(
+      customObject.fields,
+      enrichedRecord
+    );
+
+    res.json(finalRecord);
+    return;
+
   } catch (error) {
     console.error("getRecordById error:", error);
     res.status(500).json({ error: error.message });
@@ -339,7 +368,33 @@ exports.updateRecord = async (req, res) => {
     const { object, id } = req.params;
     const RecordModel = getCustomRecordModel(object);
 
-    const record = await RecordModel.findByIdAndUpdate(id, req.body, {
+    const customObject = await CustomObject.findOne({ apiName: object });
+
+    if (!customObject) {
+      return res.status(404).json({ error: "Objeto no encontrado" });
+    }
+
+    // 1. limpiar input
+    const cleaned = removeFormulaFields(customObject.fields, req.body);
+
+    // 2. obtener registro actual (para recalcular bien)
+    const existing = await RecordModel.findById(id);
+
+    if (!existing) {
+      return res.status(404).json({ error: "Registro no encontrado" });
+    }
+
+    // 3. merge
+    const merged = {
+      ...existing.toObject(),
+      ...cleaned,
+    };
+
+    // 4. recalcular fórmulas
+    const finalData = applyFormulaFields(customObject.fields, merged);
+
+    // 5. update
+    const record = await RecordModel.findByIdAndUpdate(id, finalData, {
       new: true,
       runValidators: true,
     });

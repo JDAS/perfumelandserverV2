@@ -105,7 +105,9 @@ function DynamicForm() {
 
     try {
       const payload = Object.fromEntries(
-        fields.map((field) => [field.apiName, formData[field.apiName]])
+        fields
+          .filter((field) => field.type !== "formula") // 👈 excluir
+          .map((field) => [field.apiName, formData[field.apiName]])
       );
 
       if (isEditMode) {

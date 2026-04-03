@@ -11,6 +11,7 @@ const FIELD_TYPES = [
   "phone",
   "url",
   "lookup",
+  "formula",
 ];
 
 function normalizeApiName(value = "") {
@@ -77,24 +78,40 @@ function sanitizeField(rawField = {}, index = 0) {
     label,
     apiName,
     type,
-    required: Boolean(rawField.required),
+    required: type === "formula" ? false : Boolean(rawField.required),
+
     options:
       type === "select"
         ? Array.from(
-            new Set(
-              (rawField.options || [])
-                .map((opt) => String(opt).trim())
-                .filter(Boolean)
-            )
+          new Set(
+            (rawField.options || [])
+              .map((opt) => String(opt).trim())
+              .filter(Boolean)
           )
+        )
         : [],
+
     referenceTo:
       type === "lookup"
         ? normalizeApiName(rawField.referenceTo || "")
         : "",
+
     visibleInList: rawField.visibleInList !== false,
     visibleInDetail: rawField.visibleInDetail !== false,
     visibleInForm: rawField.visibleInForm !== false,
+
+    // 👇 NUEVO
+    formula:
+      type === "formula"
+        ? {
+          expression: String(rawField.formula?.expression || "").trim(),
+          returnType: ["text", "number", "boolean", "date"].includes(
+            rawField.formula?.returnType
+          )
+            ? rawField.formula.returnType
+            : "text",
+        }
+        : undefined,
   };
 }
 
@@ -148,8 +165,8 @@ function sanitizeObjectPayload(payload = {}, existingObject = null) {
     Array.isArray(payload.fields) && payload.fields.length > 0
       ? payload.fields
       : existingObject?.fields?.length
-      ? existingObject.fields
-      : [createDefaultField()];
+        ? existingObject.fields
+        : [createDefaultField()];
 
   const fields = fieldsInput.map(sanitizeField);
 
@@ -157,8 +174,8 @@ function sanitizeObjectPayload(payload = {}, existingObject = null) {
     Array.isArray(payload.layout) && payload.layout.length > 0
       ? payload.layout
       : existingObject?.layout?.length
-      ? existingObject.layout
-      : createDefaultLayout(fields.map((field) => field.apiName));
+        ? existingObject.layout
+        : createDefaultLayout(fields.map((field) => field.apiName));
 
   const layout = layoutInput.map((layoutItem, index) => ({
     label: String(layoutItem.label || `Layout ${index + 1}`).trim(),
@@ -168,24 +185,24 @@ function sanitizeObjectPayload(payload = {}, existingObject = null) {
     sections:
       Array.isArray(layoutItem.sections) && layoutItem.sections.length > 0
         ? layoutItem.sections.map((section, sectionIndex) => ({
-            label: String(section.label || `Sección ${sectionIndex + 1}`).trim(),
-            type: section.type === "relatedList" ? "relatedList" : "fields",
-            columns: Number(section.columns) === 2 ? 2 : 1,
-            fields: Array.isArray(section.fields) ? section.fields : [],
-            relatedObject:
-              section.type === "relatedList"
-                ? normalizeApiName(section.relatedObject || "")
-                : "",
-            relatedField:
-              section.type === "relatedList"
-                ? normalizeApiName(section.relatedField || "")
-                : "",
-            relatedColumns:
-              section.type === "relatedList" &&
+          label: String(section.label || `Sección ${sectionIndex + 1}`).trim(),
+          type: section.type === "relatedList" ? "relatedList" : "fields",
+          columns: Number(section.columns) === 2 ? 2 : 1,
+          fields: Array.isArray(section.fields) ? section.fields : [],
+          relatedObject:
+            section.type === "relatedList"
+              ? normalizeApiName(section.relatedObject || "")
+              : "",
+          relatedField:
+            section.type === "relatedList"
+              ? normalizeApiName(section.relatedField || "")
+              : "",
+          relatedColumns:
+            section.type === "relatedList" &&
               Array.isArray(section.relatedColumns)
-                ? section.relatedColumns
-                : [],
-          }))
+              ? section.relatedColumns
+              : [],
+        }))
         : createDefaultLayout(fields.map((field) => field.apiName))[0].sections,
   }));
 
@@ -261,6 +278,30 @@ function validateObjectMetadata(payload = {}) {
 
     if (field.type === "lookup" && !field.referenceTo) {
       errors.push(`El campo lookup ${field.apiName} debe tener referenceTo`);
+    }
+    if (field.type === "formula") {
+      if (!field.formula || !field.formula.expression) {
+        errors.push(`El campo fórmula ${field.apiName} requiere expression`);
+      }
+
+      if (
+        !field.formula ||
+        !["text", "number", "boolean", "date"].includes(field.formula.returnType)
+      ) {
+        errors.push(`El campo fórmula ${field.apiName} requiere returnType válido`);
+      }
+
+      if (field.required) {
+        errors.push(`El campo fórmula ${field.apiName} no puede ser required`);
+      }
+
+      if (field.referenceTo) {
+        errors.push(`El campo fórmula ${field.apiName} no puede ser lookup`);
+      }
+
+      if (field.options && field.options.length > 0) {
+        errors.push(`El campo fórmula ${field.apiName} no puede tener options`);
+      }
     }
   }
 

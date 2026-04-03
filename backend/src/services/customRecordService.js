@@ -1,5 +1,6 @@
 const getCustomRecordModel = require("../models/CustomRecord");
 const CustomObject = require("../models/CustomObject");
+const { removeFormulaFields } = require("../utils/formulaEngine");
 
 function castFieldValue(field, value) {
   if (value === undefined) return undefined;
@@ -19,11 +20,17 @@ function castFieldValue(field, value) {
 }
 
 function sanitizeRecordPayload(payload = {}, objectDefinition) {
-  const allowedFieldMap = new Map((objectDefinition.fields || []).map((field) => [field.apiName, field]));
+  const allowedFieldMap = new Map(
+    (objectDefinition.fields || []).map((field) => [field.apiName, field])
+  );
+
+  // 👇 eliminar campos fórmula desde el inicio
+  const payloadClean = removeFormulaFields(objectDefinition.fields, payload);
+
   const sanitized = {};
   const invalidFields = [];
 
-  Object.entries(payload || {}).forEach(([key, value]) => {
+  Object.entries(payloadClean || {}).forEach(([key, value]) => {
     if (!allowedFieldMap.has(key)) {
       invalidFields.push(key);
       return;
@@ -124,8 +131,15 @@ async function listRecords(apiName, params = {}) {
     RecordModel.countDocuments(query),
   ]);
 
+  const { applyFormulaFields } = require("../utils/formulaEngine");
+
+  const processedRecords = records.map((doc) => {
+    const plain = doc.toObject();
+    return applyFormulaFields(objectDefinition.fields, plain);
+  });
+
   return {
-    records,
+    records: processedRecords,
     pagination: {
       page,
       limit,

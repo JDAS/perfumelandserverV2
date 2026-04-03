@@ -12,6 +12,14 @@ const fieldSchema = new mongoose.Schema(
     visibleInList: { type: Boolean, default: true },
     visibleInDetail: { type: Boolean, default: true },
     visibleInForm: { type: Boolean, default: true },
+    formula: {
+      expression: { type: String, default: "" },
+      returnType: {
+        type: String,
+        enum: ["text", "number", "boolean", "date"],
+        default: "text",
+      },
+    },
   },
   { _id: false }
 );

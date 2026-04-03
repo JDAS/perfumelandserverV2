@@ -12,6 +12,10 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
     visibleInList: true,
     visibleInDetail: true,
     visibleInForm: true,
+    formula: {
+      expression: "",
+      returnType: "text",
+    },
   };
 
   const [name, setName] = useState("");
@@ -38,6 +42,10 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
           ...currentField,
           options: currentField.options || [],
           referenceTo: currentField.referenceTo || "",
+          formula: {
+            expression: currentField.formula?.expression || "",
+            returnType: currentField.formula?.returnType || "text",
+          },
         }))
       );
     } else {
@@ -85,8 +93,16 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
       return;
     }
 
-    if (field.type === "select" && (!field.options || field.options.length === 0)) {
+    if (
+      field.type === "select" &&
+      (!field.options || field.options.length === 0)
+    ) {
       alert("El campo select debe tener opciones");
+      return;
+    }
+
+    if (field.type === "formula" && !field.formula?.expression?.trim()) {
+      alert("El campo fórmula debe tener una expresión");
       return;
     }
 
@@ -94,11 +110,20 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
       ...field,
       label: field.label.trim(),
       apiName: finalApiName,
+      required: field.type === "formula" ? false : field.required,
       options: field.type === "select" ? field.options || [] : [],
       referenceTo:
-        field.type === "lookup"
-          ? normalizeApiName(field.referenceTo)
-          : "",
+        field.type === "lookup" ? normalizeApiName(field.referenceTo) : "",
+      formula:
+        field.type === "formula"
+          ? {
+              expression: String(field.formula?.expression || "").trim(),
+              returnType: field.formula?.returnType || "text",
+            }
+          : {
+              expression: "",
+              returnType: "text",
+            },
     };
 
     if (editingFieldApiName) {
@@ -243,18 +268,14 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
             placeholder="Label"
             className="rounded border p-2"
             value={field.label}
-            onChange={(e) =>
-              setField({ ...field, label: e.target.value })
-            }
+            onChange={(e) => setField({ ...field, label: e.target.value })}
           />
 
           <input
             placeholder="API Name"
             className="rounded border p-2"
             value={field.apiName}
-            onChange={(e) =>
-              setField({ ...field, apiName: e.target.value })
-            }
+            onChange={(e) => setField({ ...field, apiName: e.target.value })}
           />
 
           <select
@@ -264,8 +285,14 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
               setField({
                 ...field,
                 type: e.target.value,
+                required: e.target.value === "formula" ? false : field.required,
                 options: e.target.value === "select" ? field.options || [] : [],
-                referenceTo: e.target.value === "lookup" ? field.referenceTo || "" : "",
+                referenceTo:
+                  e.target.value === "lookup" ? field.referenceTo || "" : "",
+                formula:
+                  e.target.value === "formula"
+                    ? field.formula || { expression: "", returnType: "text" }
+                    : { expression: "", returnType: "text" },
               })
             }
           >
@@ -279,12 +306,14 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
             <option value="phone">Phone</option>
             <option value="url">URL</option>
             <option value="lookup">Lookup</option>
+            <option value="formula">Formula</option>
           </select>
 
           <label className="flex items-center gap-2 rounded border p-2">
             <input
               type="checkbox"
-              checked={field.required}
+              checked={field.type === "formula" ? false : field.required}
+              disabled={field.type === "formula"}
               onChange={(e) =>
                 setField({ ...field, required: e.target.checked })
               }
@@ -321,6 +350,44 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
                 })
               }
             />
+          )}
+
+          {field.type === "formula" && (
+            <>
+              <input
+                placeholder='Expresión (ej: firstName + " " + lastName)'
+                className="rounded border p-2 md:col-span-2"
+                value={field.formula?.expression || ""}
+                onChange={(e) =>
+                  setField({
+                    ...field,
+                    formula: {
+                      ...field.formula,
+                      expression: e.target.value,
+                    },
+                  })
+                }
+              />
+
+              <select
+                className="rounded border p-2 md:col-span-2"
+                value={field.formula?.returnType || "text"}
+                onChange={(e) =>
+                  setField({
+                    ...field,
+                    formula: {
+                      ...field.formula,
+                      returnType: e.target.value,
+                    },
+                  })
+                }
+              >
+                <option value="text">Return: Text</option>
+                <option value="number">Return: Number</option>
+                <option value="boolean">Return: Boolean</option>
+                <option value="date">Return: Date</option>
+              </select>
+            </>
           )}
         </div>
 
@@ -396,6 +463,10 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
                   {currentField.type === "lookup" && currentField.referenceTo
                     ? ` · referencia a ${currentField.referenceTo}`
                     : ""}
+                  {currentField.type === "formula" &&
+                  currentField.formula?.expression
+                    ? ` · ${currentField.formula.expression}`
+                    : ""}
                 </div>
               </div>
 
@@ -409,6 +480,10 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
                       ...currentField,
                       options: currentField.options || [],
                       referenceTo: currentField.referenceTo || "",
+                      formula: {
+                        expression: currentField.formula?.expression || "",
+                        returnType: currentField.formula?.returnType || "text",
+                      },
                     });
                     setEditingFieldApiName(currentField.apiName);
                   }}
