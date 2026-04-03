@@ -68,6 +68,9 @@ function DynamicForm() {
       [apiName]: value,
     }));
   };
+  const handleCancel = () => {
+    navigate(`/admin?tab=${returnTab}`);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -249,12 +252,22 @@ function DynamicForm() {
           </div>
         )}
 
-        <button
-          type="submit"
-          className="bg-black text-white w-full py-3 rounded"
-        >
-          {isEditMode ? "Actualizar" : "Guardar"}
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="w-full bg-gray-200 text-black py-3 rounded"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="submit"
+            className="w-full bg-black text-white py-3 rounded"
+          >
+            {isEditMode ? "Actualizar" : "Guardar"}
+          </button>
+        </div>
       </form>
     </div>
   );
