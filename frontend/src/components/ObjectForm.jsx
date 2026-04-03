@@ -16,6 +16,15 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
       expression: "",
       returnType: "text",
     },
+    rollup: {
+      relatedObject: "",
+      relatedField: "",
+      operation: "sum",
+      fieldToAggregate: "",
+      filterField: "",
+      filterOperator: "eq",
+      filterValue: "",
+    },
   };
 
   const [name, setName] = useState("");
@@ -45,6 +54,15 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
           formula: {
             expression: currentField.formula?.expression || "",
             returnType: currentField.formula?.returnType || "text",
+          },
+          rollup: {
+            relatedObject: currentField.rollup?.relatedObject || "",
+            relatedField: currentField.rollup?.relatedField || "",
+            operation: currentField.rollup?.operation || "sum",
+            fieldToAggregate: currentField.rollup?.fieldToAggregate || "",
+            filterField: currentField.rollup?.filterField || "",
+            filterOperator: currentField.rollup?.filterOperator || "eq",
+            filterValue: currentField.rollup?.filterValue ?? "",
           },
         }))
       );
@@ -106,14 +124,56 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
       return;
     }
 
+    if (field.type === "rollup") {
+      if (!field.rollup?.relatedObject?.trim()) {
+        alert("El campo rollup debe tener relatedObject");
+        return;
+      }
+
+      if (!field.rollup?.relatedField?.trim()) {
+        alert("El campo rollup debe tener relatedField");
+        return;
+      }
+
+      if (!field.rollup?.operation?.trim()) {
+        alert("El campo rollup debe tener operation");
+        return;
+      }
+
+      if (
+        ["sum", "avg", "min", "max"].includes(field.rollup?.operation) &&
+        !field.rollup?.fieldToAggregate?.trim()
+      ) {
+        alert("El campo rollup debe tener fieldToAggregate");
+        return;
+      }
+
+      if (
+        field.rollup?.operation === "count" &&
+        field.rollup?.fieldToAggregate?.trim()
+      ) {
+        alert("COUNT no debe tener fieldToAggregate");
+        return;
+      }
+    }
+
     const newField = {
       ...field,
       label: field.label.trim(),
       apiName: finalApiName,
-      required: field.type === "formula" ? false : field.required,
+      required:
+        field.type === "formula" || field.type === "rollup"
+          ? false
+          : field.required,
       options: field.type === "select" ? field.options || [] : [],
       referenceTo:
-        field.type === "lookup" ? normalizeApiName(field.referenceTo) : "",
+        field.type === "lookup"
+          ? normalizeApiName(field.referenceTo)
+          : "",
+      visibleInForm:
+        field.type === "rollup"
+          ? false
+          : field.visibleInForm,
       formula:
         field.type === "formula"
           ? {
@@ -123,6 +183,33 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
           : {
               expression: "",
               returnType: "text",
+            },
+      rollup:
+        field.type === "rollup"
+          ? {
+              relatedObject: normalizeApiName(
+                field.rollup?.relatedObject || ""
+              ),
+              relatedField: normalizeApiName(
+                field.rollup?.relatedField || ""
+              ),
+              operation: field.rollup?.operation || "sum",
+              fieldToAggregate:
+                field.rollup?.operation === "count"
+                  ? ""
+                  : normalizeApiName(field.rollup?.fieldToAggregate || ""),
+              filterField: normalizeApiName(field.rollup?.filterField || ""),
+              filterOperator: field.rollup?.filterOperator || "eq",
+              filterValue: field.rollup?.filterValue ?? "",
+            }
+          : {
+              relatedObject: "",
+              relatedField: "",
+              operation: "sum",
+              fieldToAggregate: "",
+              filterField: "",
+              filterOperator: "eq",
+              filterValue: "",
             },
     };
 
@@ -285,14 +372,41 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
               setField({
                 ...field,
                 type: e.target.value,
-                required: e.target.value === "formula" ? false : field.required,
+                required:
+                  e.target.value === "formula" || e.target.value === "rollup"
+                    ? false
+                    : field.required,
                 options: e.target.value === "select" ? field.options || [] : [],
                 referenceTo:
                   e.target.value === "lookup" ? field.referenceTo || "" : "",
+                visibleInForm:
+                  e.target.value === "rollup"
+                    ? false
+                    : field.visibleInForm,
                 formula:
                   e.target.value === "formula"
                     ? field.formula || { expression: "", returnType: "text" }
                     : { expression: "", returnType: "text" },
+                rollup:
+                  e.target.value === "rollup"
+                    ? field.rollup || {
+                        relatedObject: "",
+                        relatedField: "",
+                        operation: "sum",
+                        fieldToAggregate: "",
+                        filterField: "",
+                        filterOperator: "eq",
+                        filterValue: "",
+                      }
+                    : {
+                        relatedObject: "",
+                        relatedField: "",
+                        operation: "sum",
+                        fieldToAggregate: "",
+                        filterField: "",
+                        filterOperator: "eq",
+                        filterValue: "",
+                      },
               })
             }
           >
@@ -307,13 +421,18 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
             <option value="url">URL</option>
             <option value="lookup">Lookup</option>
             <option value="formula">Formula</option>
+            <option value="rollup">Rollup</option>
           </select>
 
           <label className="flex items-center gap-2 rounded border p-2">
             <input
               type="checkbox"
-              checked={field.type === "formula" ? false : field.required}
-              disabled={field.type === "formula"}
+              checked={
+                field.type === "formula" || field.type === "rollup"
+                  ? false
+                  : field.required
+              }
+              disabled={field.type === "formula" || field.type === "rollup"}
               onChange={(e) =>
                 setField({ ...field, required: e.target.checked })
               }
@@ -389,6 +508,133 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
               </select>
             </>
           )}
+
+          {field.type === "rollup" && (
+            <>
+              <input
+                placeholder="Objeto relacionado (ej: detalle_venta)"
+                className="rounded border p-2 md:col-span-2"
+                value={field.rollup?.relatedObject || ""}
+                onChange={(e) =>
+                  setField({
+                    ...field,
+                    rollup: {
+                      ...field.rollup,
+                      relatedObject: e.target.value,
+                    },
+                  })
+                }
+              />
+
+              <input
+                placeholder="Campo relación en hijo (ej: venta_id)"
+                className="rounded border p-2 md:col-span-2"
+                value={field.rollup?.relatedField || ""}
+                onChange={(e) =>
+                  setField({
+                    ...field,
+                    rollup: {
+                      ...field.rollup,
+                      relatedField: e.target.value,
+                    },
+                  })
+                }
+              />
+
+              <select
+                className="rounded border p-2 md:col-span-2"
+                value={field.rollup?.operation || "sum"}
+                onChange={(e) =>
+                  setField({
+                    ...field,
+                    rollup: {
+                      ...field.rollup,
+                      operation: e.target.value,
+                      fieldToAggregate:
+                        e.target.value === "count"
+                          ? ""
+                          : field.rollup?.fieldToAggregate || "",
+                    },
+                  })
+                }
+              >
+                <option value="sum">SUM</option>
+                <option value="count">COUNT</option>
+                <option value="avg">AVG</option>
+                <option value="min">MIN</option>
+                <option value="max">MAX</option>
+              </select>
+
+              {field.rollup?.operation !== "count" && (
+                <input
+                  placeholder="Campo a resumir (ej: total)"
+                  className="rounded border p-2 md:col-span-2"
+                  value={field.rollup?.fieldToAggregate || ""}
+                  onChange={(e) =>
+                    setField({
+                      ...field,
+                      rollup: {
+                        ...field.rollup,
+                        fieldToAggregate: e.target.value,
+                      },
+                    })
+                  }
+                />
+              )}
+
+              <input
+                placeholder="Filtro campo (opcional)"
+                className="rounded border p-2 md:col-span-2"
+                value={field.rollup?.filterField || ""}
+                onChange={(e) =>
+                  setField({
+                    ...field,
+                    rollup: {
+                      ...field.rollup,
+                      filterField: e.target.value,
+                    },
+                  })
+                }
+              />
+
+              <select
+                className="rounded border p-2 md:col-span-2"
+                value={field.rollup?.filterOperator || "eq"}
+                onChange={(e) =>
+                  setField({
+                    ...field,
+                    rollup: {
+                      ...field.rollup,
+                      filterOperator: e.target.value,
+                    },
+                  })
+                }
+              >
+                <option value="eq">Equals</option>
+                <option value="ne">Not equals</option>
+                <option value="gt">Greater than</option>
+                <option value="gte">Greater or equal</option>
+                <option value="lt">Less than</option>
+                <option value="lte">Less or equal</option>
+                <option value="contains">Contains</option>
+              </select>
+
+              <input
+                placeholder="Filtro valor (opcional)"
+                className="rounded border p-2 md:col-span-2"
+                value={field.rollup?.filterValue ?? ""}
+                onChange={(e) =>
+                  setField({
+                    ...field,
+                    rollup: {
+                      ...field.rollup,
+                      filterValue: e.target.value,
+                    },
+                  })
+                }
+              />
+            </>
+          )}
         </div>
 
         <div className="mb-4 flex flex-wrap gap-4 text-sm">
@@ -407,6 +653,7 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
             <input
               type="checkbox"
               checked={field.visibleInForm}
+              disabled={field.type === "rollup"}
               onChange={(e) =>
                 setField({ ...field, visibleInForm: e.target.checked })
               }
@@ -467,6 +714,10 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
                   currentField.formula?.expression
                     ? ` · ${currentField.formula.expression}`
                     : ""}
+                  {currentField.type === "rollup" &&
+                  currentField.rollup?.relatedObject
+                    ? ` · ${currentField.rollup.operation}(${currentField.rollup.fieldToAggregate || "*"}) de ${currentField.rollup.relatedObject}.${currentField.rollup.relatedField}`
+                    : ""}
                 </div>
               </div>
 
@@ -483,6 +734,15 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
                       formula: {
                         expression: currentField.formula?.expression || "",
                         returnType: currentField.formula?.returnType || "text",
+                      },
+                      rollup: {
+                        relatedObject: currentField.rollup?.relatedObject || "",
+                        relatedField: currentField.rollup?.relatedField || "",
+                        operation: currentField.rollup?.operation || "sum",
+                        fieldToAggregate: currentField.rollup?.fieldToAggregate || "",
+                        filterField: currentField.rollup?.filterField || "",
+                        filterOperator: currentField.rollup?.filterOperator || "eq",
+                        filterValue: currentField.rollup?.filterValue ?? "",
                       },
                     });
                     setEditingFieldApiName(currentField.apiName);

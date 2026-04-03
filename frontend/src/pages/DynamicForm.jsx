@@ -106,7 +106,9 @@ function DynamicForm() {
     try {
       const payload = Object.fromEntries(
         fields
-          .filter((field) => field.type !== "formula") // 👈 excluir
+          .filter(
+            (field) => !["formula", "rollup"].includes(field.type)
+          )
           .map((field) => [field.apiName, formData[field.apiName]])
       );
 
@@ -144,6 +146,9 @@ function DynamicForm() {
           <label className="block mb-1 font-medium">
             {field.label}
             {field.required && <span className="ml-1 text-red-500">*</span>}
+            {["formula", "rollup"].includes(field.type) && (
+              <span className="ml-2 text-xs text-blue-500">(Calculado)</span>
+            )}
           </label>
         )}
 

@@ -20,6 +20,23 @@ const fieldSchema = new mongoose.Schema(
         default: "text",
       },
     },
+    rollup: {
+      relatedObject: { type: String, default: "" },
+      relatedField: { type: String, default: "" },
+      operation: {
+        type: String,
+        enum: ["sum", "count", "avg", "min", "max"],
+        default: "sum",
+      },
+      fieldToAggregate: { type: String, default: "" },
+      filterField: { type: String, default: "" },
+      filterOperator: {
+        type: String,
+        enum: ["eq", "ne", "gt", "gte", "lt", "lte", "contains"],
+        default: "eq",
+      },
+      filterValue: { type: mongoose.Schema.Types.Mixed, default: "" },
+    },
   },
   { _id: false }
 );

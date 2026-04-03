@@ -12,6 +12,7 @@ const FIELD_TYPES = [
   "url",
   "lookup",
   "formula",
+  "rollup",
 ];
 
 function normalizeApiName(value = "") {
@@ -78,17 +79,17 @@ function sanitizeField(rawField = {}, index = 0) {
     label,
     apiName,
     type,
-    required: type === "formula" ? false : Boolean(rawField.required),
+    required: type === "formula" || type === "rollup" ? false : Boolean(rawField.required),
 
     options:
       type === "select"
         ? Array.from(
-          new Set(
-            (rawField.options || [])
-              .map((opt) => String(opt).trim())
-              .filter(Boolean)
+            new Set(
+              (rawField.options || [])
+                .map((opt) => String(opt).trim())
+                .filter(Boolean)
+            )
           )
-        )
         : [],
 
     referenceTo:
@@ -98,20 +99,45 @@ function sanitizeField(rawField = {}, index = 0) {
 
     visibleInList: rawField.visibleInList !== false,
     visibleInDetail: rawField.visibleInDetail !== false,
-    visibleInForm: rawField.visibleInForm !== false,
+    visibleInForm:
+      type === "rollup"
+        ? rawField.visibleInForm === true
+          ? true
+          : false
+        : rawField.visibleInForm !== false,
 
-    // 👇 NUEVO
-    formula:
-      type === "formula"
-        ? {
-          expression: String(rawField.formula?.expression || "").trim(),
-          returnType: ["text", "number", "boolean", "date"].includes(
-            rawField.formula?.returnType
-          )
-            ? rawField.formula.returnType
-            : "text",
-        }
-        : undefined,
+    ...(type === "formula" && {
+      formula: {
+        expression: String(rawField.formula?.expression || "").trim(),
+        returnType: ["text", "number", "boolean", "date"].includes(
+          rawField.formula?.returnType
+        )
+          ? rawField.formula.returnType
+          : "text",
+      },
+    }),
+
+    ...(type === "rollup" && {
+      rollup: {
+        relatedObject: normalizeApiName(rawField.rollup?.relatedObject || ""),
+        relatedField: normalizeApiName(rawField.rollup?.relatedField || ""),
+        operation: ["sum", "count", "avg", "min", "max"].includes(
+          rawField.rollup?.operation
+        )
+          ? rawField.rollup.operation
+          : "sum",
+        fieldToAggregate: normalizeApiName(
+          rawField.rollup?.fieldToAggregate || ""
+        ),
+        filterField: normalizeApiName(rawField.rollup?.filterField || ""),
+        filterOperator: ["eq", "ne", "gt", "gte", "lt", "lte", "contains"].includes(
+          rawField.rollup?.filterOperator
+        )
+          ? rawField.rollup.filterOperator
+          : "eq",
+        filterValue: rawField.rollup?.filterValue ?? "",
+      },
+    }),
   };
 }
 
@@ -165,8 +191,8 @@ function sanitizeObjectPayload(payload = {}, existingObject = null) {
     Array.isArray(payload.fields) && payload.fields.length > 0
       ? payload.fields
       : existingObject?.fields?.length
-        ? existingObject.fields
-        : [createDefaultField()];
+      ? existingObject.fields
+      : [createDefaultField()];
 
   const fields = fieldsInput.map(sanitizeField);
 
@@ -174,8 +200,8 @@ function sanitizeObjectPayload(payload = {}, existingObject = null) {
     Array.isArray(payload.layout) && payload.layout.length > 0
       ? payload.layout
       : existingObject?.layout?.length
-        ? existingObject.layout
-        : createDefaultLayout(fields.map((field) => field.apiName));
+      ? existingObject.layout
+      : createDefaultLayout(fields.map((field) => field.apiName));
 
   const layout = layoutInput.map((layoutItem, index) => ({
     label: String(layoutItem.label || `Layout ${index + 1}`).trim(),
@@ -185,24 +211,24 @@ function sanitizeObjectPayload(payload = {}, existingObject = null) {
     sections:
       Array.isArray(layoutItem.sections) && layoutItem.sections.length > 0
         ? layoutItem.sections.map((section, sectionIndex) => ({
-          label: String(section.label || `Sección ${sectionIndex + 1}`).trim(),
-          type: section.type === "relatedList" ? "relatedList" : "fields",
-          columns: Number(section.columns) === 2 ? 2 : 1,
-          fields: Array.isArray(section.fields) ? section.fields : [],
-          relatedObject:
-            section.type === "relatedList"
-              ? normalizeApiName(section.relatedObject || "")
-              : "",
-          relatedField:
-            section.type === "relatedList"
-              ? normalizeApiName(section.relatedField || "")
-              : "",
-          relatedColumns:
-            section.type === "relatedList" &&
+            label: String(section.label || `Sección ${sectionIndex + 1}`).trim(),
+            type: section.type === "relatedList" ? "relatedList" : "fields",
+            columns: Number(section.columns) === 2 ? 2 : 1,
+            fields: Array.isArray(section.fields) ? section.fields : [],
+            relatedObject:
+              section.type === "relatedList"
+                ? normalizeApiName(section.relatedObject || "")
+                : "",
+            relatedField:
+              section.type === "relatedList"
+                ? normalizeApiName(section.relatedField || "")
+                : "",
+            relatedColumns:
+              section.type === "relatedList" &&
               Array.isArray(section.relatedColumns)
-              ? section.relatedColumns
-              : [],
-        }))
+                ? section.relatedColumns
+                : [],
+          }))
         : createDefaultLayout(fields.map((field) => field.apiName))[0].sections,
   }));
 
@@ -279,6 +305,7 @@ function validateObjectMetadata(payload = {}) {
     if (field.type === "lookup" && !field.referenceTo) {
       errors.push(`El campo lookup ${field.apiName} debe tener referenceTo`);
     }
+
     if (field.type === "formula") {
       if (!field.formula || !field.formula.expression) {
         errors.push(`El campo fórmula ${field.apiName} requiere expression`);
@@ -301,6 +328,48 @@ function validateObjectMetadata(payload = {}) {
 
       if (field.options && field.options.length > 0) {
         errors.push(`El campo fórmula ${field.apiName} no puede tener options`);
+      }
+    }
+
+    if (field.type === "rollup") {
+      if (!field.rollup?.relatedObject) {
+        errors.push(`El campo rollup ${field.apiName} requiere relatedObject`);
+      }
+
+      if (!field.rollup?.relatedField) {
+        errors.push(`El campo rollup ${field.apiName} requiere relatedField`);
+      }
+
+      if (!field.rollup?.operation) {
+        errors.push(`El campo rollup ${field.apiName} requiere operation`);
+      }
+
+      if (
+        ["sum", "avg", "min", "max"].includes(field.rollup?.operation) &&
+        !field.rollup?.fieldToAggregate
+      ) {
+        errors.push(`El campo rollup ${field.apiName} requiere fieldToAggregate`);
+      }
+
+      if (
+        field.rollup?.operation === "count" &&
+        field.rollup?.fieldToAggregate
+      ) {
+        errors.push(
+          `El campo rollup ${field.apiName} no debe tener fieldToAggregate en COUNT`
+        );
+      }
+
+      if (field.required) {
+        errors.push(`El campo rollup ${field.apiName} no puede ser required`);
+      }
+
+      if (field.referenceTo) {
+        errors.push(`El campo rollup ${field.apiName} no puede ser lookup`);
+      }
+
+      if (field.options?.length) {
+        errors.push(`El campo rollup ${field.apiName} no puede tener options`);
       }
     }
   }
