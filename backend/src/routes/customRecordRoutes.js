@@ -10,7 +10,7 @@ const {
 } = require("../controllers/customRecordController");
 
 router.post("/:object", createRecord);
-router.get("/:object/records", getRecords);
+router.get("/:object", getRecords);
 router.get("/:object/:id", getRecordById);
 router.put("/:object/:id", updateRecord);
 router.delete("/:object/:id", deleteRecord);
