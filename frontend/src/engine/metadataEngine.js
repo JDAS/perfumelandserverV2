@@ -13,14 +13,18 @@ export function getDefaultListView(objectDef) {
 }
 
 export function getVisibleFields(objectDef, visibilityKey = "visibleInList") {
-  return (objectDef?.fields || []).filter((field) => field[visibilityKey] !== false);
+  return (objectDef?.fields || []).filter(
+    (field) => field[visibilityKey] !== false
+  );
 }
 
 export function getListColumns(objectDef, listView) {
   const fields = objectDef?.fields || [];
   const requestedColumns = listView?.columns?.length
     ? listView.columns
-    : getVisibleFields(objectDef, "visibleInList").slice(0, 5).map((field) => field.apiName);
+    : getVisibleFields(objectDef, "visibleInList")
+        .slice(0, 5)
+        .map((field) => field.apiName);
 
   return requestedColumns
     .map((apiName) => fields.find((field) => field.apiName === apiName))
@@ -62,7 +66,16 @@ export function getBackToListSearch(searchParams, objectApiName) {
   return next.toString();
 }
 
-export function formatFieldValue(field, value) {
+export function formatFieldValue(field, value, record = null) {
+  if (field?.type === "lookup") {
+    const lookupLabel =
+      record?._lookup?.[field.apiName]?.label ||
+      record?.[`${field.apiName}Label`] ||
+      value;
+
+    return lookupLabel || "-";
+  }
+
   if (value === undefined || value === null || value === "") {
     return "-";
   }
@@ -70,12 +83,14 @@ export function formatFieldValue(field, value) {
   switch (field?.type) {
     case "boolean":
       return value ? "Sí" : "No";
+
     case "date":
       try {
         return new Date(value).toLocaleDateString();
       } catch {
         return String(value);
       }
+
     default:
       return String(value);
   }

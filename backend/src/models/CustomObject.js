@@ -6,6 +6,7 @@ const fieldSchema = new mongoose.Schema(
     label: { type: String, required: true, trim: true },
     apiName: { type: String, required: true, trim: true },
     type: { type: String, default: "text", enum: FIELD_TYPES },
+    referenceTo: { type: String, default: "", trim: true },
     required: { type: Boolean, default: false },
     options: { type: [String], default: [] },
     visibleInList: { type: Boolean, default: true },
@@ -36,7 +37,11 @@ const layoutSchema = new mongoose.Schema(
 const listViewFilterSchema = new mongoose.Schema(
   {
     field: { type: String, required: true, trim: true },
-    operator: { type: String, default: "eq", enum: ["eq", "ne"] },
+    operator: {
+      type: String,
+      default: "eq",
+      enum: ["eq", "ne", "gt", "gte", "lt", "lte", "contains"],
+    },
     value: { type: mongoose.Schema.Types.Mixed, required: true },
   },
   { _id: false }

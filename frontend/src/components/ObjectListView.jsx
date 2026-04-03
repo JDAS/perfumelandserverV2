@@ -12,7 +12,11 @@ function ObjectListView({ objectDef }) {
   const [searchInput, setSearchInput] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const listState = useMemo(() => buildListQuery({ searchParams, objectDef }), [searchParams, objectDef]);
+  const listState = useMemo(
+    () => buildListQuery({ searchParams, objectDef }),
+    [searchParams, objectDef]
+  );
+
   const backToListQuery = getBackToListSearch(searchParams, objectDef.apiName);
 
   useEffect(() => {
@@ -21,14 +25,36 @@ function ObjectListView({ objectDef }) {
 
   useEffect(() => {
     loadRecords();
-  }, [objectDef?.apiName, listState.search, listState.page, listState.limit, listState.sortBy, listState.sortOrder, listState.viewApiName]);
+  }, [
+    objectDef?.apiName,
+    listState.search,
+    listState.page,
+    listState.limit,
+    listState.sortBy,
+    listState.sortOrder,
+    listState.viewApiName,
+  ]);
 
   const loadRecords = async () => {
     try {
       setLoading(true);
-      const data = await getRecords(objectDef.apiName, buildRecordListRequest({ objectDef, listState }));
+      const data = await getRecords(
+        objectDef.apiName,
+        buildRecordListRequest({ objectDef, listState })
+      );
+
       setRecords(data.records || []);
-      setPagination(data.pagination || null);
+
+      if (data.pagination) {
+        setPagination(data.pagination);
+      } else {
+        setPagination({
+          page: data.page || 1,
+          pages: data.pages || 1,
+          total: data.total || 0,
+          limit: data.limit || listState.limit || 10,
+        });
+      }
     } catch (error) {
       console.error(error);
       setRecords([]);
@@ -40,6 +66,7 @@ function ObjectListView({ objectDef }) {
 
   const updateParams = (changes = {}) => {
     const next = new URLSearchParams(searchParams);
+
     Object.entries(changes).forEach(([key, value]) => {
       if (value === undefined || value === null || value === "") {
         next.delete(key);
@@ -47,12 +74,14 @@ function ObjectListView({ objectDef }) {
         next.set(key, String(value));
       }
     });
+
     next.set("tab", objectDef.apiName);
     setSearchParams(next);
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("¿Eliminar este registro?")) return;
+
     try {
       await deleteRecord(objectDef.apiName, id);
       await loadRecords();
@@ -64,6 +93,7 @@ function ObjectListView({ objectDef }) {
 
   const handleSort = (fieldApiName) => {
     const sameField = listState.sortBy === fieldApiName;
+
     updateParams({
       sortBy: fieldApiName,
       sortOrder: sameField && listState.sortOrder === "asc" ? "desc" : "asc",
@@ -71,29 +101,40 @@ function ObjectListView({ objectDef }) {
     });
   };
 
-  const columns = listState.columns;
+  const columns = listState.columns || [];
 
   return (
-    <div className="bg-white rounded-xl shadow p-6 space-y-4">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="space-y-4 rounded-xl bg-white p-6 shadow">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">{objectDef.name}</h2>
           <p className="text-sm text-gray-500">{objectDef.apiName}</p>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <Link to={`/admin/${objectDef.apiName}/new?${backToListQuery}`} className="bg-black text-white px-4 py-2 rounded">Nuevo</Link>
-          <Link to={`/admin/object/${objectDef.apiName}`} className="bg-gray-200 text-black px-4 py-2 rounded">Configurar</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to={`/admin/${objectDef.apiName}/new?${backToListQuery}`}
+            className="rounded bg-black px-4 py-2 text-white"
+          >
+            Nuevo
+          </Link>
+
+          <Link
+            to={`/admin/object/${objectDef.apiName}`}
+            className="rounded bg-gray-200 px-4 py-2 text-black"
+          >
+            Configurar
+          </Link>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_auto] gap-3 items-end">
+      <div className="grid grid-cols-1 items-end gap-3 lg:grid-cols-[1fr_auto_auto]">
         <div>
-          <label className="block text-sm font-medium mb-1">Buscar</label>
+          <label className="mb-1 block text-sm font-medium">Buscar</label>
           <input
             type="text"
             placeholder="Buscar registros..."
-            className="w-full border rounded-lg p-3"
+            className="w-full rounded-lg border p-3"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => {
@@ -103,17 +144,36 @@ function ObjectListView({ objectDef }) {
             }}
           />
         </div>
+
         <div>
-          <label className="block text-sm font-medium mb-1">Vista</label>
+          <label className="mb-1 block text-sm font-medium">Vista</label>
           <select
-            className="border rounded-lg p-3 min-w-48"
+            className="min-w-48 rounded-lg border p-3"
             value={listState.viewApiName}
-            onChange={(e) => updateParams({ view: e.target.value, page: 1, sortBy: undefined, sortOrder: undefined })}
+            onChange={(e) =>
+              updateParams({
+                view: e.target.value,
+                page: 1,
+                sortBy: undefined,
+                sortOrder: undefined,
+              })
+            }
           >
-            {(objectDef.listViews || []).map((view) => <option key={view.apiName} value={view.apiName}>{view.label}</option>)}
+            {(objectDef.listViews || []).map((view) => (
+              <option key={view.apiName} value={view.apiName}>
+                {view.label || view.name || view.apiName}
+              </option>
+            ))}
           </select>
         </div>
-        <button type="button" className="rounded-lg border px-4 py-3" onClick={() => updateParams({ search: searchInput.trim(), page: 1 })}>Aplicar</button>
+
+        <button
+          type="button"
+          className="rounded-lg border px-4 py-3"
+          onClick={() => updateParams({ search: searchInput.trim(), page: 1 })}
+        >
+          Aplicar
+        </button>
       </div>
 
       {loading ? (
@@ -127,27 +187,64 @@ function ObjectListView({ objectDef }) {
               <thead>
                 <tr className="bg-gray-100 text-left">
                   {columns.map((field) => (
-                    <th key={field.apiName} className="p-3 border-b">
-                      <button type="button" className="font-semibold" onClick={() => handleSort(field.apiName)}>
+                    <th key={field.apiName} className="border-b p-3">
+                      <button
+                        type="button"
+                        className="font-semibold"
+                        onClick={() => handleSort(field.apiName)}
+                      >
                         {field.label}
-                        {listState.sortBy === field.apiName ? (listState.sortOrder === "asc" ? " ↑" : " ↓") : ""}
+                        {listState.sortBy === field.apiName
+                          ? listState.sortOrder === "asc"
+                            ? " ↑"
+                            : " ↓"
+                          : ""}
                       </button>
                     </th>
                   ))}
-                  <th className="p-3 border-b">Creado</th>
-                  <th className="p-3 border-b">Acciones</th>
+
+                  <th className="border-b p-3">Creado</th>
+                  <th className="border-b p-3">Acciones</th>
                 </tr>
               </thead>
+
               <tbody>
                 {records.map((record) => (
                   <tr key={record._id} className="hover:bg-gray-50">
-                    {columns.map((field) => <td key={field.apiName} className="p-3 border-b">{formatFieldValue(field, record[field.apiName])}</td>)}
-                    <td className="p-3 border-b text-sm text-gray-500">{record.createdAt ? new Date(record.createdAt).toLocaleString() : "-"}</td>
-                    <td className="p-3 border-b">
-                      <div className="flex gap-2 flex-wrap">
-                        <Link to={`/admin/${objectDef.apiName}/${record._id}/view?${backToListQuery}`} className="px-3 py-1 bg-blue-600 text-white rounded">Ver</Link>
-                        <Link to={`/admin/${objectDef.apiName}/${record._id}?${backToListQuery}`} className="px-3 py-1 bg-yellow-500 text-white rounded">Editar</Link>
-                        <button onClick={() => handleDelete(record._id)} className="px-3 py-1 bg-red-600 text-white rounded">Eliminar</button>
+                    {columns.map((field) => (
+                      <td key={field.apiName} className="border-b p-3">
+                        {formatFieldValue(field, record[field.apiName], record)}
+                      </td>
+                    ))}
+
+                    <td className="border-b p-3 text-sm text-gray-500">
+                      {record.createdAt
+                        ? new Date(record.createdAt).toLocaleString()
+                        : "-"}
+                    </td>
+
+                    <td className="border-b p-3">
+                      <div className="flex flex-wrap gap-2">
+                        <Link
+                          to={`/admin/${objectDef.apiName}/${record._id}/view?${backToListQuery}`}
+                          className="rounded bg-blue-600 px-3 py-1 text-white"
+                        >
+                          Ver
+                        </Link>
+
+                        <Link
+                          to={`/admin/${objectDef.apiName}/${record._id}?${backToListQuery}`}
+                          className="rounded bg-yellow-500 px-3 py-1 text-white"
+                        >
+                          Editar
+                        </Link>
+
+                        <button
+                          onClick={() => handleDelete(record._id)}
+                          className="rounded bg-red-600 px-3 py-1 text-white"
+                        >
+                          Eliminar
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -156,7 +253,10 @@ function ObjectListView({ objectDef }) {
             </table>
           </div>
 
-          <Pagination pagination={pagination} onChangePage={(page) => updateParams({ page })} />
+          <Pagination
+            pagination={pagination}
+            onChangePage={(page) => updateParams({ page })}
+          />
         </>
       )}
     </div>

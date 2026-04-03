@@ -1,3 +1,5 @@
+import LookupField from "./LookupField";
+
 function BaseInput({ type = "text", value, onChange, className = "", ...props }) {
   return (
     <input
@@ -10,7 +12,9 @@ function BaseInput({ type = "text", value, onChange, className = "", ...props })
   );
 }
 
-export function renderFieldInput(field, value, onValueChange) {
+export function renderFieldInput(field, value, onValueChange, context = {}) {
+  const { formData, setFormData } = context;
+
   const commonProps = {
     value: field.type === "boolean" ? undefined : value ?? "",
     onChange: (event) => onValueChange(event.target.value),
@@ -20,24 +24,30 @@ export function renderFieldInput(field, value, onValueChange) {
     case "textarea":
       return (
         <textarea
-          className="w-full rounded border p-2 min-h-28"
+          className="min-h-28 w-full rounded border p-2"
           value={value ?? ""}
           onChange={(event) => onValueChange(event.target.value)}
         />
       );
+
     case "number":
       return <BaseInput type="number" {...commonProps} />;
+
     case "date":
       return <BaseInput type="date" {...commonProps} />;
+
     case "email":
       return <BaseInput type="email" {...commonProps} />;
+
     case "phone":
       return <BaseInput type="tel" {...commonProps} />;
+
     case "url":
       return <BaseInput type="url" {...commonProps} />;
+
     case "boolean":
       return (
-        <label className="inline-flex items-center gap-2 rounded border p-3 bg-gray-50">
+        <label className="inline-flex items-center gap-2 rounded border bg-gray-50 p-3">
           <input
             type="checkbox"
             checked={Boolean(value)}
@@ -46,6 +56,7 @@ export function renderFieldInput(field, value, onValueChange) {
           <span>{field.label}</span>
         </label>
       );
+
     case "select":
       return (
         <select
@@ -61,6 +72,18 @@ export function renderFieldInput(field, value, onValueChange) {
           ))}
         </select>
       );
+
+    case "lookup":
+      return (
+        <LookupField
+          field={field}
+          value={value ?? ""}
+          onChange={onValueChange}
+          formData={formData}
+          setFormData={setFormData}
+        />
+      );
+
     default:
       return <BaseInput type="text" {...commonProps} />;
   }

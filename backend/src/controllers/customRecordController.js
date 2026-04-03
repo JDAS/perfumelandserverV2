@@ -1,6 +1,65 @@
 const CustomObject = require("../models/CustomObject");
 const { getCustomRecordModel } = require("../models/CustomRecord");
 
+async function resolveLookupData(records, customObject) {
+  const lookupFields = (customObject?.fields || []).filter(
+    (field) => field.type === "lookup" && field.referenceTo
+  );
+
+  if (!lookupFields.length) {
+    return records.map((record) =>
+      typeof record.toObject === "function" ? record.toObject() : record
+    );
+  }
+
+  const enrichedRecords = [];
+
+  for (const record of records) {
+    const plainRecord =
+      typeof record.toObject === "function" ? record.toObject() : { ...record };
+
+    plainRecord._lookup = plainRecord._lookup || {};
+
+    for (const field of lookupFields) {
+      const relatedId = plainRecord[field.apiName];
+
+      if (!relatedId) continue;
+
+      try {
+        const RelatedModel = getCustomRecordModel(field.referenceTo);
+        const relatedRecord = await RelatedModel.findById(relatedId);
+
+        if (relatedRecord) {
+          const relatedPlain =
+            typeof relatedRecord.toObject === "function"
+              ? relatedRecord.toObject()
+              : relatedRecord;
+
+          plainRecord._lookup[field.apiName] = {
+            _id: relatedPlain._id,
+            label:
+              relatedPlain.name ||
+              relatedPlain.label ||
+              relatedPlain.title ||
+              relatedPlain.fullName ||
+              String(relatedPlain._id),
+            record: relatedPlain,
+          };
+        }
+      } catch (error) {
+        console.error(
+          `lookup resolve error (${field.apiName} -> ${field.referenceTo}):`,
+          error
+        );
+      }
+    }
+
+    enrichedRecords.push(plainRecord);
+  }
+
+  return enrichedRecords;
+}
+
 exports.createRecord = async (req, res) => {
   try {
     const { object } = req.params;
@@ -55,7 +114,16 @@ exports.getRecords = async (req, res) => {
     if (search && String(search).trim()) {
       const searchableFields = (customObject.fields || [])
         .filter((f) =>
-          ["text", "textarea", "select", "date", "number", "email", "phone"].includes(f.type)
+          [
+            "text",
+            "textarea",
+            "select",
+            "date",
+            "number",
+            "email",
+            "phone",
+            "lookup",
+          ].includes(f.type)
         )
         .map((f) => f.apiName);
 
@@ -72,7 +140,8 @@ exports.getRecords = async (req, res) => {
       let parsedFilters = [];
 
       try {
-        parsedFilters = typeof filters === "string" ? JSON.parse(filters) : filters;
+        parsedFilters =
+          typeof filters === "string" ? JSON.parse(filters) : filters;
       } catch (e) {
         console.error("Error parseando filters:", e);
       }
@@ -80,7 +149,8 @@ exports.getRecords = async (req, res) => {
       if (Array.isArray(parsedFilters)) {
         parsedFilters.forEach((filter) => {
           const { field, operator, value } = filter || {};
-          if (!field || value === undefined || value === null || value === "") return;
+          if (!field || value === undefined || value === null || value === "")
+            return;
 
           switch (operator) {
             case "eq":
@@ -113,10 +183,15 @@ exports.getRecords = async (req, res) => {
       }
     }
 
-    if (activeView && Array.isArray(activeView.filters) && activeView.filters.length > 0) {
+    if (
+      activeView &&
+      Array.isArray(activeView.filters) &&
+      activeView.filters.length > 0
+    ) {
       activeView.filters.forEach((filter) => {
         const { field, operator, value } = filter || {};
-        if (!field || value === undefined || value === null || value === "") return;
+        if (!field || value === undefined || value === null || value === "")
+          return;
 
         switch (operator) {
           case "eq":
@@ -158,10 +233,12 @@ exports.getRecords = async (req, res) => {
 
     const total = await RecordModel.countDocuments(mongoQuery);
 
-    const records = await RecordModel.find(mongoQuery)
+    const rawRecords = await RecordModel.find(mongoQuery)
       .sort(sortConfig)
       .skip(skip)
       .limit(numericLimit);
+
+    const records = await resolveLookupData(rawRecords, customObject);
 
     res.json({
       records,
@@ -185,15 +262,23 @@ exports.getRecords = async (req, res) => {
 exports.getRecordById = async (req, res) => {
   try {
     const { object, id } = req.params;
-    const RecordModel = getCustomRecordModel(object);
 
+    const customObject = await CustomObject.findOne({ apiName: object });
+
+    if (!customObject) {
+      return res.status(404).json({ error: "Objeto no encontrado" });
+    }
+
+    const RecordModel = getCustomRecordModel(object);
     const record = await RecordModel.findById(id);
 
     if (!record) {
       return res.status(404).json({ error: "Registro no encontrado" });
     }
 
-    res.json(record);
+    const [enrichedRecord] = await resolveLookupData([record], customObject);
+
+    res.json(enrichedRecord);
   } catch (error) {
     console.error("getRecordById error:", error);
     res.status(500).json({ error: error.message });

@@ -7,6 +7,12 @@ const api = axios.create({
 /* =========================
    Objetos personalizados
 ========================= */
+export const getLookupOptions = async (object) => {
+  const res = await api.get(`/api/custom-records/${object}`, {
+    params: { page: 1, limit: 100, sortBy: "createdAt", sortOrder: "desc" },
+  });
+  return res.data;
+};
 
 export const getObjects = async () => {
   const res = await api.get("/api/custom-objects");
@@ -71,5 +77,6 @@ export const deleteRecord = async (object, id) => {
   const res = await api.delete(`/api/custom-records/${object}/${id}`);
   return res.data;
 };
+
 
 export default api;
