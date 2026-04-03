@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { getRelatedRecords } from "../services/customService";
 import { formatFieldValue } from "../engine/metadataEngine";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 
 function RelatedListSection({ parentObject, parentId, section }) {
   const { getObjectByApiNameFromCache } = useObjectMetadata();
+  const [searchParams] = useSearchParams();
+
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,11 +37,18 @@ function RelatedListSection({ parentObject, parentId, section }) {
     }
   }, [parentObject, parentId, section.relatedObject, section.relatedField]);
 
-  const columns = (section.relatedColumns || [])
-    .map((apiName) =>
-      (relatedObjectDef?.fields || []).find((field) => field.apiName === apiName)
-    )
-    .filter(Boolean);
+  const columns = useMemo(() => {
+    return (section.relatedColumns || [])
+      .map((apiName) =>
+        (relatedObjectDef?.fields || []).find((field) => field.apiName === apiName)
+      )
+      .filter(Boolean);
+  }, [section.relatedColumns, relatedObjectDef]);
+
+  const detailQuery = new URLSearchParams(searchParams);
+  if (!detailQuery.get("tab")) {
+    detailQuery.set("tab", section.relatedObject);
+  }
 
   return (
     <div className="bg-white rounded-xl shadow p-6">
@@ -59,9 +68,11 @@ function RelatedListSection({ parentObject, parentId, section }) {
                     {field.label}
                   </th>
                 ))}
+                <th className="p-3 border-b">Creado</th>
                 <th className="p-3 border-b">Acciones</th>
               </tr>
             </thead>
+
             <tbody>
               {records.map((record) => (
                 <tr key={record._id} className="hover:bg-gray-50">
@@ -70,9 +81,16 @@ function RelatedListSection({ parentObject, parentId, section }) {
                       {formatFieldValue(field, record[field.apiName], record)}
                     </td>
                   ))}
+
+                  <td className="p-3 border-b text-sm text-gray-500">
+                    {record.createdAt
+                      ? new Date(record.createdAt).toLocaleString()
+                      : "-"}
+                  </td>
+
                   <td className="p-3 border-b">
                     <Link
-                      to={`/admin/${section.relatedObject}/${record._id}/view?tab=${section.relatedObject}`}
+                      to={`/admin/${section.relatedObject}/${record._id}/view?${detailQuery.toString()}`}
                       className="px-3 py-1 bg-blue-600 text-white rounded"
                     >
                       Ver
