@@ -1,154 +1,209 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { getLookupOptions, getRecordById } from "../../services/customService";
+import { useEffect, useRef, useState } from "react";
+import { getRecordById, getRecords } from "../../services/customService";
 
-function getOptionLabel(record) {
-  return (
-    record?.name ||
-    record?.label ||
-    record?.title ||
-    record?.fullName ||
-    record?._id ||
-    ""
-  );
-}
+const lookupCache = new Map();
 
-function LookupField({ field, value, onChange, record }) {
-  const [options, setOptions] = useState([]);
+function LookupField({ field, value, onChange }) {
   const [search, setSearch] = useState("");
+  const [results, setResults] = useState([]);
+  const [selectedRecord, setSelectedRecord] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [selectedOption, setSelectedOption] = useState(null);
-  const cacheRef = useRef(new Map());
+  const [open, setOpen] = useState(false);
 
-  const currentResolvedLabel = useMemo(() => {
+  const containerRef = useRef(null);
+
+  const getCacheKey = (referenceTo, id) => `${referenceTo}:${id}`;
+
+  const getOptionLabel = (record) => {
     return (
-      record?._lookup?.[field.apiName]?.label ||
-      record?.[`${field.apiName}Label`] ||
-      null
+      record?.name ||
+      record?.label ||
+      record?.title ||
+      record?.fullName ||
+      record?._lookupLabel ||
+      record?._id
     );
-  }, [record, field.apiName]);
+  };
 
   useEffect(() => {
-    let cancelled = false;
+    function handleClickOutside(event) {
+      if (!containerRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    }
 
-    const loadSelected = async () => {
-      if (!value) {
-        setSelectedOption(null);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSelectedRecord() {
+      if (!field?.referenceTo || !value) {
+        setSelectedRecord(null);
+        setSearch("");
         return;
       }
 
-      const cacheKey = `${field.referenceTo}:${value}`;
-      const cached = cacheRef.current.get(cacheKey);
+      const cacheKey = getCacheKey(field.referenceTo, value);
+      const cachedRecord = lookupCache.get(cacheKey);
 
-      if (cached) {
-        setSelectedOption(cached);
-        return;
-      }
-
-      if (currentResolvedLabel) {
-        const option = { value, label: currentResolvedLabel };
-        cacheRef.current.set(cacheKey, option);
-        setSelectedOption(option);
+      if (cachedRecord) {
+        if (!active) return;
+        setSelectedRecord(cachedRecord);
+        setSearch(getOptionLabel(cachedRecord));
         return;
       }
 
       try {
-        const data = await getRecordById(field.referenceTo, value);
-        if (cancelled) return;
+        const record = await getRecordById(field.referenceTo, value);
+        lookupCache.set(cacheKey, record);
 
-        const option = {
-          value: data._id,
-          label: getOptionLabel(data),
-        };
-
-        cacheRef.current.set(cacheKey, option);
-        setSelectedOption(option);
+        if (!active) return;
+        setSelectedRecord(record);
+        setSearch(getOptionLabel(record));
       } catch (error) {
-        console.error("Error cargando lookup seleccionado:", error);
+        console.error("Error cargando valor seleccionado del lookup:", error);
+        if (!active) return;
+        setSelectedRecord(null);
       }
-    };
+    }
 
-    loadSelected();
+    loadSelectedRecord();
 
     return () => {
-      cancelled = true;
+      active = false;
     };
-  }, [field.referenceTo, value, currentResolvedLabel]);
+  }, [field?.referenceTo, value]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const timer = setTimeout(async () => {
-      try {
-        setLoading(true);
-
-        const response = await getLookupOptions(field.referenceTo);
-        if (cancelled) return;
-
-        const rows = response.records || [];
-        const nextOptions = rows.map((row) => ({
-          value: row._id,
-          label: getOptionLabel(row),
-        }));
-
-        nextOptions.forEach((opt) => {
-          cacheRef.current.set(`${field.referenceTo}:${opt.value}`, opt);
-        });
-
-        const filtered = search.trim()
-          ? nextOptions.filter((opt) =>
-              opt.label.toLowerCase().includes(search.trim().toLowerCase())
-            )
-          : nextOptions;
-
-        setOptions(filtered);
-      } catch (error) {
-        console.error("Error cargando opciones lookup:", error);
-        setOptions([]);
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
+    const timeout = setTimeout(() => {
+      searchRecords(search);
     }, 300);
 
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [field.referenceTo, search]);
+    return () => clearTimeout(timeout);
+  }, [search, field?.referenceTo, open]);
+
+  const searchRecords = async (term) => {
+    if (!field?.referenceTo || !open) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await getRecords(field.referenceTo, {
+        page: 1,
+        limit: 10,
+        search: term?.trim() || "",
+        sortBy: "createdAt",
+        sortOrder: "desc",
+      });
+
+      const fetchedResults = response.records || [];
+
+      fetchedResults.forEach((record) => {
+        if (record?._id) {
+          lookupCache.set(getCacheKey(field.referenceTo, record._id), record);
+        }
+      });
+
+      setResults(fetchedResults);
+    } catch (error) {
+      console.error("Error buscando lookup:", error);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelect = (record) => {
+    if (record?._id && field?.referenceTo) {
+      lookupCache.set(getCacheKey(field.referenceTo, record._id), record);
+    }
+
+    setSelectedRecord(record);
+    setSearch(getOptionLabel(record));
+    onChange(record._id);
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    setSelectedRecord(null);
+    setSearch("");
+    setResults([]);
+    onChange("");
+    setOpen(false);
+  };
 
   return (
-    <div className="space-y-2">
-      <input
-        type="text"
-        className="w-full rounded border p-2"
-        placeholder={`Buscar ${field.label || field.apiName}`}
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+    <div className="relative" ref={containerRef}>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          className="w-full rounded border p-2"
+          placeholder={
+            field?.referenceTo
+              ? `Buscar en ${field.referenceTo}...`
+              : "Buscar..."
+          }
+          value={search}
+          onChange={(e) => {
+            const nextValue = e.target.value;
+            setSearch(nextValue);
+            setOpen(true);
 
-      <select
-        className="w-full rounded border p-2"
-        value={selectedOption?.value || value || ""}
-        onChange={(e) => {
-          const selectedValue = e.target.value || "";
-          const option =
-            options.find((opt) => String(opt.value) === String(selectedValue)) ||
-            null;
+            if (!nextValue.trim()) {
+              setSelectedRecord(null);
+              onChange("");
+              setResults([]);
+            }
+          }}
+          onFocus={() => setOpen(true)}
+        />
 
-          setSelectedOption(option);
-          onChange(selectedValue);
-        }}
-      >
-        <option value="">Seleccione...</option>
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+        {(value || search) && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="rounded border bg-gray-50 px-3 py-2 hover:bg-gray-100"
+          >
+            Limpiar
+          </button>
+        )}
+      </div>
 
-      {loading && <p className="text-sm text-gray-500">Cargando opciones...</p>}
+      {selectedRecord && value && (
+        <div className="mt-2 text-xs text-gray-500">
+          Seleccionado:{" "}
+          <span className="font-medium">{getOptionLabel(selectedRecord)}</span>
+        </div>
+      )}
+
+      {open && (
+        <div className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded border bg-white shadow-lg">
+          {loading ? (
+            <div className="p-3 text-sm text-gray-500">Buscando...</div>
+          ) : results.length === 0 ? (
+            <div className="p-3 text-sm text-gray-500">
+              No se encontraron resultados
+            </div>
+          ) : (
+            results.map((record) => (
+              <button
+                key={record._id}
+                type="button"
+                className="block w-full border-b px-3 py-2 text-left hover:bg-gray-50"
+                onClick={() => handleSelect(record)}
+              >
+                <div className="font-medium">{getOptionLabel(record)}</div>
+                <div className="text-xs text-gray-500">{record._id}</div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
