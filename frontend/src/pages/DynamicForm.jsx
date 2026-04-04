@@ -52,6 +52,7 @@ function DynamicForm() {
   const activeLayout = objectDef?.layout?.[0];
   const isEditMode = Boolean(id);
   const backToListQuery = getBackToListSearch(searchParams, object);
+  const { addToast } = useToast();
 
   useEffect(() => {
     async function loadRecord() {
@@ -118,7 +119,7 @@ function DynamicForm() {
         field.required &&
         (value === undefined || value === null || value === "")
       ) {
-        alert(`${field.label} es requerido`);
+        addToast(`${field.label} es requerido`,"warning");
         return;
       }
     }
@@ -132,16 +133,16 @@ function DynamicForm() {
 
       if (isEditMode) {
         await updateRecord(object, id, payload);
-        alert("Registro actualizado 🚀");
+        addToast("Registro actualizado 🚀","success");
       } else {
         await createRecord(object, payload);
-        alert("Registro creado 🚀");
+        addToast("Registro creado 🚀","success");
       }
 
       navigate(`/admin?${backToListQuery}`);
     } catch (error) {
       console.error("Error guardando registro:", error);
-      alert(error?.response?.data?.error || "Error al guardar el registro");
+      addToast(error?.response?.data?.error || "Error al guardar el registro","error");
     }
   };
 

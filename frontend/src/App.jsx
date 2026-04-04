@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useToast, ToastContainer } from "./components/ui/ToastContainer";
 
 import Home from "./pages/Home";
 import Cart from "./pages/Cart";
@@ -52,6 +53,10 @@ function App() {
             element={<AdminRoute><AdminLayout><RecordDetailPage /></AdminLayout></AdminRoute>}
           />
         </Routes>
+        <ToastContainer
+          toasts={toast.toasts}
+          removeToast={toast.removeToast}
+        />
       </BrowserRouter>
     </ObjectMetadataProvider>
   );
