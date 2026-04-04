@@ -1,3 +1,5 @@
+const { validateAllFormulaFields } = require('../services/formulaValidator');
+
 const RESERVED_FIELD_NAMES = ["_id", "createdAt", "updatedAt", "__v"];
 
 const FIELD_TYPES = [
@@ -373,6 +375,8 @@ function validateObjectMetadata(payload = {}) {
       }
     }
   }
+
+  errors.push(...validateAllFormulaFields(payload.fields || []));
 
   const layoutApiNames = new Set();
 
