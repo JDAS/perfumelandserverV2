@@ -1,21 +1,13 @@
-import axios from "axios";
-import { useAuthStore } from "../store/authStore";
+import apiClient from './apiClient';
 
-const API_URL = "/api/products";
+const API_URL = '/api/products';
 
 export const getProducts = async () => {
-  const response = await axios.get(API_URL);
+  const response = await apiClient.get(API_URL);
   return response.data;
 };
 
 export const createProduct = async (data) => {
-  const token = useAuthStore.getState().token;
-
-  const res = await axios.post(API_URL, data, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
+  const res = await apiClient.post(API_URL, data);
   return res.data;
 };
