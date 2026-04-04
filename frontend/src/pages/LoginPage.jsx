@@ -1,21 +1,21 @@
-import { useState } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
-import axios from "axios";
-import { useAuthStore } from "../store/authStore";
+import { useState } from 'react';
+import { useNavigate, Navigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
+import { login } from '../services/authService';
 
 function LoginPage() {
   const navigate = useNavigate();
   const { user, setAuth } = useAuthStore();
 
   const [form, setForm] = useState({
-    email: "",
-    password: "",
+    email: '',
+    password: '',
   });
 
   const [loading, setLoading] = useState(false);
 
   if (user) {
-    return <Navigate to={user.isAdmin ? "/admin/settings" : "/"} />;
+    return <Navigate to={user.isAdmin ? '/admin/settings' : '/'} />;
   }
 
   const handleChange = (e) => {
@@ -29,24 +29,24 @@ function LoginPage() {
     e.preventDefault();
 
     if (!form.email || !form.password) {
-      alert("Debes completar email y contraseña");
+      alert('Debes completar email y contraseña');
       return;
     }
 
     try {
       setLoading(true);
 
-      const res = await axios.post("/api/auth/login", form);
+      const data = await login(form);
 
       setAuth({
-        user: res.data.user,
-        token: res.data.token,
+        user: data.user,
+        token: data.token,
       });
 
-      navigate(res.data.user?.isAdmin ? "/admin" : "/");
+      navigate(data.user?.isAdmin ? '/admin' : '/');
     } catch (error) {
       console.error(error);
-      alert(error?.response?.data?.message || "Error al iniciar sesión");
+      alert(error?.response?.data?.message || 'Error al iniciar sesión');
     } finally {
       setLoading(false);
     }
@@ -56,9 +56,7 @@ function LoginPage() {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow p-8">
         <h1 className="text-2xl font-bold mb-2">Iniciar sesión</h1>
-        <p className="text-sm text-gray-500 mb-6">
-          Accede a tu cuenta para continuar
-        </p>
+        <p className="text-sm text-gray-500 mb-6">Accede a tu cuenta para continuar</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -90,7 +88,7 @@ function LoginPage() {
             disabled={loading}
             className="w-full bg-black text-white rounded-lg py-3 disabled:opacity-60"
           >
-            {loading ? "Ingresando..." : "Ingresar"}
+            {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
         </form>
       </div>

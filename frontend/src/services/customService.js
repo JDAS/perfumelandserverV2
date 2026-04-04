@@ -1,47 +1,39 @@
-import axios from "axios";
-
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "",
-});
+import apiClient from './apiClient';
 
 /* =========================
    Objetos personalizados
 ========================= */
 export const getLookupOptions = async (object) => {
-  const res = await api.get(`/api/custom-records/${object}`, {
-    params: { page: 1, limit: 100, sortBy: "createdAt", sortOrder: "desc" },
+  const res = await apiClient.get(`/api/custom-records/${object}`, {
+    params: { page: 1, limit: 100, sortBy: 'createdAt', sortOrder: 'desc' },
   });
   return res.data;
 };
 
 export const getObjects = async () => {
-  const res = await api.get("/api/custom-objects");
+  const res = await apiClient.get('/api/custom-objects');
   return res.data;
 };
 
 export const getObjectByApiName = async (apiName) => {
-  const res = await api.get(`/api/custom-objects/${apiName}`);
+  const res = await apiClient.get(`/api/custom-objects/${apiName}`);
   return res.data;
 };
 
 export const createObject = async (payload) => {
-  const res = await api.post("/api/custom-objects", payload);
+  const res = await apiClient.post('/api/custom-objects', payload);
   return res.data;
 };
 
 export const updateObject = async (apiName, payload) => {
-  const res = await api.put(`/api/custom-objects/${apiName}`, payload);
+  const res = await apiClient.put(`/api/custom-objects/${apiName}`, payload);
   return res.data;
 };
 
 export const deleteObject = async (apiName) => {
-  const res = await api.delete(`/api/custom-objects/${apiName}`);
+  const res = await apiClient.delete(`/api/custom-objects/${apiName}`);
   return res.data;
 };
-
-/* =========================
-   Alias para compatibilidad
-========================= */
 
 export const getCustomObjects = getObjects;
 export const getCustomObjectByApiName = getObjectByApiName;
@@ -54,41 +46,35 @@ export const deleteCustomObject = deleteObject;
 ========================= */
 
 export const getRecords = async (object, params = {}) => {
-  const res = await api.get(`/api/custom-records/${object}`, { params });
+  const res = await apiClient.get(`/api/custom-records/${object}`, { params });
   return res.data;
 };
 
 export const getRecordById = async (object, id) => {
-  const res = await api.get(`/api/custom-records/${object}/${id}`);
+  const res = await apiClient.get(`/api/custom-records/${object}/${id}`);
   return res.data;
 };
 
 export const createRecord = async (object, payload) => {
-  const res = await api.post(`/api/custom-records/${object}`, payload);
+  const res = await apiClient.post(`/api/custom-records/${object}`, payload);
   return res.data;
 };
 
 export const updateRecord = async (object, id, payload) => {
-  const res = await api.put(`/api/custom-records/${object}/${id}`, payload);
+  const res = await apiClient.put(`/api/custom-records/${object}/${id}`, payload);
   return res.data;
 };
 
 export const deleteRecord = async (object, id) => {
-  const res = await api.delete(`/api/custom-records/${object}/${id}`);
+  const res = await apiClient.delete(`/api/custom-records/${object}/${id}`);
   return res.data;
 };
 
-export const getRelatedRecords = async (
-  object,
-  id,
-  relatedObject,
-  relatedField
-) => {
-  const res = await api.get(
+export const getRelatedRecords = async (object, id, relatedObject, relatedField) => {
+  const res = await apiClient.get(
     `/api/custom-records/${object}/${id}/related/${relatedObject}/${relatedField}`
   );
   return res.data;
 };
 
-
-export default api;
+export default apiClient;
