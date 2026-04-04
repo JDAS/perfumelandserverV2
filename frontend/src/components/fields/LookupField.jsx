@@ -1,173 +1,154 @@
-import { useEffect, useRef, useState } from "react";
-import { getRecordById, getRecords } from "../../services/customService";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getLookupOptions, getRecordById } from "../../services/customService";
 
-function LookupField({ field, value, onChange }) {
+function getOptionLabel(record) {
+  return (
+    record?.name ||
+    record?.label ||
+    record?.title ||
+    record?.fullName ||
+    record?._id ||
+    ""
+  );
+}
+
+function LookupField({ field, value, onChange, record }) {
+  const [options, setOptions] = useState([]);
   const [search, setSearch] = useState("");
-  const [results, setResults] = useState([]);
-  const [selectedRecord, setSelectedRecord] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [selectedOption, setSelectedOption] = useState(null);
+  const cacheRef = useRef(new Map());
 
-  const containerRef = useRef(null);
-
-  const getOptionLabel = (record) => {
+  const currentResolvedLabel = useMemo(() => {
     return (
-      record?.name ||
-      record?.label ||
-      record?.title ||
-      record?.fullName ||
-      record?._lookupLabel ||
-      record?._id
+      record?._lookup?.[field.apiName]?.label ||
+      record?.[`${field.apiName}Label`] ||
+      null
     );
-  };
+  }, [record, field.apiName]);
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (!containerRef.current?.contains(event.target)) {
-        setOpen(false);
+    let cancelled = false;
+
+    const loadSelected = async () => {
+      if (!value) {
+        setSelectedOption(null);
+        return;
       }
-    }
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+      const cacheKey = `${field.referenceTo}:${value}`;
+      const cached = cacheRef.current.get(cacheKey);
 
-  useEffect(() => {
-    async function loadSelectedRecord() {
-      if (!field?.referenceTo || !value) {
-        setSelectedRecord(null);
-        setSearch("");
+      if (cached) {
+        setSelectedOption(cached);
+        return;
+      }
+
+      if (currentResolvedLabel) {
+        const option = { value, label: currentResolvedLabel };
+        cacheRef.current.set(cacheKey, option);
+        setSelectedOption(option);
         return;
       }
 
       try {
-        const record = await getRecordById(field.referenceTo, value);
-        setSelectedRecord(record);
-        setSearch(getOptionLabel(record));
-      } catch (error) {
-        console.error("Error cargando valor seleccionado del lookup:", error);
-        setSelectedRecord(null);
-      }
-    }
+        const data = await getRecordById(field.referenceTo, value);
+        if (cancelled) return;
 
-    loadSelectedRecord();
-  }, [field?.referenceTo, value]);
+        const option = {
+          value: data._id,
+          label: getOptionLabel(data),
+        };
+
+        cacheRef.current.set(cacheKey, option);
+        setSelectedOption(option);
+      } catch (error) {
+        console.error("Error cargando lookup seleccionado:", error);
+      }
+    };
+
+    loadSelected();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [field.referenceTo, value, currentResolvedLabel]);
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      searchRecords(search);
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
+      try {
+        setLoading(true);
+
+        const response = await getLookupOptions(field.referenceTo);
+        if (cancelled) return;
+
+        const rows = response.records || [];
+        const nextOptions = rows.map((row) => ({
+          value: row._id,
+          label: getOptionLabel(row),
+        }));
+
+        nextOptions.forEach((opt) => {
+          cacheRef.current.set(`${field.referenceTo}:${opt.value}`, opt);
+        });
+
+        const filtered = search.trim()
+          ? nextOptions.filter((opt) =>
+              opt.label.toLowerCase().includes(search.trim().toLowerCase())
+            )
+          : nextOptions;
+
+        setOptions(filtered);
+      } catch (error) {
+        console.error("Error cargando opciones lookup:", error);
+        setOptions([]);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }, 300);
 
-    return () => clearTimeout(timeout);
-  }, [search, field?.referenceTo]);
-
-  const searchRecords = async (term) => {
-    if (!field?.referenceTo || !open) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const response = await getRecords(field.referenceTo, {
-        page: 1,
-        limit: 10,
-        search: term?.trim() || "",
-        sortBy: "createdAt",
-        sortOrder: "desc",
-      });
-
-      setResults(response.records || []);
-    } catch (error) {
-      console.error("Error buscando lookup:", error);
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSelect = (record) => {
-    setSelectedRecord(record);
-    setSearch(getOptionLabel(record));
-    onChange(record._id);
-    setOpen(false);
-  };
-
-  const handleClear = () => {
-    setSelectedRecord(null);
-    setSearch("");
-    setResults([]);
-    onChange("");
-    setOpen(false);
-  };
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [field.referenceTo, search]);
 
   return (
-    <div className="relative" ref={containerRef}>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          className="w-full rounded border p-2"
-          placeholder={
-            field?.referenceTo
-              ? `Buscar en ${field.referenceTo}...`
-              : "Buscar..."
-          }
-          value={search}
-          onChange={(e) => {
-            const nextValue = e.target.value;
-            setSearch(nextValue);
-            setOpen(true);
+    <div className="space-y-2">
+      <input
+        type="text"
+        className="w-full rounded border p-2"
+        placeholder={`Buscar ${field.label || field.apiName}`}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
 
-            if (!nextValue.trim()) {
-              setSelectedRecord(null);
-              onChange("");
-              setResults([]);
-            }
-          }}
-          onFocus={() => setOpen(true)}
-        />
+      <select
+        className="w-full rounded border p-2"
+        value={selectedOption?.value || value || ""}
+        onChange={(e) => {
+          const selectedValue = e.target.value || "";
+          const option =
+            options.find((opt) => String(opt.value) === String(selectedValue)) ||
+            null;
 
-        {(value || search) && (
-          <button
-            type="button"
-            onClick={handleClear}
-            className="rounded border bg-gray-50 px-3 py-2 hover:bg-gray-100"
-          >
-            Limpiar
-          </button>
-        )}
-      </div>
+          setSelectedOption(option);
+          onChange(selectedValue);
+        }}
+      >
+        <option value="">Seleccione...</option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
 
-      {selectedRecord && value && (
-        <div className="mt-2 text-xs text-gray-500">
-          Seleccionado:{" "}
-          <span className="font-medium">{getOptionLabel(selectedRecord)}</span>
-        </div>
-      )}
-
-      {open && (
-        <div className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded border bg-white shadow-lg">
-          {loading ? (
-            <div className="p-3 text-sm text-gray-500">Buscando...</div>
-          ) : results.length === 0 ? (
-            <div className="p-3 text-sm text-gray-500">
-              No se encontraron resultados
-            </div>
-          ) : (
-            results.map((record) => (
-              <button
-                key={record._id}
-                type="button"
-                className="block w-full border-b px-3 py-2 text-left hover:bg-gray-50"
-                onClick={() => handleSelect(record)}
-              >
-                <div className="font-medium">{getOptionLabel(record)}</div>
-                <div className="text-xs text-gray-500">{record._id}</div>
-              </button>
-            ))
-          )}
-        </div>
-      )}
+      {loading && <p className="text-sm text-gray-500">Cargando opciones...</p>}
     </div>
   );
 }

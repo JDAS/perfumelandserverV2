@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { deleteRecord, getRecords } from "../services/customService";
 import { buildListQuery, buildRecordListRequest } from "../engine/listEngine";
@@ -23,21 +23,12 @@ function ObjectListView({ objectDef }) {
     setSearchInput(listState.search || "");
   }, [listState.search]);
 
-  useEffect(() => {
-    loadRecords();
-  }, [
-    objectDef?.apiName,
-    listState.search,
-    listState.page,
-    listState.limit,
-    listState.sortBy,
-    listState.sortOrder,
-    listState.viewApiName,
-  ]);
+  const loadRecords = useCallback(async () => {
+    if (!objectDef?.apiName) return;
 
-  const loadRecords = async () => {
     try {
       setLoading(true);
+
       const data = await getRecords(
         objectDef.apiName,
         buildRecordListRequest({ objectDef, listState })
@@ -45,16 +36,14 @@ function ObjectListView({ objectDef }) {
 
       setRecords(data.records || []);
 
-      if (data.pagination) {
-        setPagination(data.pagination);
-      } else {
-        setPagination({
+      setPagination(
+        data.pagination || {
           page: data.page || 1,
           pages: data.pages || 1,
           total: data.total || 0,
           limit: data.limit || listState.limit || 10,
-        });
-      }
+        }
+      );
     } catch (error) {
       console.error(error);
       setRecords([]);
@@ -62,7 +51,11 @@ function ObjectListView({ objectDef }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [objectDef, listState]);
+
+  useEffect(() => {
+    loadRecords();
+  }, [loadRecords]);
 
   const updateParams = (changes = {}) => {
     const next = new URLSearchParams(searchParams);
@@ -87,7 +80,7 @@ function ObjectListView({ objectDef }) {
       await loadRecords();
     } catch (error) {
       console.error(error);
-      alert(error?.response?.data?.error || "Error eliminando el registro");
+      window.alert(error?.response?.data?.error || "Error eliminando el registro");
     }
   };
 
@@ -202,7 +195,6 @@ function ObjectListView({ objectDef }) {
                       </button>
                     </th>
                   ))}
-
                   <th className="border-b p-3">Creado</th>
                   <th className="border-b p-3">Acciones</th>
                 </tr>
