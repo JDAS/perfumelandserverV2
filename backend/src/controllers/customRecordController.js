@@ -6,6 +6,38 @@ const {
 } = require("../utils/formulaEngine");
 const { recalculateParentRollupsFromChild } = require("../utils/rollupEngine");
 
+function castFieldValue(field, value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+
+  switch (field.type) {
+    case "number":
+      return value === "" ? null : Number(value);
+
+    case "boolean":
+      if (typeof value === "boolean") return value;
+      return value === "true" || value === "1" || value === 1;
+
+    case "date":
+      return value === "" ? null : new Date(value);
+
+    default:
+      return value;
+  }
+}
+
+function castPayloadByMetadata(payload = {}, fields = []) {
+  const fieldMap = new Map(fields.map((field) => [field.apiName, field]));
+  const result = {};
+
+  for (const [key, value] of Object.entries(payload || {})) {
+    const field = fieldMap.get(key);
+    result[key] = field ? castFieldValue(field, value) : value;
+  }
+
+  return result;
+}
+
 async function resolveLookupData(records, customObject) {
   const lookupFields = (customObject?.fields || []).filter(
     (field) => field.type === "lookup" && field.referenceTo
@@ -77,13 +109,15 @@ exports.createRecord = async (req, res) => {
     }
 
     const cleaned = removeFormulaFields(customObject.fields, req.body);
-    const finalData = applyFormulaFields(customObject.fields, cleaned);
+    const casted = castPayloadByMetadata(cleaned, customObject.fields);
+    const finalData = applyFormulaFields(customObject.fields, casted);
 
     const record = await RecordModel.create(finalData);
 
     await recalculateParentRollupsFromChild({
       childObjectApiName: object,
-      childRecord: typeof record.toObject === "function" ? record.toObject() : record,
+      childRecord:
+        typeof record.toObject === "function" ? record.toObject() : record,
     });
 
     res.status(201).json(record);
@@ -355,10 +389,7 @@ exports.getRecordById = async (req, res) => {
 
     const [enrichedRecord] = await resolveLookupData([record], customObject);
 
-    const finalRecord = applyFormulaFields(
-      customObject.fields,
-      enrichedRecord
-    );
+    const finalRecord = applyFormulaFields(customObject.fields, enrichedRecord);
 
     res.json(finalRecord);
   } catch (error) {
@@ -388,10 +419,11 @@ exports.updateRecord = async (req, res) => {
       typeof existing.toObject === "function" ? existing.toObject() : existing;
 
     const cleaned = removeFormulaFields(customObject.fields, req.body);
+    const casted = castPayloadByMetadata(cleaned, customObject.fields);
 
     const merged = {
       ...previousRecord,
-      ...cleaned,
+      ...casted,
     };
 
     const finalData = applyFormulaFields(customObject.fields, merged);
@@ -403,7 +435,8 @@ exports.updateRecord = async (req, res) => {
 
     await recalculateParentRollupsFromChild({
       childObjectApiName: object,
-      childRecord: typeof record.toObject === "function" ? record.toObject() : record,
+      childRecord:
+        typeof record.toObject === "function" ? record.toObject() : record,
       previousChildRecord: previousRecord,
     });
 
