@@ -14,6 +14,30 @@ import {
 } from "../engine/metadataEngine";
 import { renderFieldInput } from "../components/fields/FieldRegistry";
 
+function formatValueForInput(field, value) {
+  if (value === undefined || value === null || value === "") return "";
+
+  if (field.type === "boolean") {
+    return Boolean(value);
+  }
+
+  if (field.type === "date") {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toISOString().slice(0, 10);
+  }
+
+  if (field.type === "datetime") {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+  }
+
+  return value;
+}
+
 function DynamicForm() {
   const { object, id } = useParams();
   const navigate = useNavigate();
@@ -45,10 +69,6 @@ function DynamicForm() {
 
             if (field.type === "boolean") {
               defaultValue = false;
-            } else if (field.type === "number") {
-              defaultValue = "";
-            } else if (field.type === "lookup") {
-              defaultValue = "";
             } else {
               defaultValue = "";
             }
@@ -59,12 +79,12 @@ function DynamicForm() {
 
         if (isEditMode) {
           const record = await getRecordById(object, id);
-          const allowedFieldNames = new Set(fields.map((field) => field.apiName));
 
           const cleanRecord = Object.fromEntries(
-            Object.entries(record || {}).filter(([key]) =>
-              allowedFieldNames.has(key)
-            )
+            fields.map((field) => [
+              field.apiName,
+              formatValueForInput(field, record?.[field.apiName]),
+            ])
           );
 
           setFormData({ ...initialState, ...cleanRecord });
@@ -106,9 +126,7 @@ function DynamicForm() {
     try {
       const payload = Object.fromEntries(
         fields
-          .filter(
-            (field) => !["formula", "rollup"].includes(field.type)
-          )
+          .filter((field) => !["formula", "rollup"].includes(field.type))
           .map((field) => [field.apiName, formData[field.apiName]])
       );
 
