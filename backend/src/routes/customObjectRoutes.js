@@ -1,5 +1,6 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
+const { protect, admin } = require('../middleware/authMiddleware');
 
 const {
   createObject,
@@ -7,12 +8,14 @@ const {
   getObjectByApiName,
   updateObject,
   deleteObject,
-} = require("../controllers/customObjectController");
+} = require('../controllers/customObjectController');
 
-router.post("/", createObject);
-router.get("/", getObjects);
-router.get("/:apiName", getObjectByApiName);
-router.put("/:apiName", updateObject);
-router.delete("/:apiName", deleteObject);
+router.use(protect);
+
+router.get('/', getObjects);
+router.get('/:apiName', getObjectByApiName);
+router.post('/', admin, createObject);
+router.put('/:apiName', admin, updateObject);
+router.delete('/:apiName', admin, deleteObject);
 
 module.exports = router;

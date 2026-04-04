@@ -1,25 +1,24 @@
-import { useState } from "react";
-import axios from "axios";
+import { useState } from 'react';
+import { createObject as createCustomObject } from '../services/customService';
 
 function Builder() {
-  const [name, setName] = useState("");
-  const [apiName, setApiName] = useState("");
+  const [name, setName] = useState('');
+  const [apiName, setApiName] = useState('');
   const [fields, setFields] = useState([]);
 
   const [field, setField] = useState({
-    label: "",
-    apiName: "",
-    type: "text",
+    label: '',
+    apiName: '',
+    type: 'text',
     required: false,
     options: [],
   });
 
-  const normalizeApiName = (value) =>
-    value.toLowerCase().trim().replace(/\s+/g, "_");
+  const normalizeApiName = (value) => value.toLowerCase().trim().replace(/\s+/g, '_');
 
   const addField = () => {
     if (!field.label.trim()) {
-      alert("El label del campo es obligatorio");
+      alert('El label del campo es obligatorio');
       return;
     }
 
@@ -32,14 +31,14 @@ function Builder() {
       apiName: finalApiName,
       type: field.type,
       required: field.required,
-      options: field.type === "select" ? field.options || [] : [],
+      options: field.type === 'select' ? field.options || [] : [],
     };
 
     setFields((prev) => [...prev, newField]);
     setField({
-      label: "",
-      apiName: "",
-      type: "text",
+      label: '',
+      apiName: '',
+      type: 'text',
       required: false,
       options: [],
     });
@@ -47,53 +46,46 @@ function Builder() {
 
   const createObject = async () => {
     if (!name.trim()) {
-      alert("El nombre del objeto es obligatorio");
+      alert('El nombre del objeto es obligatorio');
       return;
     }
 
-    const finalApiName = apiName.trim()
-      ? normalizeApiName(apiName)
-      : normalizeApiName(name);
+    const finalApiName = apiName.trim() ? normalizeApiName(apiName) : normalizeApiName(name);
 
     try {
-      await axios.post("/api/custom-objects", {
+      await createCustomObject({
         name: name.trim(),
         apiName: finalApiName,
         fields,
         layout: [
           {
-            label: "principal",
-            apiName: "principal",
+            label: 'principal',
+            apiName: 'principal',
             sections: [
               {
-                label: "Detalles",
+                label: 'Detalles',
                 columns: 2,
-                fields:
-                  fields.length > 0
-                    ? fields.map((f) => f.apiName)
-                    : ["name"],
+                fields: fields.length > 0 ? fields.map((f) => f.apiName) : ['name'],
               },
             ],
           },
         ],
       });
 
-      alert("Objeto creado 🚀");
-      setName("");
-      setApiName("");
+      alert('Objeto creado 🚀');
+      setName('');
+      setApiName('');
       setFields([]);
       setField({
-        label: "",
-        apiName: "",
-        type: "text",
+        label: '',
+        apiName: '',
+        type: 'text',
         required: false,
         options: [],
       });
     } catch (error) {
       console.error(error);
-      alert(
-        error?.response?.data?.error || "Error al crear el objeto"
-      );
+      alert(error?.response?.data?.error || error?.response?.data?.message || 'Error al crear el objeto');
     }
   };
 
@@ -122,26 +114,20 @@ function Builder() {
           placeholder="Label"
           className="border p-2"
           value={field.label}
-          onChange={(e) =>
-            setField({ ...field, label: e.target.value })
-          }
+          onChange={(e) => setField({ ...field, label: e.target.value })}
         />
 
         <input
           placeholder="API Name"
           className="border p-2"
           value={field.apiName}
-          onChange={(e) =>
-            setField({ ...field, apiName: e.target.value })
-          }
+          onChange={(e) => setField({ ...field, apiName: e.target.value })}
         />
 
         <select
           className="border p-2"
           value={field.type}
-          onChange={(e) =>
-            setField({ ...field, type: e.target.value, options: [] })
-          }
+          onChange={(e) => setField({ ...field, type: e.target.value, options: [] })}
         >
           <option value="text">Text</option>
           <option value="number">Number</option>
@@ -153,14 +139,12 @@ function Builder() {
           <input
             type="checkbox"
             checked={field.required}
-            onChange={(e) =>
-              setField({ ...field, required: e.target.checked })
-            }
+            onChange={(e) => setField({ ...field, required: e.target.checked })}
           />
           <span className="ml-2">Required</span>
         </label>
 
-        {field.type === "select" && (
+        {field.type === 'select' && (
           <input
             placeholder="Opciones separadas por coma"
             className="border p-2 col-span-2"
@@ -168,7 +152,7 @@ function Builder() {
               setField({
                 ...field,
                 options: e.target.value
-                  .split(",")
+                  .split(',')
                   .map((opt) => opt.trim())
                   .filter(Boolean),
               })
@@ -177,11 +161,7 @@ function Builder() {
         )}
       </div>
 
-      <button
-        onClick={addField}
-        className="bg-gray-200 px-4 py-2 mb-6"
-        type="button"
-      >
+      <button onClick={addField} className="bg-gray-200 px-4 py-2 mb-6" type="button">
         Agregar campo
       </button>
 
@@ -193,11 +173,7 @@ function Builder() {
         ))}
       </div>
 
-      <button
-        onClick={createObject}
-        className="bg-black text-white w-full py-2"
-        type="button"
-      >
+      <button onClick={createObject} className="bg-black text-white w-full py-2" type="button">
         Crear Objeto
       </button>
     </div>
