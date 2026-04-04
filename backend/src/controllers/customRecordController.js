@@ -83,7 +83,7 @@ exports.createRecord = async (req, res) => {
 
     await recalculateParentRollupsFromChild({
       childObjectApiName: object,
-      childRecord: record.toObject ? record.toObject() : record,
+      childRecord: typeof record.toObject === "function" ? record.toObject() : record,
     });
 
     res.status(201).json(record);
@@ -355,7 +355,10 @@ exports.getRecordById = async (req, res) => {
 
     const [enrichedRecord] = await resolveLookupData([record], customObject);
 
-    const finalRecord = applyFormulaFields(customObject.fields, enrichedRecord);
+    const finalRecord = applyFormulaFields(
+      customObject.fields,
+      enrichedRecord
+    );
 
     res.json(finalRecord);
   } catch (error) {
@@ -381,7 +384,8 @@ exports.updateRecord = async (req, res) => {
       return res.status(404).json({ error: "Registro no encontrado" });
     }
 
-    const previousRecord = existing.toObject();
+    const previousRecord =
+      typeof existing.toObject === "function" ? existing.toObject() : existing;
 
     const cleaned = removeFormulaFields(customObject.fields, req.body);
 
@@ -399,7 +403,7 @@ exports.updateRecord = async (req, res) => {
 
     await recalculateParentRollupsFromChild({
       childObjectApiName: object,
-      childRecord: record.toObject ? record.toObject() : record,
+      childRecord: typeof record.toObject === "function" ? record.toObject() : record,
       previousChildRecord: previousRecord,
     });
 
@@ -421,7 +425,8 @@ exports.deleteRecord = async (req, res) => {
       return res.status(404).json({ error: "Registro no encontrado" });
     }
 
-    const previousRecord = existing.toObject();
+    const previousRecord =
+      typeof existing.toObject === "function" ? existing.toObject() : existing;
 
     await RecordModel.findByIdAndDelete(id);
 
