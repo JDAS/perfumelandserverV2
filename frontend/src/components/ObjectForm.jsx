@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 import { normalizeApiName } from "../engine/metadataEngine";
 
+function optionsToMultiline(options = []) {
+  return options.join("\n");
+}
+
+function multilineToOptions(value = "") {
+  return value
+    .split(/\r?\n/)
+    .map((opt) => opt.trim())
+    .filter(Boolean);
+}
+
 function ObjectForm({ initialData = null, onSave, saving = false }) {
   const emptyField = {
     label: "",
@@ -441,17 +452,15 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
           </label>
 
           {field.type === "select" && (
-            <input
-              placeholder="Opciones separadas por coma"
+            <textarea
+              placeholder={"Una opcion por linea\nActivo\nInactivo\nPendiente, con coma"}
               className="rounded border p-2 md:col-span-2"
-              value={(field.options || []).join(", ")}
+              rows={4}
+              value={optionsToMultiline(field.options)}
               onChange={(e) =>
                 setField({
                   ...field,
-                  options: e.target.value
-                    .split(",")
-                    .map((opt) => opt.trim())
-                    .filter(Boolean),
+                  options: multilineToOptions(e.target.value),
                 })
               }
             />

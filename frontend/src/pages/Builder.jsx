@@ -1,6 +1,17 @@
 import { useState } from 'react';
 import { createObject as createCustomObject } from '../services/customService';
 
+function optionsToMultiline(options = []) {
+  return options.join('\n');
+}
+
+function multilineToOptions(value = '') {
+  return value
+    .split(/\r?\n/)
+    .map((opt) => opt.trim())
+    .filter(Boolean);
+}
+
 function Builder() {
   const [name, setName] = useState('');
   const [apiName, setApiName] = useState('');
@@ -145,16 +156,15 @@ function Builder() {
         </label>
 
         {field.type === 'select' && (
-          <input
-            placeholder="Opciones separadas por coma"
+          <textarea
+            placeholder={'Una opcion por linea\nActivo\nInactivo\nPendiente, con coma'}
             className="border p-2 col-span-2"
+            rows={4}
+            value={optionsToMultiline(field.options)}
             onChange={(e) =>
               setField({
                 ...field,
-                options: e.target.value
-                  .split(',')
-                  .map((opt) => opt.trim())
-                  .filter(Boolean),
+                options: multilineToOptions(e.target.value),
               })
             }
           />

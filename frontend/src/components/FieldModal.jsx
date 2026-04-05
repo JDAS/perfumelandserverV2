@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 import { normalizeApiName } from "../engine/metadataEngine";
 
+function optionsToMultiline(options = []) {
+  return options.join("\n");
+}
+
+function multilineToOptions(value = "") {
+  return value
+    .split(/\r?\n/)
+    .map((opt) => opt.trim())
+    .filter(Boolean);
+}
+
 function FieldModal({ open, onClose, onSave, initialData = null }) {
   const emptyField = {
     label: "",
@@ -326,20 +337,21 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
           {field.type === "select" && (
             <div>
               <label className="mb-1 block text-sm font-medium">Opciones</label>
-              <input
+              <textarea
                 className="w-full rounded border p-2"
-                value={(field.options || []).join(", ")}
+                rows={4}
+                value={optionsToMultiline(field.options)}
                 onChange={(e) =>
                   setField({
                     ...field,
-                    options: e.target.value
-                      .split(",")
-                      .map((opt) => opt.trim())
-                      .filter(Boolean),
+                    options: multilineToOptions(e.target.value),
                   })
                 }
-                placeholder="Ej: Activo, Inactivo, Pendiente"
+                placeholder={"Una opcion por linea\nActivo\nInactivo\nPendiente, con coma"}
               />
+              <p className="mt-1 text-xs text-gray-500">
+                Escribe una opcion por linea. Las comas ya forman parte del texto.
+              </p>
             </div>
           )}
 
