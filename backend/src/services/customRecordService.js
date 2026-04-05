@@ -368,8 +368,18 @@ async function saveRecord({ objectApiName, recordId = null, payload = {}, user =
 
   let record;
   if (isUpdate) {
-    Object.assign(existingRecord, finalData);
-    existingRecord.updatedBy = user?._id || existingRecord.updatedBy;
+    existingRecord.set(finalData);
+
+    // 🔥 CLAVE: marcar campos dinámicos como modificados
+    Object.keys(finalData).forEach((key) => {
+      existingRecord.markModified(key);
+    });
+
+    if (user?._id) {
+      existingRecord.set("updatedBy", user._id);
+      existingRecord.markModified("updatedBy");
+    }
+
     record = await existingRecord.save();
   } else {
     const createData = { ...finalData };
