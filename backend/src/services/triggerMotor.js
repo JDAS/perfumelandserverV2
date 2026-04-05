@@ -73,11 +73,31 @@ function evaluateConditions(conditions = [], record, previousRecord = null) {
 
 function applyTemplateValue(template, record, previousRecord = null) {
   if (typeof template === "string") {
+    const fullMatch = template.match(/^\s*\{\{(.*?)\}\}\s*$/);
+
+    // Si TODO el valor es un template, devolver el valor crudo
+    if (fullMatch) {
+      const cleanPath = String(fullMatch[1] || "").trim();
+
+      if (cleanPath.startsWith("previous.")) {
+        return getValueByPath(
+          previousRecord,
+          cleanPath.replace(/^previous\./, "")
+        );
+      }
+
+      return getValueByPath(record, cleanPath);
+    }
+
+    // Si el template está mezclado con texto, devolver string interpolado
     return template.replace(/\{\{(.*?)\}\}/g, (_, path) => {
       const cleanPath = String(path || "").trim();
 
       if (cleanPath.startsWith("previous.")) {
-        return getValueByPath(previousRecord, cleanPath.replace(/^previous\./, "")) ?? "";
+        return getValueByPath(
+          previousRecord,
+          cleanPath.replace(/^previous\./, "")
+        ) ?? "";
       }
 
       return getValueByPath(record, cleanPath) ?? "";
@@ -85,7 +105,9 @@ function applyTemplateValue(template, record, previousRecord = null) {
   }
 
   if (Array.isArray(template)) {
-    return template.map((item) => applyTemplateValue(item, record, previousRecord));
+    return template.map((item) =>
+      applyTemplateValue(item, record, previousRecord)
+    );
   }
 
   if (template && typeof template === "object") {
