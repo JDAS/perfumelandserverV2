@@ -309,6 +309,7 @@ function sanitizeObjectPayload(payload = {}, existingObject = null) {
       Array.isArray(layoutItem.sections) && layoutItem.sections.length > 0
         ? layoutItem.sections.map((section, sectionIndex) => ({
           label: String(section.label || `Sección ${sectionIndex + 1}`).trim(),
+          label: String(section.label ?? "").trim(),
           type: section.type === "relatedList" ? "relatedList" : "fields",
           columns: Number(section.columns) === 2 ? 2 : 1,
           fields: Array.isArray(section.fields) ? section.fields : [],

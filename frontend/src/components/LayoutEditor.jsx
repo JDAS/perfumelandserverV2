@@ -17,6 +17,7 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
     sections.map((section, index) => ({
       id: section.id || `section_${index}_${section.apiName || section.label}`,
       label: section.label || "Nueva sección",
+      label: section.label || "",
       type: section.type === "relatedList" ? "relatedList" : "fields",
       columns: section.type === "relatedList" ? 1 : section.columns || 1,
       fields: section.fields || [],
@@ -70,7 +71,9 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
       {
         id: `section_${Date.now()}`,
         showLabel: false,
+        label: "",
         label: "Nueva sección",
+        label: "",
         type: "fields",
         columns: 2,
         fields: [],
@@ -87,7 +90,9 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
       {
         id: `section_${Date.now()}`,
         showLabel: false,
+        label: "",
         label: "Nueva lista relacionada",
+        label: "",
         type: "relatedList",
         columns: 1,
         fields: [],
