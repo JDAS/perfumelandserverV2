@@ -99,6 +99,7 @@ function LookupField({ field, value, onChange }) {
         search: term?.trim() || "",
         sortBy: "createdAt",
         sortOrder: "desc",
+        filters: JSON.stringify(field.lookupFilters || []),
       });
 
       const fetchedResults = response.records || [];

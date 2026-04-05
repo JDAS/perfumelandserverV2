@@ -9,6 +9,7 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
     required: false,
     options: [],
     referenceTo: "",
+    lookupFilters: [],
     visibleInList: true,
     visibleInDetail: true,
     visibleInForm: true,
@@ -36,6 +37,7 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
         ...initialData,
         options: initialData.options || [],
         referenceTo: initialData.referenceTo || "",
+        lookupFilters: initialData.lookupFilters || [],
         formula: {
           expression: initialData.formula?.expression || "",
           returnType: initialData.formula?.returnType || "text",
@@ -120,6 +122,13 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
         field.type === "lookup"
           ? normalizeApiName(field.referenceTo || "")
           : "",
+      lookupFilters:
+        field.type === "lookup"
+          ? (field.lookupFilters || []).map((f) => ({
+            ...f,
+            value: normalizeValue(f.value),
+          }))
+          : [],
       visibleInForm:
         field.type === "rollup"
           ? false
@@ -127,43 +136,73 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
       formula:
         field.type === "formula"
           ? {
-              expression: String(field.formula?.expression || "").trim(),
-              returnType: field.formula?.returnType || "text",
-            }
+            expression: String(field.formula?.expression || "").trim(),
+            returnType: field.formula?.returnType || "text",
+          }
           : {
-              expression: "",
-              returnType: "text",
-            },
+            expression: "",
+            returnType: "text",
+          },
       rollup:
         field.type === "rollup"
           ? {
-              relatedObject: normalizeApiName(
-                field.rollup?.relatedObject || ""
-              ),
-              relatedField: normalizeApiName(
-                field.rollup?.relatedField || ""
-              ),
-              operation: field.rollup?.operation || "sum",
-              fieldToAggregate:
-                field.rollup?.operation === "count"
-                  ? ""
-                  : normalizeApiName(field.rollup?.fieldToAggregate || ""),
-              filterField: normalizeApiName(field.rollup?.filterField || ""),
-              filterOperator: field.rollup?.filterOperator || "eq",
-              filterValue: field.rollup?.filterValue ?? "",
-            }
+            relatedObject: normalizeApiName(
+              field.rollup?.relatedObject || ""
+            ),
+            relatedField: normalizeApiName(
+              field.rollup?.relatedField || ""
+            ),
+            operation: field.rollup?.operation || "sum",
+            fieldToAggregate:
+              field.rollup?.operation === "count"
+                ? ""
+                : normalizeApiName(field.rollup?.fieldToAggregate || ""),
+            filterField: normalizeApiName(field.rollup?.filterField || ""),
+            filterOperator: field.rollup?.filterOperator || "eq",
+            filterValue: field.rollup?.filterValue ?? "",
+          }
           : {
-              relatedObject: "",
-              relatedField: "",
-              operation: "sum",
-              fieldToAggregate: "",
-              filterField: "",
-              filterOperator: "eq",
-              filterValue: "",
-            },
+            relatedObject: "",
+            relatedField: "",
+            operation: "sum",
+            fieldToAggregate: "",
+            filterField: "",
+            filterOperator: "eq",
+            filterValue: "",
+          },
     };
-
+    const normalizeValue = (val) => {
+      if (val === "true") return true;
+      if (val === "false") return false;
+      if (val !== "" && !isNaN(val)) return Number(val);
+      return val;
+    };
     onSave(finalField);
+  };
+  const updateLookupFilter = (index, key, value) => {
+    setField((prev) => ({
+      ...prev,
+      lookupFilters: (prev.lookupFilters || []).map((f, i) =>
+        i === index ? { ...f, [key]: value } : f
+      ),
+    }));
+  };
+
+  const addLookupFilter = () => {
+    setField((prev) => ({
+      ...prev,
+      lookupFilters: [
+        ...(prev.lookupFilters || []),
+        { field: "", operator: "eq", value: "" },
+      ],
+    }));
+  };
+
+  const removeLookupFilter = (index) => {
+    setField((prev) => ({
+      ...prev,
+      lookupFilters: (prev.lookupFilters || []).filter((_, i) => i !== index),
+    }));
   };
 
   if (!open) return null;
@@ -218,6 +257,7 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
                   options: nextType === "select" ? field.options || [] : [],
                   referenceTo:
                     nextType === "lookup" ? field.referenceTo || "" : "",
+                  lookupFilters: nextType === "lookup" ? field.lookupFilters || [] : [],
                   visibleInForm:
                     nextType === "rollup"
                       ? false
@@ -225,30 +265,30 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
                   formula:
                     nextType === "formula"
                       ? field.formula || {
-                          expression: "",
-                          returnType: "text",
-                        }
+                        expression: "",
+                        returnType: "text",
+                      }
                       : { expression: "", returnType: "text" },
                   rollup:
                     nextType === "rollup"
                       ? field.rollup || {
-                          relatedObject: "",
-                          relatedField: "",
-                          operation: "sum",
-                          fieldToAggregate: "",
-                          filterField: "",
-                          filterOperator: "eq",
-                          filterValue: "",
-                        }
+                        relatedObject: "",
+                        relatedField: "",
+                        operation: "sum",
+                        fieldToAggregate: "",
+                        filterField: "",
+                        filterOperator: "eq",
+                        filterValue: "",
+                      }
                       : {
-                          relatedObject: "",
-                          relatedField: "",
-                          operation: "sum",
-                          fieldToAggregate: "",
-                          filterField: "",
-                          filterOperator: "eq",
-                          filterValue: "",
-                        },
+                        relatedObject: "",
+                        relatedField: "",
+                        operation: "sum",
+                        fieldToAggregate: "",
+                        filterField: "",
+                        filterOperator: "eq",
+                        filterValue: "",
+                      },
                 });
               }}
             >
@@ -304,24 +344,96 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
           )}
 
           {field.type === "lookup" && (
-            <div>
-              <label className="mb-1 block text-sm font-medium">
-                Objeto relacionado
-              </label>
-              <input
-                className="w-full rounded border p-2"
-                value={field.referenceTo || ""}
-                onChange={(e) =>
-                  setField({
-                    ...field,
-                    referenceTo: e.target.value,
-                  })
-                }
-                placeholder="Ej: customer"
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                Ingresá el API Name del objeto relacionado.
-              </p>
+            <div className="space-y-4 rounded border p-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Objeto relacionado
+                </label>
+                <input
+                  className="w-full rounded border p-2"
+                  value={field.referenceTo || ""}
+                  onChange={(e) =>
+                    setField({
+                      ...field,
+                      referenceTo: e.target.value,
+                    })
+                  }
+                  placeholder="Ej: product"
+                />
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="text-sm font-medium">
+                    Filtros del lookup
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={addLookupFilter}
+                    className="rounded border px-3 py-1 text-sm"
+                  >
+                    + Agregar
+                  </button>
+                </div>
+
+                {(field.lookupFilters || []).length === 0 ? (
+                  <div className="rounded border border-dashed p-3 text-sm text-gray-500">
+                    Sin filtros
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {(field.lookupFilters || []).map((filter, index) => (
+                      <div
+                        key={index}
+                        className="grid grid-cols-1 gap-3 md:grid-cols-4 border p-3 rounded"
+                      >
+                        <input
+                          className="rounded border p-2"
+                          placeholder="Campo (ej: active)"
+                          value={filter.field || ""}
+                          onChange={(e) =>
+                            updateLookupFilter(index, "field", e.target.value)
+                          }
+                        />
+
+                        <select
+                          className="rounded border p-2"
+                          value={filter.operator || "eq"}
+                          onChange={(e) =>
+                            updateLookupFilter(index, "operator", e.target.value)
+                          }
+                        >
+                          <option value="eq">=</option>
+                          <option value="ne">≠</option>
+                          <option value="gt">&gt;</option>
+                          <option value="gte">&gt;=</option>
+                          <option value="lt">&lt;</option>
+                          <option value="lte">&lt;=</option>
+                          <option value="contains">Contiene</option>
+                        </select>
+
+                        <input
+                          className="rounded border p-2"
+                          placeholder="Valor"
+                          value={filter.value ?? ""}
+                          onChange={(e) =>
+                            updateLookupFilter(index, "value", e.target.value)
+                          }
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => removeLookupFilter(index)}
+                          className="rounded border text-red-600"
+                        >
+                          X
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

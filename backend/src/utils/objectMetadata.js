@@ -1,6 +1,7 @@
 const { validateAllFormulaFields } = require('../services/formulaValidator');
 
 const RESERVED_FIELD_NAMES = ["_id", "createdAt", "updatedAt", "__v"];
+const FILTER_OPERATORS = ["eq", "ne", "gt", "gte", "lt", "lte", "contains"];
 
 const FIELD_TYPES = [
   "text",
@@ -98,6 +99,19 @@ function sanitizeField(rawField = {}, index = 0) {
       type === "lookup"
         ? normalizeApiName(rawField.referenceTo || "")
         : "",
+
+    lookupFilters:
+      type === "lookup" && Array.isArray(rawField.lookupFilters)
+        ? rawField.lookupFilters
+          .map((filter) => ({
+            field: normalizeApiName(filter.field || ""),
+            operator: FILTER_OPERATORS.includes(filter.operator)
+              ? filter.operator
+              : "eq",
+            value: filter.value,
+          }))
+          .filter((filter) => filter.field)
+        : [],
 
     visibleInList: rawField.visibleInList !== false,
     visibleInDetail: rawField.visibleInDetail !== false,
@@ -310,8 +324,26 @@ function validateObjectMetadata(payload = {}) {
       errors.push(`El campo select ${field.apiName} debe tener opciones`);
     }
 
-    if (field.type === "lookup" && !field.referenceTo) {
-      errors.push(`El campo lookup ${field.apiName} debe tener referenceTo`);
+    if (field.type === "lookup") {
+      if (!field.referenceTo) {
+        errors.push(`El campo lookup ${field.apiName} debe tener referenceTo`);
+      }
+
+      if (field.lookupFilters && !Array.isArray(field.lookupFilters)) {
+        errors.push(`El campo lookup ${field.apiName} tiene lookupFilters inválido`);
+      }
+
+      for (const filter of field.lookupFilters || []) {
+        if (!filter.field) {
+          errors.push(`El campo lookup ${field.apiName} tiene un filtro sin field`);
+        }
+
+        if (!FILTER_OPERATORS.includes(filter.operator)) {
+          errors.push(
+            `El campo lookup ${field.apiName} tiene un operador inválido: ${filter.operator}`
+          );
+        }
+      }
     }
 
     if (field.type === "formula") {
@@ -469,6 +501,7 @@ function validateObjectMetadata(payload = {}) {
 module.exports = {
   RESERVED_FIELD_NAMES,
   FIELD_TYPES,
+  FILTER_OPERATORS,
   normalizeApiName,
   sanitizeObjectPayload,
   validateObjectMetadata,

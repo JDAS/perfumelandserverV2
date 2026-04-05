@@ -8,6 +8,13 @@ const fieldSchema = new mongoose.Schema(
     required: Boolean,
     options: [String],
     referenceTo: String,
+    lookupFilters: [
+      {
+        field: String,
+        operator: String,
+        value: mongoose.Schema.Types.Mixed,
+      },
+    ],
     visibleInList: { type: Boolean, default: true },
     visibleInDetail: { type: Boolean, default: true },
     visibleInForm: { type: Boolean, default: true },
