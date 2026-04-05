@@ -75,6 +75,27 @@ function normalizeFieldDefaultValue(type, rawValue, options = []) {
       return options.includes(value) ? value : "";
     }
     case "date":
+      if (
+        rawValue &&
+        typeof rawValue === "object" &&
+        !Array.isArray(rawValue)
+      ) {
+        const mode = rawValue.mode === "relative" ? "relative" : "fixed";
+        const offsetDays = Number.isFinite(Number(rawValue.offsetDays))
+          ? Number(rawValue.offsetDays)
+          : 0;
+        const value = String(rawValue.value || "").trim();
+
+        if (mode === "relative") {
+          return {
+            mode,
+            offsetDays,
+          };
+        }
+
+        return value;
+      }
+      return String(rawValue).trim();
     case "text":
     case "textarea":
     case "email":
@@ -401,7 +422,18 @@ function validateObjectMetadata(payload = {}) {
     }
 
     if (field.type === "date" && field.defaultValue) {
-      if (Number.isNaN(new Date(field.defaultValue).getTime())) {
+      if (
+        typeof field.defaultValue === "object" &&
+        field.defaultValue !== null
+      ) {
+        if (field.defaultValue.mode !== "relative") {
+          errors.push(`El defaultValue del campo ${field.apiName} tiene un modo inválido`);
+        }
+
+        if (!Number.isFinite(Number(field.defaultValue.offsetDays ?? 0))) {
+          errors.push(`El defaultValue del campo ${field.apiName} debe tener offsetDays válido`);
+        }
+      } else if (Number.isNaN(new Date(field.defaultValue).getTime())) {
         errors.push(`El defaultValue del campo ${field.apiName} debe ser una fecha válida`);
       }
     }

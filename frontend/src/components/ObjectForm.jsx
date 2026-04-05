@@ -12,6 +12,39 @@ function multilineToOptions(value = "") {
     .filter(Boolean);
 }
 
+function normalizeDateDefaultValue(defaultValue) {
+  if (
+    defaultValue &&
+    typeof defaultValue === "object" &&
+    !Array.isArray(defaultValue)
+  ) {
+    return {
+      mode: defaultValue.mode === "relative" ? "relative" : "fixed",
+      value: String(defaultValue.value || ""),
+      offsetDays: Number(defaultValue.offsetDays || 0),
+    };
+  }
+
+  return {
+    mode: "fixed",
+    value: String(defaultValue || ""),
+    offsetDays: 0,
+  };
+}
+
+function buildDateDefaultValue(dateDefault) {
+  if (!dateDefault) return "";
+
+  if (dateDefault.mode === "relative") {
+    return {
+      mode: "relative",
+      offsetDays: Number(dateDefault.offsetDays || 0),
+    };
+  }
+
+  return String(dateDefault.value || "").trim();
+}
+
 function renderDefaultValueInput(field, setField) {
   if (["formula", "rollup"].includes(field.type)) {
     return null;
@@ -48,6 +81,64 @@ function renderDefaultValueInput(field, setField) {
           </option>
         ))}
       </select>
+    );
+  }
+
+  if (field.type === "date") {
+    const dateDefault = normalizeDateDefaultValue(field.defaultValue);
+
+    return (
+      <div className="space-y-3 md:col-span-2">
+        <select
+          className="rounded border p-2"
+          value={dateDefault.mode}
+          onChange={(e) =>
+            setField({
+              ...field,
+              defaultValue:
+                e.target.value === "relative"
+                  ? { mode: "relative", offsetDays: 0 }
+                  : { mode: "fixed", value: "" },
+            })
+          }
+        >
+          <option value="fixed">Fecha fija</option>
+          <option value="relative">Hoy +/- dias</option>
+        </select>
+
+        {dateDefault.mode === "relative" ? (
+          <input
+            placeholder="Dias desde hoy"
+            type="number"
+            className="rounded border p-2 w-full"
+            value={dateDefault.offsetDays}
+            onChange={(e) =>
+              setField({
+                ...field,
+                defaultValue: {
+                  mode: "relative",
+                  offsetDays: Number(e.target.value || 0),
+                },
+              })
+            }
+          />
+        ) : (
+          <input
+            type="date"
+            className="rounded border p-2 w-full"
+            value={dateDefault.value}
+            onChange={(e) =>
+              setField({
+                ...field,
+                defaultValue: {
+                  mode: "fixed",
+                  value: e.target.value,
+                },
+              })
+            }
+          />
+        )}
+      </div>
     );
   }
 
@@ -115,8 +206,10 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
           ...currentField,
           options: currentField.options || [],
           defaultValue:
-            currentField.defaultValue ??
-            (currentField.type === "boolean" ? false : ""),
+            currentField.type === "date"
+              ? normalizeDateDefaultValue(currentField.defaultValue)
+              : currentField.defaultValue ??
+                (currentField.type === "boolean" ? false : ""),
           referenceTo: currentField.referenceTo || "",
           formula: {
             expression: currentField.formula?.expression || "",
@@ -236,6 +329,8 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
       defaultValue:
         field.type === "formula" || field.type === "rollup"
           ? undefined
+          : field.type === "date"
+            ? buildDateDefaultValue(normalizeDateDefaultValue(field.defaultValue))
           : field.type === "boolean"
             ? Boolean(field.defaultValue)
             : String(field.defaultValue ?? "").trim(),
@@ -823,8 +918,10 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
                       ...currentField,
                       options: currentField.options || [],
                       defaultValue:
-                        currentField.defaultValue ??
-                        (currentField.type === "boolean" ? false : ""),
+                        currentField.type === "date"
+                          ? normalizeDateDefaultValue(currentField.defaultValue)
+                          : currentField.defaultValue ??
+                            (currentField.type === "boolean" ? false : ""),
                       referenceTo: currentField.referenceTo || "",
                       formula: {
                         expression: currentField.formula?.expression || "",

@@ -39,9 +39,42 @@ function formatValueForInput(field, value) {
   return value;
 }
 
+function resolveDateDefaultValue(defaultValue) {
+  if (
+    defaultValue &&
+    typeof defaultValue === "object" &&
+    !Array.isArray(defaultValue) &&
+    defaultValue.mode === "relative"
+  ) {
+    const today = new Date();
+    const resolved = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate() + (Number(defaultValue.offsetDays) || 0)
+    );
+
+    return resolved.toISOString().slice(0, 10);
+  }
+
+  if (
+    defaultValue &&
+    typeof defaultValue === "object" &&
+    !Array.isArray(defaultValue)
+  ) {
+    return defaultValue.value || "";
+  }
+
+  return defaultValue;
+}
+
 function getFieldDefaultValue(field) {
   if (field.defaultValue !== undefined && field.defaultValue !== null && field.defaultValue !== "") {
-    return formatValueForInput(field, field.defaultValue);
+    const defaultValue =
+      field.type === "date"
+        ? resolveDateDefaultValue(field.defaultValue)
+        : field.defaultValue;
+
+    return formatValueForInput(field, defaultValue);
   }
 
   if (field.type === "boolean") {

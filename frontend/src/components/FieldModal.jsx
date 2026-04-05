@@ -12,6 +12,39 @@ function multilineToOptions(value = "") {
     .filter(Boolean);
 }
 
+function normalizeDateDefaultValue(defaultValue) {
+  if (
+    defaultValue &&
+    typeof defaultValue === "object" &&
+    !Array.isArray(defaultValue)
+  ) {
+    return {
+      mode: defaultValue.mode === "relative" ? "relative" : "fixed",
+      value: String(defaultValue.value || ""),
+      offsetDays: Number(defaultValue.offsetDays || 0),
+    };
+  }
+
+  return {
+    mode: "fixed",
+    value: String(defaultValue || ""),
+    offsetDays: 0,
+  };
+}
+
+function buildDateDefaultValue(dateDefault) {
+  if (!dateDefault) return "";
+
+  if (dateDefault.mode === "relative") {
+    return {
+      mode: "relative",
+      offsetDays: Number(dateDefault.offsetDays || 0),
+    };
+  }
+
+  return String(dateDefault.value || "").trim();
+}
+
 function renderDefaultValueInput(field, setField) {
   if (["formula", "rollup"].includes(field.type)) {
     return null;
@@ -50,6 +83,75 @@ function renderDefaultValueInput(field, setField) {
             </option>
           ))}
         </select>
+      </div>
+    );
+  }
+
+  if (field.type === "date") {
+    const dateDefault = normalizeDateDefaultValue(field.defaultValue);
+
+    return (
+      <div className="space-y-3">
+        <div>
+          <label className="mb-1 block text-sm font-medium">Valor por defecto</label>
+          <select
+            className="w-full rounded border p-2"
+            value={dateDefault.mode}
+            onChange={(e) =>
+              setField({
+                ...field,
+                defaultValue:
+                  e.target.value === "relative"
+                    ? { mode: "relative", offsetDays: 0 }
+                    : { mode: "fixed", value: "" },
+              })
+            }
+          >
+            <option value="fixed">Fecha fija</option>
+            <option value="relative">Hoy +/- dias</option>
+          </select>
+        </div>
+
+        {dateDefault.mode === "relative" ? (
+          <div>
+            <label className="mb-1 block text-sm font-medium">Dias desde hoy</label>
+            <input
+              type="number"
+              className="w-full rounded border p-2"
+              value={dateDefault.offsetDays}
+              onChange={(e) =>
+                setField({
+                  ...field,
+                  defaultValue: {
+                    mode: "relative",
+                    offsetDays: Number(e.target.value || 0),
+                  },
+                })
+              }
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Usa `0` para hoy, `7` para hoy + 7 dias, `-3` para hoy - 3 dias.
+            </p>
+          </div>
+        ) : (
+          <div>
+            <label className="mb-1 block text-sm font-medium">Fecha fija</label>
+            <input
+              type="date"
+              className="w-full rounded border p-2"
+              value={dateDefault.value}
+              onChange={(e) =>
+                setField({
+                  ...field,
+                  defaultValue: {
+                    mode: "fixed",
+                    value: e.target.value,
+                  },
+                })
+              }
+            />
+          </div>
+        )}
       </div>
     );
   }
@@ -109,8 +211,10 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
         ...initialData,
         options: initialData.options || [],
         defaultValue:
-          initialData.defaultValue ??
-          (initialData.type === "boolean" ? false : ""),
+          initialData.type === "date"
+            ? normalizeDateDefaultValue(initialData.defaultValue)
+            : initialData.defaultValue ??
+              (initialData.type === "boolean" ? false : ""),
         referenceTo: initialData.referenceTo || "",
         lookupFilters: initialData.lookupFilters || [],
         formula: {
@@ -196,6 +300,8 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
       defaultValue:
         field.type === "formula" || field.type === "rollup"
           ? undefined
+          : field.type === "date"
+            ? buildDateDefaultValue(normalizeDateDefaultValue(field.defaultValue))
           : field.type === "boolean"
             ? Boolean(field.defaultValue)
             : String(field.defaultValue ?? "").trim(),

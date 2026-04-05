@@ -12,6 +12,39 @@ function multilineToOptions(value = '') {
     .filter(Boolean);
 }
 
+function normalizeDateDefaultValue(defaultValue) {
+  if (
+    defaultValue &&
+    typeof defaultValue === 'object' &&
+    !Array.isArray(defaultValue)
+  ) {
+    return {
+      mode: defaultValue.mode === 'relative' ? 'relative' : 'fixed',
+      value: String(defaultValue.value || ''),
+      offsetDays: Number(defaultValue.offsetDays || 0),
+    };
+  }
+
+  return {
+    mode: 'fixed',
+    value: String(defaultValue || ''),
+    offsetDays: 0,
+  };
+}
+
+function buildDateDefaultValue(dateDefault) {
+  if (!dateDefault) return '';
+
+  if (dateDefault.mode === 'relative') {
+    return {
+      mode: 'relative',
+      offsetDays: Number(dateDefault.offsetDays || 0),
+    };
+  }
+
+  return String(dateDefault.value || '').trim();
+}
+
 function Builder() {
   const [name, setName] = useState('');
   const [apiName, setApiName] = useState('');
@@ -47,6 +80,8 @@ function Builder() {
       defaultValue:
         field.type === 'boolean'
           ? Boolean(field.defaultValue)
+          : field.type === 'date'
+            ? buildDateDefaultValue(normalizeDateDefaultValue(field.defaultValue))
           : String(field.defaultValue ?? '').trim(),
     };
 
@@ -203,7 +238,60 @@ function Builder() {
           </label>
         )}
 
-        {!['select', 'boolean'].includes(field.type) && (
+        {field.type === 'date' && (
+          <>
+            <select
+              className="border p-2 col-span-2"
+              value={normalizeDateDefaultValue(field.defaultValue).mode}
+              onChange={(e) =>
+                setField({
+                  ...field,
+                  defaultValue:
+                    e.target.value === 'relative'
+                      ? { mode: 'relative', offsetDays: 0 }
+                      : { mode: 'fixed', value: '' },
+                })
+              }
+            >
+              <option value="fixed">Fecha fija</option>
+              <option value="relative">Hoy +/- dias</option>
+            </select>
+            {normalizeDateDefaultValue(field.defaultValue).mode === 'relative' ? (
+              <input
+                placeholder="Dias desde hoy"
+                className="border p-2 col-span-2"
+                type="number"
+                value={normalizeDateDefaultValue(field.defaultValue).offsetDays}
+                onChange={(e) =>
+                  setField({
+                    ...field,
+                    defaultValue: {
+                      mode: 'relative',
+                      offsetDays: Number(e.target.value || 0),
+                    },
+                  })
+                }
+              />
+            ) : (
+              <input
+                className="border p-2 col-span-2"
+                type="date"
+                value={normalizeDateDefaultValue(field.defaultValue).value}
+                onChange={(e) =>
+                  setField({
+                    ...field,
+                    defaultValue: {
+                      mode: 'fixed',
+                      value: e.target.value,
+                    },
+                  })
+                }
+              />
+            )}
+          </>
+        )}
+
+        {!['select', 'boolean', 'date'].includes(field.type) && (
           <input
             placeholder="Valor por defecto"
             className="border p-2 col-span-2"

@@ -12,6 +12,27 @@ function isBlank(value) {
   return value === undefined || value === null || value === '';
 }
 
+function resolveDateDefaultValue(defaultValue) {
+  if (!defaultValue) return defaultValue;
+
+  if (
+    typeof defaultValue === 'object' &&
+    !Array.isArray(defaultValue) &&
+    defaultValue.mode === 'relative'
+  ) {
+    const now = new Date();
+    const resolved = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + (Number(defaultValue.offsetDays) || 0)
+    );
+
+    return resolved.toISOString().slice(0, 10);
+  }
+
+  return defaultValue;
+}
+
 function castFieldValue(field, value) {
   if (value === undefined) return undefined;
   if (value === null) return null;
@@ -28,7 +49,7 @@ function castFieldValue(field, value) {
       }
       return Boolean(value);
     case 'date':
-      return value === '' ? null : new Date(value);
+      return value === '' ? null : new Date(resolveDateDefaultValue(value));
     case 'text':
     case 'textarea':
     case 'email':
@@ -168,5 +189,6 @@ module.exports = {
   buildFieldMap,
   buildDefaultPayload,
   castFieldValue,
+  resolveDateDefaultValue,
   validateRecordPayload,
 };
