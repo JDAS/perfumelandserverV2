@@ -4,6 +4,8 @@ const { applyFormulaFields } = require("../utils/formulaEngine");
 const { recalculateParentRollupsFromChild } = require("../utils/rollupEngine");
 const { validateRecordPayload } = require("./recordValidationService");
 const { runTriggers } = require("./triggerEngine");
+console.log("TRIGGER ENGINE LOADED:", triggerEngine);
+console.log("runTriggers TYPE:", typeof triggerEngine.runTriggers);
 
 async function getObjectOrThrow(apiName) {
   const customObject = await CustomObject.findOne({ apiName }).lean();
