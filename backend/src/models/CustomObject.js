@@ -7,6 +7,7 @@ const fieldSchema = new mongoose.Schema(
     type: String,
     required: Boolean,
     options: [String],
+    defaultValue: mongoose.Schema.Types.Mixed,
     referenceTo: String,
     lookupFilters: [
       {

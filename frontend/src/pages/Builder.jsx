@@ -23,6 +23,7 @@ function Builder() {
     type: 'text',
     required: false,
     options: [],
+    defaultValue: '',
   });
 
   const normalizeApiName = (value) => value.toLowerCase().trim().replace(/\s+/g, '_');
@@ -43,6 +44,10 @@ function Builder() {
       type: field.type,
       required: field.required,
       options: field.type === 'select' ? field.options || [] : [],
+      defaultValue:
+        field.type === 'boolean'
+          ? Boolean(field.defaultValue)
+          : String(field.defaultValue ?? '').trim(),
     };
 
     setFields((prev) => [...prev, newField]);
@@ -52,6 +57,7 @@ function Builder() {
       type: 'text',
       required: false,
       options: [],
+      defaultValue: '',
     });
   };
 
@@ -93,6 +99,7 @@ function Builder() {
         type: 'text',
         required: false,
         options: [],
+        defaultValue: '',
       });
     } catch (error) {
       console.error(error);
@@ -138,11 +145,12 @@ function Builder() {
         <select
           className="border p-2"
           value={field.type}
-          onChange={(e) => setField({ ...field, type: e.target.value, options: [] })}
+          onChange={(e) => setField({ ...field, type: e.target.value, options: [], defaultValue: '' })}
         >
           <option value="text">Text</option>
           <option value="number">Number</option>
           <option value="select">Select</option>
+          <option value="boolean">Boolean</option>
           <option value="date">Date</option>
         </select>
 
@@ -156,17 +164,52 @@ function Builder() {
         </label>
 
         {field.type === 'select' && (
-          <textarea
-            placeholder={'Una opcion por linea\nActivo\nInactivo\nPendiente, con coma'}
+          <>
+            <textarea
+              placeholder={'Una opcion por linea\nActivo\nInactivo\nPendiente, con coma'}
+              className="border p-2 col-span-2"
+              rows={4}
+              value={optionsToMultiline(field.options)}
+              onChange={(e) =>
+                setField({
+                  ...field,
+                  options: multilineToOptions(e.target.value),
+                })
+              }
+            />
+            <select
+              className="border p-2 col-span-2"
+              value={field.defaultValue ?? ''}
+              onChange={(e) => setField({ ...field, defaultValue: e.target.value })}
+            >
+              <option value="">Sin valor por defecto</option>
+              {(field.options || []).map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+
+        {field.type === 'boolean' && (
+          <label className="flex items-center col-span-2">
+            <input
+              type="checkbox"
+              checked={Boolean(field.defaultValue)}
+              onChange={(e) => setField({ ...field, defaultValue: e.target.checked })}
+            />
+            <span className="ml-2">Valor por defecto</span>
+          </label>
+        )}
+
+        {!['select', 'boolean'].includes(field.type) && (
+          <input
+            placeholder="Valor por defecto"
             className="border p-2 col-span-2"
-            rows={4}
-            value={optionsToMultiline(field.options)}
-            onChange={(e) =>
-              setField({
-                ...field,
-                options: multilineToOptions(e.target.value),
-              })
-            }
+            type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+            value={field.defaultValue ?? ''}
+            onChange={(e) => setField({ ...field, defaultValue: e.target.value })}
           />
         )}
       </div>

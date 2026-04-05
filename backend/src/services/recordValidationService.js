@@ -42,6 +42,25 @@ function castFieldValue(field, value) {
   }
 }
 
+function buildDefaultPayload(objectDefinition) {
+  const defaults = {};
+
+  for (const field of objectDefinition?.fields || []) {
+    if (READ_ONLY_FIELD_TYPES.has(field.type)) continue;
+
+    if (field.defaultValue !== undefined) {
+      defaults[field.apiName] = castFieldValue(field, field.defaultValue);
+      continue;
+    }
+
+    if (field.type === 'boolean') {
+      defaults[field.apiName] = false;
+    }
+  }
+
+  return defaults;
+}
+
 async function validateRecordPayload(payload = {}, objectDefinition, { partial = false } = {}) {
   const fieldMap = buildFieldMap(objectDefinition?.fields || []);
   const sanitizedPayload = {};
@@ -147,6 +166,7 @@ module.exports = {
   READ_ONLY_FIELD_TYPES,
   RESERVED_FIELDS,
   buildFieldMap,
+  buildDefaultPayload,
   castFieldValue,
   validateRecordPayload,
 };

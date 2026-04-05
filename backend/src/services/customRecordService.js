@@ -2,7 +2,7 @@ const CustomObject = require("../models/CustomObject");
 const { getCustomRecordModel } = require("../models/CustomRecord");
 const { applyFormulaFields } = require("../utils/formulaEngine");
 const { recalculateParentRollupsFromChild } = require("../utils/rollupEngine");
-const { validateRecordPayload } = require("./recordValidationService");
+const { buildDefaultPayload, validateRecordPayload } = require("./recordValidationService");
 const { runTriggers } = require("./triggerMotor");
 const triggerEngine = require("./triggerMotor");
 console.log("TRIGGER ENGINE LOADED:", triggerEngine);
@@ -324,7 +324,11 @@ async function saveRecord({ objectApiName, recordId = null, payload = {}, user =
         : { ...existingRecord };
   }
 
-  const validation = await validateRecordPayload(payload, objectDefinition, {
+  const payloadWithDefaults = isUpdate
+    ? payload
+    : { ...buildDefaultPayload(objectDefinition), ...(payload || {}) };
+
+  const validation = await validateRecordPayload(payloadWithDefaults, objectDefinition, {
     partial: isUpdate,
   });
 

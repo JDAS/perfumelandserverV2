@@ -39,6 +39,18 @@ function formatValueForInput(field, value) {
   return value;
 }
 
+function getFieldDefaultValue(field) {
+  if (field.defaultValue !== undefined && field.defaultValue !== null && field.defaultValue !== "") {
+    return formatValueForInput(field, field.defaultValue);
+  }
+
+  if (field.type === "boolean") {
+    return false;
+  }
+
+  return "";
+}
+
 function DynamicForm() {
   const { object, id } = useParams();
   const navigate = useNavigate();
@@ -67,15 +79,7 @@ function DynamicForm() {
 
         const initialState = Object.fromEntries(
           fields.map((field) => {
-            let defaultValue = "";
-
-            if (field.type === "boolean") {
-              defaultValue = false;
-            } else {
-              defaultValue = "";
-            }
-
-            return [field.apiName, defaultValue];
+            return [field.apiName, getFieldDefaultValue(field)];
           })
         );
 

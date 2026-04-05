@@ -12,6 +12,58 @@ function multilineToOptions(value = "") {
     .filter(Boolean);
 }
 
+function renderDefaultValueInput(field, setField) {
+  if (["formula", "rollup"].includes(field.type)) {
+    return null;
+  }
+
+  if (field.type === "boolean") {
+    return (
+      <label className="flex items-center gap-2 rounded border p-2 md:col-span-2">
+        <input
+          type="checkbox"
+          checked={Boolean(field.defaultValue)}
+          onChange={(e) =>
+            setField({ ...field, defaultValue: e.target.checked })
+          }
+        />
+        Valor por defecto
+      </label>
+    );
+  }
+
+  if (field.type === "select") {
+    return (
+      <select
+        className="rounded border p-2 md:col-span-2"
+        value={field.defaultValue ?? ""}
+        onChange={(e) =>
+          setField({ ...field, defaultValue: e.target.value })
+        }
+      >
+        <option value="">Sin valor por defecto</option>
+        {(field.options || []).map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  return (
+    <input
+      placeholder="Valor por defecto"
+      type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
+      className="rounded border p-2 md:col-span-2"
+      value={field.defaultValue ?? ""}
+      onChange={(e) =>
+        setField({ ...field, defaultValue: e.target.value })
+      }
+    />
+  );
+}
+
 function ObjectForm({ initialData = null, onSave, saving = false }) {
   const emptyField = {
     label: "",
@@ -19,6 +71,7 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
     type: "text",
     required: false,
     options: [],
+    defaultValue: "",
     referenceTo: "",
     visibleInList: true,
     visibleInDetail: true,
@@ -61,6 +114,9 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
           ...emptyField,
           ...currentField,
           options: currentField.options || [],
+          defaultValue:
+            currentField.defaultValue ??
+            (currentField.type === "boolean" ? false : ""),
           referenceTo: currentField.referenceTo || "",
           formula: {
             expression: currentField.formula?.expression || "",
@@ -177,6 +233,12 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
           ? false
           : field.required,
       options: field.type === "select" ? field.options || [] : [],
+      defaultValue:
+        field.type === "formula" || field.type === "rollup"
+          ? undefined
+          : field.type === "boolean"
+            ? Boolean(field.defaultValue)
+            : String(field.defaultValue ?? "").trim(),
       referenceTo:
         field.type === "lookup"
           ? normalizeApiName(field.referenceTo)
@@ -452,18 +514,34 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
           </label>
 
           {field.type === "select" && (
-            <textarea
-              placeholder={"Una opcion por linea\nActivo\nInactivo\nPendiente, con coma"}
-              className="rounded border p-2 md:col-span-2"
-              rows={4}
-              value={optionsToMultiline(field.options)}
-              onChange={(e) =>
-                setField({
-                  ...field,
-                  options: multilineToOptions(e.target.value),
-                })
-              }
-            />
+            <>
+              <textarea
+                placeholder={"Una opcion por linea\nActivo\nInactivo\nPendiente, con coma"}
+                className="rounded border p-2 md:col-span-2"
+                rows={4}
+                value={optionsToMultiline(field.options)}
+                onChange={(e) =>
+                  setField({
+                    ...field,
+                    options: multilineToOptions(e.target.value),
+                  })
+                }
+              />
+              <select
+                className="rounded border p-2 md:col-span-2"
+                value={field.defaultValue ?? ""}
+                onChange={(e) =>
+                  setField({ ...field, defaultValue: e.target.value })
+                }
+              >
+                <option value="">Sin valor por defecto</option>
+                {(field.options || []).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </>
           )}
 
           {field.type === "lookup" && (
@@ -479,6 +557,11 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
               }
             />
           )}
+
+          {!["select", "lookup", "formula", "rollup"].includes(field.type) &&
+            renderDefaultValueInput(field, setField)}
+
+          {field.type === "lookup" && renderDefaultValueInput(field, setField)}
 
           {field.type === "formula" && (
             <>
@@ -739,6 +822,9 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
                       ...emptyField,
                       ...currentField,
                       options: currentField.options || [],
+                      defaultValue:
+                        currentField.defaultValue ??
+                        (currentField.type === "boolean" ? false : ""),
                       referenceTo: currentField.referenceTo || "",
                       formula: {
                         expression: currentField.formula?.expression || "",

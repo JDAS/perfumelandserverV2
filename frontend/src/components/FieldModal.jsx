@@ -12,6 +12,66 @@ function multilineToOptions(value = "") {
     .filter(Boolean);
 }
 
+function renderDefaultValueInput(field, setField) {
+  if (["formula", "rollup"].includes(field.type)) {
+    return null;
+  }
+
+  if (field.type === "boolean") {
+    return (
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={Boolean(field.defaultValue)}
+          onChange={(e) =>
+            setField({ ...field, defaultValue: e.target.checked })
+          }
+        />
+        <span>Valor por defecto</span>
+      </label>
+    );
+  }
+
+  if (field.type === "select") {
+    return (
+      <div>
+        <label className="mb-1 block text-sm font-medium">Valor por defecto</label>
+        <select
+          className="w-full rounded border p-2"
+          value={field.defaultValue ?? ""}
+          onChange={(e) =>
+            setField({ ...field, defaultValue: e.target.value })
+          }
+        >
+          <option value="">Sin valor por defecto</option>
+          {(field.options || []).map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-medium">Valor por defecto</label>
+      <input
+        type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
+        className="w-full rounded border p-2"
+        value={field.defaultValue ?? ""}
+        onChange={(e) =>
+          setField({
+            ...field,
+            defaultValue: field.type === "number" ? e.target.value : e.target.value,
+          })
+        }
+      />
+    </div>
+  );
+}
+
 function FieldModal({ open, onClose, onSave, initialData = null }) {
   const emptyField = {
     label: "",
@@ -19,6 +79,7 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
     type: "text",
     required: false,
     options: [],
+    defaultValue: "",
     referenceTo: "",
     lookupFilters: [],
     visibleInList: true,
@@ -47,6 +108,9 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
         ...emptyField,
         ...initialData,
         options: initialData.options || [],
+        defaultValue:
+          initialData.defaultValue ??
+          (initialData.type === "boolean" ? false : ""),
         referenceTo: initialData.referenceTo || "",
         lookupFilters: initialData.lookupFilters || [],
         formula: {
@@ -129,6 +193,12 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
           ? false
           : field.required,
       options: field.type === "select" ? field.options : [],
+      defaultValue:
+        field.type === "formula" || field.type === "rollup"
+          ? undefined
+          : field.type === "boolean"
+            ? Boolean(field.defaultValue)
+            : String(field.defaultValue ?? "").trim(),
       referenceTo:
         field.type === "lookup"
           ? normalizeApiName(field.referenceTo || "")
@@ -354,6 +424,8 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
               </p>
             </div>
           )}
+
+          {renderDefaultValueInput(field, setField)}
 
           {field.type === "lookup" && (
             <div className="space-y-4 rounded border p-4">

@@ -34,11 +34,57 @@ function createDefaultField() {
     type: "text",
     required: true,
     options: [],
+    defaultValue: "",
     referenceTo: "",
     visibleInList: true,
     visibleInDetail: true,
     visibleInForm: true,
   };
+}
+
+function normalizeFieldDefaultValue(type, rawValue, options = []) {
+  if (type === "formula" || type === "rollup") {
+    return undefined;
+  }
+
+  if (rawValue === undefined) {
+    return type === "boolean" ? false : "";
+  }
+
+  if (rawValue === null) {
+    return "";
+  }
+
+  switch (type) {
+    case "number": {
+      if (rawValue === "") return "";
+      const parsed = Number(rawValue);
+      return Number.isNaN(parsed) ? "" : parsed;
+    }
+    case "boolean":
+      if (typeof rawValue === "boolean") return rawValue;
+      if (typeof rawValue === "string") {
+        const normalized = rawValue.trim().toLowerCase();
+        if (["true", "1", "yes", "si"].includes(normalized)) return true;
+        if (["false", "0", "no", ""].includes(normalized)) return false;
+      }
+      return Boolean(rawValue);
+    case "select": {
+      const value = String(rawValue).trim();
+      if (!value) return "";
+      return options.includes(value) ? value : "";
+    }
+    case "date":
+    case "text":
+    case "textarea":
+    case "email":
+    case "phone":
+    case "url":
+    case "lookup":
+      return String(rawValue).trim();
+    default:
+      return rawValue;
+  }
 }
 
 function createDefaultListView() {
@@ -94,6 +140,20 @@ function sanitizeField(rawField = {}, index = 0) {
           )
         )
         : [],
+
+    defaultValue: normalizeFieldDefaultValue(
+      type,
+      rawField.defaultValue,
+      type === "select"
+        ? Array.from(
+          new Set(
+            (rawField.options || [])
+              .map((opt) => String(opt).trim())
+              .filter(Boolean)
+          )
+        )
+        : []
+    ),
 
     referenceTo:
       type === "lookup"
@@ -322,6 +382,28 @@ function validateObjectMetadata(payload = {}) {
       (!Array.isArray(field.options) || field.options.length === 0)
     ) {
       errors.push(`El campo select ${field.apiName} debe tener opciones`);
+    }
+
+    if (
+      field.type === "select" &&
+      field.defaultValue &&
+      !field.options.includes(field.defaultValue)
+    ) {
+      errors.push(`El defaultValue del campo ${field.apiName} debe existir en options`);
+    }
+
+    if (
+      field.type === "number" &&
+      field.defaultValue !== "" &&
+      typeof field.defaultValue !== "number"
+    ) {
+      errors.push(`El defaultValue del campo ${field.apiName} debe ser numérico`);
+    }
+
+    if (field.type === "date" && field.defaultValue) {
+      if (Number.isNaN(new Date(field.defaultValue).getTime())) {
+        errors.push(`El defaultValue del campo ${field.apiName} debe ser una fecha válida`);
+      }
     }
 
     if (field.type === "lookup") {
