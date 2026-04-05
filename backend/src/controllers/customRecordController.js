@@ -5,6 +5,7 @@ const {
   getRecordByIdEnriched,
   getRelatedRecords,
   saveRecord,
+  deleteRecordWithTriggers,
 } = require("../services/customRecordService");
 
 exports.createRecord = async (req, res) => {
@@ -111,28 +112,17 @@ exports.updateRecord = async (req, res) => {
 exports.deleteRecord = async (req, res) => {
   try {
     const { object, id } = req.params;
-    const RecordModel = getCustomRecordModel(object);
 
-    const existing = await RecordModel.findById(id);
-
-    if (!existing) {
-      return res.status(404).json({ error: "Registro no encontrado" });
-    }
-
-    const previousRecord =
-      typeof existing.toObject === "function" ? existing.toObject() : existing;
-
-    await RecordModel.findByIdAndDelete(id);
-
-    await recalculateParentRollupsFromChild({
-      childObjectApiName: object,
-      childRecord: null,
-      previousChildRecord: previousRecord,
+    await deleteRecordWithTriggers({
+      objectApiName: object,
+      recordId: id,
     });
 
     res.json({ message: "Registro eliminado correctamente" });
   } catch (error) {
     console.error("deleteRecord error:", error);
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({
+      error: error.message,
+    });
   }
 };

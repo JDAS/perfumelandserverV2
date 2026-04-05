@@ -1,111 +1,159 @@
 const mongoose = require("mongoose");
-const { FIELD_TYPES } = require("../utils/objectMetadata");
 
 const fieldSchema = new mongoose.Schema(
   {
-    label: { type: String, required: true, trim: true },
-    apiName: { type: String, required: true, trim: true },
-    type: { type: String, default: "text", enum: FIELD_TYPES },
-    referenceTo: { type: String, default: "", trim: true },
-    required: { type: Boolean, default: false },
-    options: { type: [String], default: [] },
+    label: String,
+    apiName: String,
+    type: String,
+    required: Boolean,
+    options: [String],
+    referenceTo: String,
     visibleInList: { type: Boolean, default: true },
     visibleInDetail: { type: Boolean, default: true },
     visibleInForm: { type: Boolean, default: true },
-    formula: {
-      expression: { type: String, default: "" },
-      returnType: {
-        type: String,
-        enum: ["text", "number", "boolean", "date"],
-        default: "text",
-      },
-    },
+    formula: { type: String, default: "" },
     rollup: {
-      relatedObject: { type: String, default: "" },
-      relatedField: { type: String, default: "" },
+      relationshipField: { type: String, default: "" },
+      aggregateField: { type: String, default: "" },
       operation: {
         type: String,
-        enum: ["sum", "count", "avg", "min", "max"],
-        default: "sum",
+        enum: ["count", "sum", "avg", "min", "max"],
+        default: "count",
       },
-      fieldToAggregate: { type: String, default: "" },
       filterField: { type: String, default: "" },
-      filterOperator: {
-        type: String,
-        enum: ["eq", "ne", "gt", "gte", "lt", "lte", "contains"],
-        default: "eq",
-      },
-      filterValue: { type: mongoose.Schema.Types.Mixed, default: "" },
+      filterValue: { type: mongoose.Schema.Types.Mixed, default: null },
     },
   },
   { _id: false }
 );
 
-const sectionSchema = new mongoose.Schema(
+const layoutSectionSchema = new mongoose.Schema(
   {
-    label: { type: String, required: true, trim: true },
-    type: {
-      type: String,
-      default: "fields",
-      enum: ["fields", "relatedList"],
-    },
-    columns: { type: Number, required: true, default: 1 },
-
-    fields: { type: [String], default: [] },
-
-    relatedObject: { type: String, default: "", trim: true },
-    relatedField: { type: String, default: "", trim: true },
-    relatedColumns: { type: [String], default: [] },
+    label: String,
+    columns: { type: Number, default: 2 },
+    fields: [String],
   },
   { _id: false }
 );
 
 const layoutSchema = new mongoose.Schema(
   {
-    label: { type: String, required: true, trim: true },
-    apiName: { type: String, required: true, trim: true },
-    sections: { type: [sectionSchema], default: [] },
+    label: String,
+    apiName: String,
+    sections: [layoutSectionSchema],
+    isDefault: { type: Boolean, default: false },
   },
   { _id: false }
 );
 
 const listViewFilterSchema = new mongoose.Schema(
   {
-    field: { type: String, required: true, trim: true },
-    operator: {
-      type: String,
-      default: "eq",
-      enum: ["eq", "ne", "gt", "gte", "lt", "lte", "contains"],
-    },
-    value: { type: mongoose.Schema.Types.Mixed, required: true },
+    field: String,
+    operator: String,
+    value: mongoose.Schema.Types.Mixed,
   },
   { _id: false }
 );
 
 const listViewSchema = new mongoose.Schema(
   {
-    label: { type: String, required: true, trim: true },
-    apiName: { type: String, required: true, trim: true },
+    label: String,
+    apiName: String,
     isDefault: { type: Boolean, default: false },
-    columns: { type: [String], default: [] },
-    filters: { type: [listViewFilterSchema], default: [] },
-    sortBy: { type: String, default: "createdAt" },
-    sortOrder: { type: String, default: "desc", enum: ["asc", "desc"] },
+    columns: [String],
+    filters: [listViewFilterSchema],
+    sortBy: String,
+    sortOrder: { type: String, enum: ["asc", "desc"], default: "desc" },
   },
   { _id: false }
 );
 
+// ===== NUEVO: TRIGGERS =====
+const triggerConditionSchema = new mongoose.Schema(
+  {
+    field: { type: String, required: true },
+    operator: {
+      type: String,
+      required: true,
+      enum: [
+        "eq",
+        "ne",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "contains",
+        "changed",
+        "isEmpty",
+        "isNotEmpty",
+      ],
+    },
+    value: { type: mongoose.Schema.Types.Mixed, default: null },
+  },
+  { _id: false }
+);
+
+const triggerActionSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      required: true,
+      enum: ["updateField", "createRecord", "log"],
+    },
+    config: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+  },
+  { _id: false }
+);
+
+const automationTriggerSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    isActive: { type: Boolean, default: true },
+    when: {
+      type: String,
+      required: true,
+      enum: [
+        "beforeInsert",
+        "afterInsert",
+        "beforeUpdate",
+        "afterUpdate",
+        "beforeDelete",
+        "afterDelete",
+      ],
+    },
+    runOrder: { type: Number, default: 0 },
+    stopOnError: { type: Boolean, default: true },
+    conditions: {
+      type: [triggerConditionSchema],
+      default: [],
+    },
+    actions: {
+      type: [triggerActionSchema],
+      default: [],
+    },
+  },
+  { _id: false }
+);
+// ===== FIN NUEVO =====
+
 const customObjectSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
-    pluralLabel: { type: String, trim: true },
-    description: { type: String, trim: true, default: "" },
-    apiName: { type: String, required: true, unique: true, trim: true },
-    active: { type: Boolean, default: true },
-    tabsEnabled: { type: Boolean, default: true },
+    name: { type: String, required: true },
+    apiName: { type: String, required: true, unique: true },
+    description: { type: String, default: "" },
     fields: { type: [fieldSchema], default: [] },
     layout: { type: [layoutSchema], default: [] },
     listViews: { type: [listViewSchema], default: [] },
+
+    // ===== NUEVO =====
+    automationTriggers: {
+      type: [automationTriggerSchema],
+      default: [],
+    },
+    // ===== FIN NUEVO =====
   },
   { timestamps: true }
 );

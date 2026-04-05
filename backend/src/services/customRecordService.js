@@ -1,3 +1,4 @@
+const { runTriggers } = require("./triggerEngine");
 const CustomObject = require("../models/CustomObject");
 const { getCustomRecordModel } = require("../models/CustomRecord");
 const { applyFormulaFields } = require("../utils/formulaEngine");
@@ -341,10 +342,26 @@ async function saveRecord({ objectApiName, recordId = null, payload = {}, user =
   }
 
   const baseRecord = isUpdate ? previousRecord : {};
-  const finalData = applyFormulaFields(objectDefinition.fields, {
+
+  let finalData = applyFormulaFields(objectDefinition.fields, {
     ...baseRecord,
     ...validation.sanitizedPayload,
   });
+
+  // ===== BEFORE TRIGGERS =====
+  const beforeEvent = isUpdate ? "beforeUpdate" : "beforeInsert";
+
+  finalData = await runTriggers({
+    objectDefinition,
+    when: beforeEvent,
+    objectApiName,
+    record: finalData,
+    previousRecord,
+  });
+
+  // Reaplicar fórmulas por si un trigger cambió campos base
+  finalData = applyFormulaFields(objectDefinition.fields, finalData);
+  // ===== FIN BEFORE TRIGGERS =====
 
   let record;
   if (isUpdate) {
@@ -353,15 +370,29 @@ async function saveRecord({ objectApiName, recordId = null, payload = {}, user =
     record = await existingRecord.save();
   } else {
     const createData = { ...finalData };
+
     if (user?._id) {
       createData.createdBy = user._id;
       createData.updatedBy = user._id;
     }
+
     record = await RecordModel.create(createData);
   }
 
   const plainRecord =
     typeof record.toObject === "function" ? record.toObject() : { ...record };
+
+  // ===== AFTER TRIGGERS =====
+  const afterEvent = isUpdate ? "afterUpdate" : "afterInsert";
+
+  await runTriggers({
+    objectDefinition,
+    when: afterEvent,
+    objectApiName,
+    record: plainRecord,
+    previousRecord,
+  });
+  // ===== FIN AFTER TRIGGERS =====
 
   await recalculateParentRollupsFromChild({
     childObjectApiName: objectApiName,

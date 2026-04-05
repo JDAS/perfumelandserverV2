@@ -7,6 +7,7 @@ import {
 import LayoutEditor from "../components/LayoutEditor";
 import FieldModal from "../components/FieldModal";
 import ListViewsEditor from "../components/ListViewsEditor";
+import TriggerModal from "../components/TriggerModal";
 
 function ObjectMetadataPage() {
   const { apiName } = useParams();
@@ -24,20 +25,26 @@ function ObjectMetadataPage() {
     apiName: "",
   });
 
+  const [showTriggerModal, setShowTriggerModal] = useState(false);
+  const [editingTriggerIndex, setEditingTriggerIndex] = useState(null);
+
   useEffect(() => {
     loadObject();
   }, [apiName]);
+
+  const normalizeObjectData = (data) => ({
+    ...data,
+    fields: data.fields || [],
+    layout: data.layout || [],
+    listViews: data.listViews || [],
+    automationTriggers: data.automationTriggers || [],
+  });
 
   const loadObject = async () => {
     try {
       setLoading(true);
       const data = await getObjectByApiName(apiName);
-      setObjectData({
-        ...data,
-        fields: data.fields || [],
-        layout: data.layout || [],
-        listViews: data.listViews || [],
-      });
+      setObjectData(normalizeObjectData(data));
     } catch (error) {
       console.error(error);
       alert("Error cargando objeto");
@@ -70,17 +77,14 @@ function ObjectMetadataPage() {
       listViews: (objectData.listViews || []).map((view) => ({
         ...view,
         columns: (view.columns || []).filter((col) => col !== fieldApiName),
-        filters: (view.filters || []).filter((filter) => filter.field !== fieldApiName),
+        filters: (view.filters || []).filter(
+          (filter) => filter.field !== fieldApiName
+        ),
       })),
     };
 
     const saved = await updateObject(apiName, updated);
-    setObjectData({
-      ...saved,
-      fields: saved.fields || [],
-      layout: saved.layout || [],
-      listViews: saved.listViews || [],
-    });
+    setObjectData(normalizeObjectData(saved));
   };
 
   const addLayout = async () => {
@@ -109,12 +113,7 @@ function ObjectMetadataPage() {
     };
 
     const saved = await updateObject(apiName, updated);
-    setObjectData({
-      ...saved,
-      fields: saved.fields || [],
-      layout: saved.layout || [],
-      listViews: saved.listViews || [],
-    });
+    setObjectData(normalizeObjectData(saved));
     setNewLayout({
       label: "",
       apiName: "",
@@ -133,12 +132,7 @@ function ObjectMetadataPage() {
     };
 
     const saved = await updateObject(apiName, updated);
-    setObjectData({
-      ...saved,
-      fields: saved.fields || [],
-      layout: saved.layout || [],
-      listViews: saved.listViews || [],
-    });
+    setObjectData(normalizeObjectData(saved));
   };
 
   const saveEditedLayout = async (updatedLayout) => {
@@ -150,12 +144,7 @@ function ObjectMetadataPage() {
     };
 
     const saved = await updateObject(apiName, updated);
-    setObjectData({
-      ...saved,
-      fields: saved.fields || [],
-      layout: saved.layout || [],
-      listViews: saved.listViews || [],
-    });
+    setObjectData(normalizeObjectData(saved));
     setEditingLayout(null);
   };
 
@@ -226,12 +215,7 @@ function ObjectMetadataPage() {
       listViews: updatedListViews,
     });
 
-    setObjectData({
-      ...saved,
-      fields: saved.fields || [],
-      layout: saved.layout || [],
-      listViews: saved.listViews || [],
-    });
+    setObjectData(normalizeObjectData(saved));
     setEditingField(null);
     setIsFieldModalOpen(false);
   };
@@ -279,13 +263,81 @@ function ObjectMetadataPage() {
       listViews: normalizedViews,
     });
 
-    setObjectData({
-      ...saved,
-      fields: saved.fields || [],
-      layout: saved.layout || [],
-      listViews: saved.listViews || [],
-    });
+    setObjectData(normalizeObjectData(saved));
     alert("Views actualizadas");
+  };
+
+  const handleNewTrigger = () => {
+    setEditingTriggerIndex(null);
+    setShowTriggerModal(true);
+  };
+
+  const handleEditTrigger = (index) => {
+    setEditingTriggerIndex(index);
+    setShowTriggerModal(true);
+  };
+
+  const handleDeleteTrigger = async (index) => {
+    const confirmed = window.confirm("¿Eliminar este trigger?");
+    if (!confirmed) return;
+
+    const updated = {
+      ...objectData,
+      automationTriggers: (objectData.automationTriggers || []).filter(
+        (_, i) => i !== index
+      ),
+    };
+
+    const saved = await updateObject(apiName, updated);
+    setObjectData(normalizeObjectData(saved));
+  };
+
+  const handleSaveTrigger = async (trigger) => {
+    let normalizedTrigger = { ...trigger };
+
+    normalizedTrigger.actions = (normalizedTrigger.actions || []).map((action) => {
+      if (action.type === "createRecord") {
+        let values = action.config?.values || {};
+
+        if (typeof values === "string") {
+          try {
+            values = JSON.parse(values || "{}");
+          } catch {
+            alert("El JSON de valores en la acción createRecord no es válido");
+            throw new Error("JSON inválido en createRecord");
+          }
+        }
+
+        return {
+          ...action,
+          config: {
+            ...(action.config || {}),
+            values,
+          },
+        };
+      }
+
+      return action;
+    });
+
+    const triggers = [...(objectData.automationTriggers || [])];
+
+    if (editingTriggerIndex === null) {
+      triggers.push(normalizedTrigger);
+    } else {
+      triggers[editingTriggerIndex] = normalizedTrigger;
+    }
+
+    const updated = {
+      ...objectData,
+      automationTriggers: triggers,
+    };
+
+    const saved = await updateObject(apiName, updated);
+    setObjectData(normalizeObjectData(saved));
+
+    setShowTriggerModal(false);
+    setEditingTriggerIndex(null);
   };
 
   if (loading) {
@@ -371,7 +423,18 @@ function ObjectMetadataPage() {
               }`}
               onClick={() => setActiveSection("views")}
             >
-              Views
+              List Views
+            </button>
+
+            <button
+              className={`block w-full text-left px-3 py-2 rounded ${
+                activeSection === "triggers"
+                  ? "bg-black text-white"
+                  : "bg-gray-100"
+              }`}
+              onClick={() => setActiveSection("triggers")}
+            >
+              Triggers
             </button>
           </div>
         </div>
@@ -431,12 +494,7 @@ function ObjectMetadataPage() {
                     ...objectData,
                     apiName: objectData.apiName,
                   });
-                  setObjectData({
-                    ...saved,
-                    fields: saved.fields || [],
-                    layout: saved.layout || [],
-                    listViews: saved.listViews || [],
-                  });
+                  setObjectData(normalizeObjectData(saved));
                   alert("Objeto actualizado");
                 }}
               >
@@ -627,6 +685,132 @@ function ObjectMetadataPage() {
           </div>
         )}
 
+        {activeSection === "triggers" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">Automation Triggers</h3>
+                <p className="text-sm text-gray-500">
+                  Ejecuta lógica automática antes o después de crear,
+                  actualizar o eliminar registros.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNewTrigger}
+                className="rounded bg-black px-4 py-2 text-white"
+              >
+                Nuevo Trigger
+              </button>
+            </div>
+
+            {(objectData.automationTriggers || []).length === 0 ? (
+              <div className="rounded border border-dashed p-4 text-sm text-gray-500">
+                Este objeto todavía no tiene triggers configurados.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {(objectData.automationTriggers || []).map((trigger, index) => (
+                  <div
+                    key={`${trigger.name}-${index}`}
+                    className="rounded border p-4 shadow-sm"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-base font-semibold">{trigger.name}</h4>
+                          <span
+                            className={`rounded px-2 py-1 text-xs ${
+                              trigger.isActive
+                                ? "bg-green-100 text-green-700"
+                                : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {trigger.isActive ? "Activo" : "Inactivo"}
+                          </span>
+                        </div>
+
+                        <p className="mt-1 text-sm text-gray-600">
+                          Evento: <span className="font-medium">{trigger.when}</span>{" "}
+                          • Orden:{" "}
+                          <span className="font-medium">
+                            {trigger.runOrder || 0}
+                          </span>
+                        </p>
+
+                        <p className="mt-2 text-sm text-gray-500">
+                          Condiciones: {trigger.conditions?.length || 0} • Acciones:{" "}
+                          {trigger.actions?.length || 0}
+                        </p>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEditTrigger(index)}
+                          className="rounded border px-3 py-2"
+                        >
+                          Editar
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTrigger(index)}
+                          className="rounded border px-3 py-2 text-red-600"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+
+                    {trigger.conditions?.length > 0 && (
+                      <div className="mt-3">
+                        <div className="mb-1 text-xs font-semibold uppercase text-gray-500">
+                          Condiciones
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {trigger.conditions.map((condition, i) => (
+                            <span
+                              key={i}
+                              className="rounded bg-gray-100 px-2 py-1 text-xs"
+                            >
+                              {condition.field} {condition.operator}
+                              {"value" in condition &&
+                              condition.value !== null &&
+                              condition.value !== ""
+                                ? ` ${String(condition.value)}`
+                                : ""}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {trigger.actions?.length > 0 && (
+                      <div className="mt-3">
+                        <div className="mb-1 text-xs font-semibold uppercase text-gray-500">
+                          Acciones
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {trigger.actions.map((action, i) => (
+                            <span
+                              key={i}
+                              className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-700"
+                            >
+                              {action.type}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <FieldModal
           open={isFieldModalOpen}
           initialData={editingField}
@@ -635,6 +819,22 @@ function ObjectMetadataPage() {
             setEditingField(null);
           }}
           onSave={saveField}
+        />
+
+        <TriggerModal
+          show={showTriggerModal}
+          onClose={() => {
+            setShowTriggerModal(false);
+            setEditingTriggerIndex(null);
+          }}
+          onSave={handleSaveTrigger}
+          trigger={
+            editingTriggerIndex !== null
+              ? objectData.automationTriggers?.[editingTriggerIndex]
+              : null
+          }
+          fields={objectData.fields || []}
+          objectOptions={[objectData]}
         />
       </main>
     </div>
