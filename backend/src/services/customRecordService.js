@@ -3,8 +3,8 @@ const { getCustomRecordModel } = require("../models/CustomRecord");
 const { applyFormulaFields } = require("../utils/formulaEngine");
 const { recalculateParentRollupsFromChild } = require("../utils/rollupEngine");
 const { validateRecordPayload } = require("./recordValidationService");
-const { runTriggers } = require("./triggerEngine");
-const triggerEngine = require("./triggerEngine");
+const { runTriggers } = require("./triggersEngine");
+const triggerEngine = require("./triggersEngine");
 console.log("TRIGGER ENGINE LOADED:", triggerEngine);
 console.log("runTriggers TYPE:", typeof triggerEngine.runTriggers);
 
