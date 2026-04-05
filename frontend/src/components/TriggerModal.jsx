@@ -454,40 +454,18 @@ function TriggerModal({
                                     </div>
                                 )}
                                 {action.type === "copyFromLookup" && (
-                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                         <div>
                                             <label className="mb-1 block text-xs font-medium">
-                                                Campo lookup
-                                            </label>
-                                            <select
-                                                className="w-full rounded border p-2"
-                                                value={action.config?.lookupField || ""}
-                                                onChange={(e) =>
-                                                    updateActionConfig(index, "lookupField", e.target.value)
-                                                }
-                                            >
-                                                <option value="">Seleccione...</option>
-                                                {fields
-                                                    .filter((field) => field.type === "lookup")
-                                                    .map((field) => (
-                                                        <option key={field.apiName} value={field.apiName}>
-                                                            {field.label} ({field.apiName})
-                                                        </option>
-                                                    ))}
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label className="mb-1 block text-xs font-medium">
-                                                Campo origen
+                                                Ruta origen
                                             </label>
                                             <input
                                                 className="w-full rounded border p-2"
-                                                value={action.config?.sourceField || ""}
+                                                value={action.config?.sourcePath || ""}
                                                 onChange={(e) =>
-                                                    updateActionConfig(index, "sourceField", e.target.value)
+                                                    updateActionConfig(index, "sourcePath", e.target.value)
                                                 }
-                                                placeholder="Ej: wholesalePrice"
+                                                placeholder="Ej: product.supplier.wholesalePrice"
                                             />
                                         </div>
 

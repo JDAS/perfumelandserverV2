@@ -147,43 +147,54 @@ async function executeAction(action, context) {
     }
 
     case "copyFromLookup": {
-      const { lookupField, sourceField, targetField } = config || {};
+  const { lookupField, sourceField, sourcePath, targetField } = config || {};
 
-      if (!lookupField || !sourceField || !targetField) {
-        return record;
-      }
+  if (!targetField) {
+    return record;
+  }
 
-      const lookupValue = record?.[lookupField];
-      if (!lookupValue) {
-        return record;
-      }
+  let resolvedValue;
 
-      const lookupFieldDef = (objectDefinition?.fields || []).find(
-        (field) =>
-          field.apiName === lookupField &&
-          field.type === "lookup" &&
-          field.referenceTo
+  // Nuevo modo flexible: sourcePath
+  if (sourcePath) {
+    resolvedValue = await resolveLookupPathValue({
+      objectDefinition,
+      record,
+      sourcePath,
+    });
+  } else if (lookupField && sourceField) {
+    // Compatibilidad con modo viejo
+    const lookupValue = record?.[lookupField];
+    if (!lookupValue) return record;
+
+    const lookupFieldDef = (objectDefinition?.fields || []).find(
+      (field) =>
+        field.apiName === lookupField &&
+        field.type === "lookup" &&
+        field.referenceTo
+    );
+
+    if (!lookupFieldDef?.referenceTo) {
+      logger.warn?.(
+        `[Trigger copyFromLookup] El campo ${lookupField} no es un lookup válido en ${objectApiName}`
       );
-
-      if (!lookupFieldDef?.referenceTo) {
-        logger.warn?.(
-          `[Trigger copyFromLookup] El campo ${lookupField} no es un lookup válido en ${objectApiName}`
-        );
-        return record;
-      }
-
-      const RelatedModel = getCustomRecordModel(lookupFieldDef.referenceTo);
-      const relatedRecord = await RelatedModel.findById(lookupValue).lean();
-
-      if (!relatedRecord) {
-        return record;
-      }
-
-      const nextRecord = { ...record };
-      nextRecord[targetField] = relatedRecord[sourceField];
-
-      return nextRecord;
+      return record;
     }
+
+    const RelatedModel = getCustomRecordModel(lookupFieldDef.referenceTo);
+    const relatedRecord = await RelatedModel.findById(lookupValue).lean();
+
+    if (!relatedRecord) return record;
+    resolvedValue = relatedRecord[sourceField];
+  } else {
+    return record;
+  }
+
+  const nextRecord = { ...record };
+  nextRecord[targetField] = resolvedValue;
+
+  return nextRecord;
+}
 
     case "createRecord": {
       if (!config.object) return record;
@@ -252,6 +263,7 @@ async function runTriggers({
       for (const action of trigger.actions || []) {
         workingRecord = await executeAction(action, {
           objectApiName,
+          objectDefinition,
           record: workingRecord,
           previousRecord,
           logger,
@@ -267,6 +279,55 @@ async function runTriggers({
   }
 
   return workingRecord;
+}
+async function resolveLookupPathValue({
+  objectDefinition,
+  record,
+  sourcePath,
+}) {
+  if (!objectDefinition || !record || !sourcePath) return undefined;
+
+  const parts = String(sourcePath).split(".").filter(Boolean);
+  if (parts.length < 2) return undefined;
+
+  let currentObjectDefinition = objectDefinition;
+  let currentRecord = record;
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    const isLast = i === parts.length - 1;
+
+    if (isLast) {
+      return currentRecord?.[part];
+    }
+
+    const fieldDef = (currentObjectDefinition.fields || []).find(
+      (field) => field.apiName === part
+    );
+
+    if (!fieldDef || fieldDef.type !== "lookup" || !fieldDef.referenceTo) {
+      return undefined;
+    }
+
+    const lookupId = currentRecord?.[part];
+    if (!lookupId) return undefined;
+
+    const RelatedModel = getCustomRecordModel(fieldDef.referenceTo);
+    const relatedRecord = await RelatedModel.findById(lookupId).lean();
+    if (!relatedRecord) return undefined;
+
+    const RelatedObjectModel = require("../models/CustomObject");
+    const relatedObjectDefinition = await RelatedObjectModel.findOne({
+      apiName: fieldDef.referenceTo,
+    }).lean();
+
+    if (!relatedObjectDefinition) return undefined;
+
+    currentRecord = relatedRecord;
+    currentObjectDefinition = relatedObjectDefinition;
+  }
+
+  return undefined;
 }
 
 module.exports = {
