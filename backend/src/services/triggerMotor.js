@@ -126,6 +126,7 @@ async function executeAction(action, context) {
   const { type, config = {} } = action || {};
   const {
     objectApiName,
+    objectDefinition,
     record,
     previousRecord,
     logger = console,
@@ -141,6 +142,45 @@ async function executeAction(action, context) {
         record,
         previousRecord
       );
+
+      return nextRecord;
+    }
+
+    case "copyFromLookup": {
+      const { lookupField, sourceField, targetField } = config || {};
+
+      if (!lookupField || !sourceField || !targetField) {
+        return record;
+      }
+
+      const lookupValue = record?.[lookupField];
+      if (!lookupValue) {
+        return record;
+      }
+
+      const lookupFieldDef = (objectDefinition?.fields || []).find(
+        (field) =>
+          field.apiName === lookupField &&
+          field.type === "lookup" &&
+          field.referenceTo
+      );
+
+      if (!lookupFieldDef?.referenceTo) {
+        logger.warn?.(
+          `[Trigger copyFromLookup] El campo ${lookupField} no es un lookup válido en ${objectApiName}`
+        );
+        return record;
+      }
+
+      const RelatedModel = getCustomRecordModel(lookupFieldDef.referenceTo);
+      const relatedRecord = await RelatedModel.findById(lookupValue).lean();
+
+      if (!relatedRecord) {
+        return record;
+      }
+
+      const nextRecord = { ...record };
+      nextRecord[targetField] = relatedRecord[sourceField];
 
       return nextRecord;
     }
@@ -165,8 +205,11 @@ async function executeAction(action, context) {
     }
 
     case "log": {
-      const message =
-        applyTemplateValue(config.message || "Trigger ejecutado", record, previousRecord);
+      const message = applyTemplateValue(
+        config.message || "Trigger ejecutado",
+        record,
+        previousRecord
+      );
 
       logger.log("[Trigger log]", {
         objectApiName,
