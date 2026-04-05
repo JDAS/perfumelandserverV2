@@ -259,6 +259,7 @@ async function executeAction(action, context) {
         }
         case "generatePayments": {
             const {
+                totalField = "total",
                 productsField = "products",
                 typeField = "type",
                 creditTypeField = "creditType",
@@ -267,18 +268,35 @@ async function executeAction(action, context) {
                 targetField = "payments",
             } = config || {};
 
-            const products = record?.[productsField] || [];
+            const rawTotal =
+                record?.[totalField] ??
+                record?.[config?.total] ??
+                null;
             const type = record?.[typeField];
             const creditType = record?.[creditTypeField];
             const quotes = record?.[quotesField];
             const salesDate = record?.[salesDateField];
 
-            if (!Array.isArray(products) || !type || !salesDate) {
+            let total = Number(rawTotal);
+
+            if (!Number.isFinite(total)) {
+                const legacyProducts = record?.[productsField] || [];
+                if (Array.isArray(legacyProducts) && legacyProducts.length > 0) {
+                    total = legacyProducts.reduce((sum, product) => {
+                        const quantity = Number(product?.quantity || 0);
+                        const unitPrice = Number(product?.unitprice || 0);
+                        const discount = Number(product?.discount || 0);
+                        return sum + (unitPrice - discount) * quantity;
+                    }, 0);
+                }
+            }
+
+            if (!Number.isFinite(total) || !type || !salesDate) {
                 return record;
             }
 
             const payments = calculatePayments({
-                products,
+                total,
                 type,
                 creditType,
                 quotes,

@@ -10,10 +10,16 @@ function calculatePayments({ total, type, creditType, quotes, salesDate }) {
     return sum + (price - Number(p.discount || 0)) * Number(p.quantity || 0);
   }, 0);*/
 
+  const numericTotal = Number(total || 0);
+
+  if (!Number.isFinite(numericTotal) || numericTotal <= 0) {
+    return [];
+  }
+
   let nQuotes = 1;
   if (type === "contado") nQuotes = 1;
   else if (creditType === "normal") {
-    nQuotes = total >= 30000 ? 4 : 3;
+    nQuotes = numericTotal >= 30000 ? 4 : 3;
   } else if (
     creditType === "extendido" ||
     creditType === "extendido especial"
@@ -23,33 +29,41 @@ function calculatePayments({ total, type, creditType, quotes, salesDate }) {
     nQuotes = 2;
   }
 
+  if (!Number.isFinite(nQuotes) || nQuotes < 1) {
+    nQuotes = 1;
+  }
+
   let amounts = [];
-  let remaining = total;
+  let remaining = numericTotal;
 
   if (creditType === "extendido especial") {
-    const base = Math.floor(total / nQuotes / 1000) * 1000;
+    const base = Math.floor(numericTotal / nQuotes / 1000) * 1000;
     for (let i = 0; i < nQuotes - 1; i++) {
       amounts.push(base);
       remaining -= base;
     }
     amounts.unshift(remaining);
   } else if (creditType === "2 pagos") {
-    const base = Math.floor(total / 2 / 1000) * 1000;
+    const base = Math.floor(numericTotal / 2 / 1000) * 1000;
     amounts = [base, base];
-    const diff = total - base * 2;
+    const diff = numericTotal - base * 2;
     if (diff !== 0) amounts[0] += diff;
   } else {
     for (let i = 0; i < nQuotes; i++) {
-      let amt = Math.floor(total / nQuotes / 1000) * 1000;
+      let amt = Math.floor(numericTotal / nQuotes / 1000) * 1000;
       amounts.push(amt);
     }
 
-    let diff = total - amounts.reduce((a, b) => a + b, 0);
+    let diff = numericTotal - amounts.reduce((a, b) => a + b, 0);
     if (diff > 0) amounts[0] += diff;
 
-    if (total > 50000 && (creditType === "normal" || creditType === "extendido")) {
-      const first = Math.floor(total * 0.4 / 1000) * 1000;
-      const rem = total - first;
+    if (
+      numericTotal > 50000 &&
+      (creditType === "normal" || creditType === "extendido") &&
+      nQuotes > 1
+    ) {
+      const first = Math.floor(numericTotal * 0.4 / 1000) * 1000;
+      const rem = numericTotal - first;
       const per = Math.floor(rem / (nQuotes - 1) / 1000) * 1000;
       const lastDiff = rem - per * (nQuotes - 1);
       amounts = [first + lastDiff];
@@ -65,8 +79,18 @@ function calculatePayments({ total, type, creditType, quotes, salesDate }) {
   }
 
   const dates = [];
-  const [year, month, day] = String(salesDate || "").split("-").map(Number);
-  const sd = new Date(year, month - 1, day);
+  const parsedSalesDate =
+    salesDate instanceof Date ? new Date(salesDate) : new Date(salesDate);
+
+  if (Number.isNaN(parsedSalesDate.getTime())) {
+    return [];
+  }
+
+  const sd = new Date(
+    parsedSalesDate.getFullYear(),
+    parsedSalesDate.getMonth(),
+    parsedSalesDate.getDate()
+  );
   let lastDate = sd;
 
   for (let i = 0; i < nQuotes; i++) {

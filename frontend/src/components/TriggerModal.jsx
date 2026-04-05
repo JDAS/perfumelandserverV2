@@ -436,7 +436,7 @@ function TriggerModal({
                                                 className="w-full rounded border p-2"
                                                 value={action.config?.totalField || "total"}
                                                 onChange={(e) =>
-                                                    updateActionConfig(index, "total", e.target.value)
+                                                    updateActionConfig(index, "totalField", e.target.value)
                                                 }
                                             />
                                         </div>
