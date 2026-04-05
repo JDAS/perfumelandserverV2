@@ -93,6 +93,8 @@ const triggerConditionSchema = new mongoose.Schema(
         "changed",
         "isEmpty",
         "isNotEmpty",
+        "and",
+        "or"
       ],
     },
     value: { type: mongoose.Schema.Types.Mixed, default: null },
@@ -105,7 +107,7 @@ const triggerActionSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ["updateField", "copyFromLookup", "createRecord", "log"],
+      enum: ["updateField", "copyFromLookup", "createRecord", "log", "generatePayments"],
     },
     config: {
       type: mongoose.Schema.Types.Mixed,

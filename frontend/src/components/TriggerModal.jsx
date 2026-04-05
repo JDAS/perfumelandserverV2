@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-
+import ConditionBuilder from "./ConditionBuilder";
 const EVENT_OPTIONS = [
     "beforeInsert",
     "afterInsert",
@@ -22,7 +22,7 @@ const CONDITION_OPERATORS = [
     "isNotEmpty",
 ];
 
-const ACTION_TYPES = ["updateField", "copyFromLookup", "createRecord", "log"];
+const ACTION_TYPES = ["updateField", "copyFromLookup", "createRecord", "log", "generatePayments"];
 
 const emptyTrigger = {
     name: "",
@@ -30,7 +30,16 @@ const emptyTrigger = {
     when: "beforeInsert",
     runOrder: 0,
     stopOnError: true,
-    conditions: [],
+    conditions: {
+        operator: "AND",
+        conditions: [
+            {
+                field: "",
+                operator: "eq",
+                value: "",
+            },
+        ],
+    },
     actions: [],
 };
 
@@ -49,7 +58,10 @@ function TriggerModal({
             setForm({
                 ...emptyTrigger,
                 ...trigger,
-                conditions: Array.isArray(trigger.conditions) ? trigger.conditions : [],
+                conditions: trigger.conditions || {
+                    operator: "AND",
+                    conditions: [{ field: "", operator: "eq", value: "" }],
+                },
                 actions: Array.isArray(trigger.actions) ? trigger.actions : [],
             });
         } else {
@@ -217,97 +229,23 @@ function TriggerModal({
                 </div>
 
                 <div className="mt-8">
-                    <div className="mb-3 flex items-center justify-between">
+                    <div className="mb-3">
                         <h4 className="text-lg font-semibold">Condiciones</h4>
-                        <button
-                            type="button"
-                            onClick={addCondition}
-                            className="rounded border px-3 py-2"
-                        >
-                            Agregar condición
-                        </button>
+                        <p className="text-sm text-gray-500">
+                            Puedes combinar condiciones con AND / OR y crear grupos anidados.
+                        </p>
                     </div>
 
-                    <div className="space-y-3">
-                        {form.conditions.length === 0 && (
-                            <div className="rounded border border-dashed p-3 text-sm text-gray-500">
-                                Sin condiciones. Si lo dejas así, el trigger siempre corre.
-                            </div>
-                        )}
-
-                        {form.conditions.map((condition, index) => {
-                            const hideValue =
-                                condition.operator === "changed" ||
-                                condition.operator === "isEmpty" ||
-                                condition.operator === "isNotEmpty";
-
-                            return (
-                                <div
-                                    key={index}
-                                    className="grid grid-cols-1 gap-3 rounded border p-3 md:grid-cols-4"
-                                >
-                                    <div>
-                                        <label className="mb-1 block text-xs font-medium">Campo</label>
-                                        <select
-                                            className="w-full rounded border p-2"
-                                            value={condition.field}
-                                            onChange={(e) =>
-                                                updateCondition(index, "field", e.target.value)
-                                            }
-                                        >
-                                            <option value="">Seleccione...</option>
-                                            {fields.map((field) => (
-                                                <option key={field.apiName} value={field.apiName}>
-                                                    {field.label} ({field.apiName})
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="mb-1 block text-xs font-medium">
-                                            Operador
-                                        </label>
-                                        <select
-                                            className="w-full rounded border p-2"
-                                            value={condition.operator}
-                                            onChange={(e) =>
-                                                updateCondition(index, "operator", e.target.value)
-                                            }
-                                        >
-                                            {CONDITION_OPERATORS.map((operator) => (
-                                                <option key={operator} value={operator}>
-                                                    {operator}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="mb-1 block text-xs font-medium">Valor</label>
-                                        <input
-                                            className="w-full rounded border p-2"
-                                            value={condition.value ?? ""}
-                                            disabled={hideValue}
-                                            onChange={(e) =>
-                                                updateCondition(index, "value", e.target.value)
-                                            }
-                                        />
-                                    </div>
-
-                                    <div className="flex items-end">
-                                        <button
-                                            type="button"
-                                            onClick={() => removeCondition(index)}
-                                            className="rounded border px-3 py-2 text-red-600"
-                                        >
-                                            Eliminar
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <ConditionBuilder
+                        value={form.conditions}
+                        onChange={(nextConditions) =>
+                            setForm((prev) => ({
+                                ...prev,
+                                conditions: nextConditions,
+                            }))
+                        }
+                        fields={fields}
+                    />
                 </div>
 
                 <div className="mt-8">
@@ -487,6 +425,75 @@ function TriggerModal({
                                                     </option>
                                                 ))}
                                             </select>
+                                        </div>
+                                    </div>
+                                )}
+                                {action.type === "generatePayments" && (
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo productos</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.productsField || "products"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "productsField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo tipo</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.typeField || "type"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "typeField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo tipo crédito</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.creditTypeField || "creditType"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "creditTypeField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo cuotas</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.quotesField || "quotes"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "quotesField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo fecha venta</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.salesDateField || "salesDate"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "salesDateField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo destino</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.targetField || "payments"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "targetField", e.target.value)
+                                                }
+                                            />
                                         </div>
                                     </div>
                                 )}
