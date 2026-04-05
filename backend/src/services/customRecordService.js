@@ -1,9 +1,9 @@
-const { runTriggers } = require("./triggerEngine");
 const CustomObject = require("../models/CustomObject");
 const { getCustomRecordModel } = require("../models/CustomRecord");
 const { applyFormulaFields } = require("../utils/formulaEngine");
 const { recalculateParentRollupsFromChild } = require("../utils/rollupEngine");
 const { validateRecordPayload } = require("./recordValidationService");
+const { runTriggers } = require("./triggerEngine");
 
 async function getObjectOrThrow(apiName) {
   const customObject = await CustomObject.findOne({ apiName }).lean();
@@ -408,6 +408,48 @@ async function saveRecord({ objectApiName, recordId = null, payload = {}, user =
     blockedFields: validation.blockedFields,
   };
 }
+async function deleteRecordWithTriggers({ objectApiName, recordId }) {
+  const objectDefinition = await getObjectOrThrow(objectApiName);
+  const RecordModel = getCustomRecordModel(objectApiName);
+
+  const existingRecord = await RecordModel.findById(recordId);
+  if (!existingRecord) {
+    const error = new Error("Registro no encontrado");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const previousRecord =
+    typeof existingRecord.toObject === "function"
+      ? existingRecord.toObject()
+      : { ...existingRecord };
+
+  await runTriggers({
+    objectDefinition,
+    when: "beforeDelete",
+    objectApiName,
+    record: previousRecord,
+    previousRecord,
+  });
+
+  await RecordModel.findByIdAndDelete(recordId);
+
+  await runTriggers({
+    objectDefinition,
+    when: "afterDelete",
+    objectApiName,
+    record: previousRecord,
+    previousRecord,
+  });
+
+  await recalculateParentRollupsFromChild({
+    childObjectApiName: objectApiName,
+    childRecord: null,
+    previousChildRecord: previousRecord,
+  });
+
+  return { success: true };
+}
 
 module.exports = {
   getObjectOrThrow,
@@ -417,4 +459,5 @@ module.exports = {
   getRelatedRecords,
   saveRecord,
   resolveLookupData,
+  deleteRecordWithTriggers,
 };
