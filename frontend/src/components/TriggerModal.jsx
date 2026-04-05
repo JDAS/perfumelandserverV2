@@ -431,12 +431,12 @@ function TriggerModal({
                                 {action.type === "generatePayments" && (
                                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                         <div>
-                                            <label className="mb-1 block text-xs font-medium">Campo productos</label>
+                                            <label className="mb-1 block text-xs font-medium">Campo total</label>
                                             <input
                                                 className="w-full rounded border p-2"
-                                                value={action.config?.productsField || "products"}
+                                                value={action.config?.totalField || "total"}
                                                 onChange={(e) =>
-                                                    updateActionConfig(index, "productsField", e.target.value)
+                                                    updateActionConfig(index, "total", e.target.value)
                                                 }
                                             />
                                         </div>
