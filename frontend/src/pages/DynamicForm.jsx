@@ -226,6 +226,10 @@ function DynamicForm() {
   if (loading) return <div className="p-10">Cargando...</div>;
   if (!objectDef) return <div className="p-10">Objeto no encontrado.</div>;
 
+  const fieldSections = (activeLayout?.sections || []).filter(
+    (section) => section.type !== "relatedList"
+  );
+
   return (
     <div className="mx-auto max-w-4xl p-10">
       <h1 className="mb-6 text-2xl font-bold">
@@ -233,37 +237,44 @@ function DynamicForm() {
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {activeLayout?.sections?.length > 0 ? (
-          activeLayout.sections.map((section, idx) => {
-            const sectionFields = section.fields || [];
-            const { col1, col2 } = splitFieldsIntoColumns(sectionFields);
+        {fieldSections.length > 0 ? (
+          <div className="rounded-xl bg-white p-6 shadow">
+            <div className="space-y-8">
+              {fieldSections.map((section, idx) => {
+                const sectionFields = section.fields || [];
+                const { col1, col2 } = splitFieldsIntoColumns(sectionFields);
+                const hasLabel = Boolean(String(section.label || "").trim());
 
-            return (
-              <div
-                key={`${section.label}-${idx}`}
-                className="rounded-xl bg-white p-6 shadow"
-              >
-                <h2 className="mb-4 text-lg font-bold">{section.label}</h2>
+                return (
+                  <div
+                    key={`${section.apiName || "section"}-${idx}`}
+                    className={idx > 0 ? "border-t pt-6" : ""}
+                  >
+                    {hasLabel && (
+                      <h2 className="mb-4 text-lg font-bold">{section.label}</h2>
+                    )}
 
-                {section.columns === 2 ? (
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <div>
-                      {col1.map((item, index) => renderFieldOrBlank(item, index))}
-                    </div>
-                    <div>
-                      {col2.map((item, index) => renderFieldOrBlank(item, index))}
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    {sectionFields.map((item, index) =>
-                      renderFieldOrBlank(item, index)
+                    {section.columns === 2 ? (
+                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <div>
+                          {col1.map((item, index) => renderFieldOrBlank(item, index))}
+                        </div>
+                        <div>
+                          {col2.map((item, index) => renderFieldOrBlank(item, index))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        {sectionFields.map((item, index) =>
+                          renderFieldOrBlank(item, index)
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })
+                );
+              })}
+            </div>
+          </div>
         ) : (
           <div className="rounded-xl bg-white p-6 shadow">
             {fields.map((field, index) => renderFieldOrBlank(field.apiName, index))}

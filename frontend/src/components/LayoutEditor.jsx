@@ -29,6 +29,18 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
     normalizeSections(localLayout.sections || [])
   );
 
+  const sectionsWithDisplaySettings = useMemo(
+    () =>
+      sections.map((section) => ({
+        ...section,
+        showLabel:
+          section.showLabel !== undefined
+            ? section.showLabel
+            : Boolean(String(section.label || "").trim()),
+      })),
+    [sections]
+  );
+
   const isBlankBlock = (value) =>
     typeof value === "string" && value.startsWith("__blank__");
 
@@ -57,6 +69,7 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
       ...prev,
       {
         id: `section_${Date.now()}`,
+        showLabel: false,
         label: "Nueva sección",
         type: "fields",
         columns: 2,
@@ -73,6 +86,7 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
       ...prev,
       {
         id: `section_${Date.now()}`,
+        showLabel: false,
         label: "Nueva lista relacionada",
         type: "relatedList",
         columns: 1,
@@ -333,7 +347,7 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
 
     if (invalidRelatedList) {
       alert(
-        `La lista relacionada "${invalidRelatedList.label}" debe tener objeto relacionado y campo relacionado`
+        `La lista relacionada "${invalidRelatedList.label || "sin titulo"}" debe tener objeto relacionado y campo relacionado`
       );
       return;
     }
@@ -342,6 +356,7 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
       ...localLayout,
       sections: sections.map(({ id, ...section }) => ({
         ...section,
+        label: section.showLabel === false ? "" : section.label || "",
         type: section.type === "relatedList" ? "relatedList" : "fields",
         columns:
           section.type === "relatedList"
@@ -435,7 +450,7 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
               <h3 className="font-semibold">Secciones del layout</h3>
             </div>
 
-            {sections.map((section) => {
+            {sectionsWithDisplaySettings.map((section) => {
               const { col1, col2 } = splitFieldsIntoColumns(section.fields || []);
               const relatedObjectDef = getObjectByApiName(section.relatedObject);
               const relatedFields = relatedObjectDef?.fields || [];
@@ -450,7 +465,8 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
                       <input
                         className="border p-2 rounded"
                         placeholder="Nombre de sección"
-                        value={section.label}
+                        value={section.showLabel === false ? "" : section.label}
+                        disabled={section.showLabel === false}
                         onChange={(e) =>
                           updateSection(section.id, { label: e.target.value })
                         }
@@ -510,6 +526,20 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
                         />
                       )}
                     </div>
+
+                    <label className="flex items-center gap-2 text-sm whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={section.showLabel !== false}
+                        onChange={(e) =>
+                          updateSection(section.id, {
+                            showLabel: e.target.checked,
+                            label: e.target.checked ? section.label || "" : "",
+                          })
+                        }
+                      />
+                      Mostrar titulo
+                    </label>
 
                     <button
                       type="button"

@@ -90,6 +90,12 @@ function RecordDetailPage() {
   }
 
   const activeLayout = objectDef.layout?.[0];
+  const fieldSections = (activeLayout?.sections || []).filter(
+    (section) => section.type !== "relatedList"
+  );
+  const relatedSections = (activeLayout?.sections || []).filter(
+    (section) => section.type === "relatedList"
+  );
 
   return (
     <div className="p-10 max-w-5xl mx-auto space-y-6">
@@ -134,44 +140,40 @@ function RecordDetailPage() {
         </div>
       </div>
 
-      {activeLayout?.sections?.length > 0 ? (
-        activeLayout.sections.map((section, idx) => {
-          if (section.type === "relatedList") {
-            return (
-              <RelatedListSection
-                key={`${section.label}-${idx}`}
-                parentObject={object}
-                parentId={id}
-                section={section}
-              />
-            );
-          }
+      {fieldSections.length > 0 ? (
+        <div className="bg-white rounded-xl shadow p-6">
+          <div className="space-y-8">
+            {fieldSections.map((section, idx) => {
+              const sectionFields = section.fields || [];
+              const { col1, col2 } = splitFieldsIntoColumns(sectionFields);
+              const hasLabel = Boolean(String(section.label || "").trim());
 
-          const sectionFields = section.fields || [];
-          const { col1, col2 } = splitFieldsIntoColumns(sectionFields);
+              return (
+                <div
+                  key={`${section.apiName || "section"}-${idx}`}
+                  className={idx > 0 ? "border-t pt-6" : ""}
+                >
+                  {hasLabel && (
+                    <h2 className="font-bold mb-4 text-lg">{section.label}</h2>
+                  )}
 
-          return (
-            <div
-              key={`${section.label}-${idx}`}
-              className="bg-white rounded-xl shadow p-6"
-            >
-              <h2 className="font-bold mb-4 text-lg">{section.label}</h2>
-
-              {section.columns === 2 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>{col1.map((item, index) => renderFieldOrBlank(item, index))}</div>
-                  <div>{col2.map((item, index) => renderFieldOrBlank(item, index))}</div>
-                </div>
-              ) : (
-                <div>
-                  {sectionFields.map((item, index) =>
-                    renderFieldOrBlank(item, index)
+                  {section.columns === 2 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>{col1.map((item, index) => renderFieldOrBlank(item, index))}</div>
+                      <div>{col2.map((item, index) => renderFieldOrBlank(item, index))}</div>
+                    </div>
+                  ) : (
+                    <div>
+                      {sectionFields.map((item, index) =>
+                        renderFieldOrBlank(item, index)
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          );
-        })
+              );
+            })}
+          </div>
+        </div>
       ) : (
         <div className="bg-white rounded-xl shadow p-6">
           {(objectDef.fields || [])
@@ -188,6 +190,15 @@ function RecordDetailPage() {
             ))}
         </div>
       )}
+
+      {relatedSections.map((section, idx) => (
+        <RelatedListSection
+          key={`${section.apiName || "related"}-${idx}`}
+          parentObject={object}
+          parentId={id}
+          section={section}
+        />
+      ))}
     </div>
   );
 }
