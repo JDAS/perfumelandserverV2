@@ -19,7 +19,14 @@ const fieldSchema = new mongoose.Schema(
     visibleInList: { type: Boolean, default: true },
     visibleInDetail: { type: Boolean, default: true },
     visibleInForm: { type: Boolean, default: true },
-    formula: { type: String, default: "" },
+    formula: {
+      expression: { type: String, default: "" },
+      returnType: {
+        type: String,
+        enum: ["text", "number", "boolean", "date"],
+        default: "text",
+      },
+    },
     rollup: {
       relatedObject: { type: String, default: "" },
       relatedField: { type: String, default: "" },
