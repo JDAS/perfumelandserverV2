@@ -77,32 +77,6 @@ const listViewSchema = new mongoose.Schema(
 );
 
 // ===== NUEVO: TRIGGERS =====
-const triggerConditionSchema = new mongoose.Schema(
-  {
-    field: { type: String, required: true },
-    operator: {
-      type: String,
-      required: true,
-      enum: [
-        "eq",
-        "ne",
-        "gt",
-        "gte",
-        "lt",
-        "lte",
-        "contains",
-        "changed",
-        "isEmpty",
-        "isNotEmpty",
-        "and",
-        "or"
-      ],
-    },
-    value: { type: mongoose.Schema.Types.Mixed, default: null },
-  },
-  { _id: false }
-);
-
 const triggerActionSchema = new mongoose.Schema(
   {
     type: {
@@ -137,8 +111,11 @@ const automationTriggerSchema = new mongoose.Schema(
     runOrder: { type: Number, default: 0 },
     stopOnError: { type: Boolean, default: true },
     conditions: {
-      type: [triggerConditionSchema],
-      default: [],
+      type: mongoose.Schema.Types.Mixed,
+      default: {
+        operator: "AND",
+        conditions: [],
+      },
     },
     actions: {
       type: [triggerActionSchema],
