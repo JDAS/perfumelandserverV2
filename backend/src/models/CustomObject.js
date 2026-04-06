@@ -21,14 +21,16 @@ const fieldSchema = new mongoose.Schema(
     visibleInForm: { type: Boolean, default: true },
     formula: { type: String, default: "" },
     rollup: {
-      relationshipField: { type: String, default: "" },
-      aggregateField: { type: String, default: "" },
+      relatedObject: { type: String, default: "" },
+      relatedField: { type: String, default: "" },
       operation: {
         type: String,
         enum: ["count", "sum", "avg", "min", "max"],
         default: "count",
       },
+      fieldToAggregate: { type: String, default: "" },
       filterField: { type: String, default: "" },
+      filterOperator: { type: String, default: "eq" },
       filterValue: { type: mongoose.Schema.Types.Mixed, default: null },
     },
   },
