@@ -13,7 +13,7 @@ function BaseInput({ type = "text", value, onChange, className = "", ...props })
 }
 
 export function renderFieldInput(field, value, onValueChange, context = {}) {
-  const { formData, setFormData } = context;
+  const { formData } = context;
 
   const commonProps = {
     value: field.type === "boolean" ? undefined : value ?? "",
@@ -83,7 +83,6 @@ export function renderFieldInput(field, value, onValueChange, context = {}) {
           value={value ?? ""}
           onChange={onValueChange}
           formData={formData}
-          setFormData={setFormData}
         />
       );
 

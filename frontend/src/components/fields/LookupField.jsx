@@ -1,9 +1,37 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getRecordById, getRecords } from "../../services/customService";
 
 const lookupCache = new Map();
 
-function LookupField({ field, value, onChange }) {
+function getValueByPath(obj, path) {
+  if (!obj || !path) return undefined;
+  return String(path)
+    .split(".")
+    .reduce((acc, key) => acc?.[key], obj);
+}
+
+function resolveFilterValue(rawValue, formData = {}) {
+  if (typeof rawValue !== "string") {
+    return rawValue;
+  }
+
+  const fullMatch = rawValue.match(/^\s*\{\{(.*?)\}\}\s*$/);
+
+  if (fullMatch) {
+    return getValueByPath(formData, String(fullMatch[1] || "").trim());
+  }
+
+  if (!rawValue.includes("{{")) {
+    return rawValue;
+  }
+
+  return rawValue.replace(/\{\{(.*?)\}\}/g, (_, path) => {
+    const resolved = getValueByPath(formData, String(path || "").trim());
+    return resolved ?? "";
+  });
+}
+
+function LookupField({ field, value, onChange, formData = {} }) {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -11,6 +39,16 @@ function LookupField({ field, value, onChange }) {
   const [open, setOpen] = useState(false);
 
   const containerRef = useRef(null);
+  const resolvedLookupFilters = useMemo(
+    () =>
+      (field?.lookupFilters || [])
+        .map((filter) => ({
+          ...filter,
+          value: resolveFilterValue(filter.value, formData),
+        }))
+        .filter((filter) => filter.field && filter.value !== undefined && filter.value !== ""),
+    [field?.lookupFilters, formData]
+  );
 
   const getCacheKey = (referenceTo, id) => `${referenceTo}:${id}`;
 
@@ -83,7 +121,7 @@ function LookupField({ field, value, onChange }) {
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [search, field?.referenceTo, open]);
+  }, [search, field?.referenceTo, open, resolvedLookupFilters]);
 
   const searchRecords = async (term) => {
     if (!field?.referenceTo || !open) {
@@ -99,7 +137,7 @@ function LookupField({ field, value, onChange }) {
         search: term?.trim() || "",
         sortBy: "createdAt",
         sortOrder: "desc",
-        filters: JSON.stringify(field.lookupFilters || []),
+        filters: JSON.stringify(resolvedLookupFilters),
       });
 
       const fetchedResults = response.records || [];

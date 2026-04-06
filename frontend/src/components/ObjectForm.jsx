@@ -643,17 +643,22 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
           )}
 
           {field.type === "lookup" && (
-            <input
-              placeholder="Objeto relacionado (ej: customer)"
-              className="rounded border p-2 md:col-span-2"
-              value={field.referenceTo || ""}
-              onChange={(e) =>
-                setField({
-                  ...field,
-                  referenceTo: e.target.value,
-                })
-              }
-            />
+            <>
+              <input
+                placeholder="Objeto relacionado (ej: customer)"
+                className="rounded border p-2 md:col-span-2"
+                value={field.referenceTo || ""}
+                onChange={(e) =>
+                  setField({
+                    ...field,
+                    referenceTo: e.target.value,
+                  })
+                }
+              />
+              <p className="text-xs text-gray-500 md:col-span-2">
+                Los filtros de lookup aceptan plantillas dinamicas como `{{sellerName}}` o `{{saleId}}`.
+              </p>
+            </>
           )}
 
           {!["select", "lookup", "formula", "rollup"].includes(field.type) &&
