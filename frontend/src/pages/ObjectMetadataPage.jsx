@@ -8,9 +8,11 @@ import LayoutEditor from "../components/LayoutEditor";
 import FieldModal from "../components/FieldModal";
 import ListViewsEditor from "../components/ListViewsEditor";
 import TriggerModal from "../components/TriggerModal";
+import { useToast } from "../components/ui/ToastContext";
 
 function ObjectMetadataPage() {
   const { apiName } = useParams();
+  const { addToast } = useToast();
 
   const [objectData, setObjectData] = useState(null);
   const [activeSection, setActiveSection] = useState("details");
@@ -47,7 +49,7 @@ function ObjectMetadataPage() {
       setObjectData(normalizeObjectData(data));
     } catch (error) {
       console.error(error);
-      alert("Error cargando objeto");
+      addToast("Error cargando objeto", "error");
     } finally {
       setLoading(false);
     }
@@ -89,7 +91,7 @@ function ObjectMetadataPage() {
 
   const addLayout = async () => {
     if (!newLayout.label.trim()) {
-      alert("El nombre del layout es obligatorio");
+      addToast("El nombre del layout es obligatorio", "warning");
       return;
     }
 
@@ -166,7 +168,7 @@ function ObjectMetadataPage() {
     );
 
     if (exists) {
-      alert("Ya existe un campo con ese API Name");
+      addToast("Ya existe un campo con ese API Name", "warning");
       return;
     }
 
@@ -254,7 +256,7 @@ function ObjectMetadataPage() {
       .filter((api, index, arr) => api && arr.indexOf(api) !== index);
 
     if (duplicatedApiNames.length > 0) {
-      alert("Hay vistas con API Name repetido");
+      addToast("Hay vistas con API Name repetido", "warning");
       return;
     }
 
@@ -264,7 +266,7 @@ function ObjectMetadataPage() {
     });
 
     setObjectData(normalizeObjectData(saved));
-    alert("Views actualizadas");
+    addToast("Views actualizadas", "success");
   };
 
   const handleNewTrigger = () => {
@@ -303,7 +305,7 @@ function ObjectMetadataPage() {
           try {
             values = JSON.parse(values || "{}");
           } catch {
-            alert("El JSON de valores en la acción createRecord no es válido");
+            addToast("El JSON de valores en la accion createRecord no es valido", "error");
             throw new Error("JSON inválido en createRecord");
           }
         }
@@ -495,7 +497,7 @@ function ObjectMetadataPage() {
                     apiName: objectData.apiName,
                   });
                   setObjectData(normalizeObjectData(saved));
-                  alert("Objeto actualizado");
+                  addToast("Objeto actualizado", "success");
                 }}
               >
                 Guardar cambios
@@ -842,3 +844,4 @@ function ObjectMetadataPage() {
 }
 
 export default ObjectMetadataPage;
+

@@ -4,8 +4,10 @@ import { deleteRecord, getRecords } from "../services/customService";
 import { buildListQuery, buildRecordListRequest } from "../engine/listEngine";
 import { formatFieldValue, getBackToListSearch } from "../engine/metadataEngine";
 import Pagination from "./ui/Pagination";
+import { useToast } from "./ui/ToastContext";
 
 function ObjectListView({ objectDef }) {
+  const { addToast } = useToast();
   const [records, setRecords] = useState([]);
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -80,7 +82,7 @@ function ObjectListView({ objectDef }) {
       await loadRecords();
     } catch (error) {
       console.error(error);
-      window.alert(error?.response?.data?.error || "Error eliminando el registro");
+      addToast(error?.response?.data?.error || "Error eliminando el registro", "error");
     }
   };
 

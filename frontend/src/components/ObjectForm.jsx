@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { normalizeApiName } from "../engine/metadataEngine";
+import { useToast } from "./ui/ToastContext";
 
 function optionsToMultiline(options = []) {
   return options.join("\n");
@@ -156,6 +157,7 @@ function renderDefaultValueInput(field, setField) {
 }
 
 function ObjectForm({ initialData = null, onSave, saving = false }) {
+  const { addToast } = useToast();
   const emptyField = {
     label: "",
     apiName: "",
@@ -247,7 +249,7 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
 
   const addOrUpdateField = () => {
     if (!field.label.trim()) {
-      alert("El label del campo es obligatorio");
+      addToast("El label del campo es obligatorio", "warning");
       return;
     }
 
@@ -262,12 +264,12 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
     );
 
     if (exists) {
-      alert("Ya existe un campo con ese API Name");
+      addToast("Ya existe un campo con ese API Name", "warning");
       return;
     }
 
     if (field.type === "lookup" && !field.referenceTo.trim()) {
-      alert("Debes indicar el objeto relacionado para el campo lookup");
+      addToast("Debes indicar el objeto relacionado para el campo lookup", "warning");
       return;
     }
 
@@ -275,28 +277,28 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
       field.type === "select" &&
       (!field.options || field.options.length === 0)
     ) {
-      alert("El campo select debe tener opciones");
+      addToast("El campo select debe tener opciones", "warning");
       return;
     }
 
     if (field.type === "formula" && !field.formula?.expression?.trim()) {
-      alert("El campo fórmula debe tener una expresión");
+      addToast("El campo fórmula debe tener una expresión", "warning");
       return;
     }
 
     if (field.type === "rollup") {
       if (!field.rollup?.relatedObject?.trim()) {
-        alert("El campo rollup debe tener relatedObject");
+        addToast("El campo rollup debe tener relatedObject", "warning");
         return;
       }
 
       if (!field.rollup?.relatedField?.trim()) {
-        alert("El campo rollup debe tener relatedField");
+        addToast("El campo rollup debe tener relatedField", "warning");
         return;
       }
 
       if (!field.rollup?.operation?.trim()) {
-        alert("El campo rollup debe tener operation");
+        addToast("El campo rollup debe tener operation", "warning");
         return;
       }
 
@@ -304,7 +306,7 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
         ["sum", "avg", "min", "max"].includes(field.rollup?.operation) &&
         !field.rollup?.fieldToAggregate?.trim()
       ) {
-        alert("El campo rollup debe tener fieldToAggregate");
+        addToast("El campo rollup debe tener fieldToAggregate", "warning");
         return;
       }
 
@@ -312,7 +314,7 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
         field.rollup?.operation === "count" &&
         field.rollup?.fieldToAggregate?.trim()
       ) {
-        alert("COUNT no debe tener fieldToAggregate");
+        addToast("COUNT no debe tener fieldToAggregate", "warning");
         return;
       }
     }
@@ -396,12 +398,12 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
 
   const handleSubmit = () => {
     if (!name.trim()) {
-      alert("El nombre del objeto es obligatorio");
+      addToast("El nombre del objeto es obligatorio", "warning");
       return;
     }
 
     if (fields.length === 0) {
-      alert("Debes agregar al menos un campo");
+      addToast("Debes agregar al menos un campo", "warning");
       return;
     }
 

@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
 import { deleteObject } from "../services/customService";
 import ObjectModal from "../components/ObjectModal";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
+import { useToast } from "../components/ui/ToastContext";
 
 function SettingsPage() {
+  const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState("objects");
   const [isObjectModalOpen, setIsObjectModalOpen] = useState(false);
   const [editingObject, setEditingObject] = useState(null);
@@ -17,7 +19,7 @@ function SettingsPage() {
       await refreshObjects();
     } catch (error) {
       console.error(error);
-      alert(error?.response?.data?.error || "Error eliminando el objeto");
+      addToast(error?.response?.data?.error || "Error eliminando el objeto", "error");
     }
   };
 

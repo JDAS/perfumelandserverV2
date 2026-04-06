@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { normalizeApiName } from "../engine/metadataEngine";
+import { useToast } from "./ui/ToastContext";
 
 function optionsToMultiline(options = []) {
   return options.join("\n");
@@ -175,6 +176,7 @@ function renderDefaultValueInput(field, setField) {
 }
 
 function FieldModal({ open, onClose, onSave, initialData = null }) {
+  const { addToast } = useToast();
   const emptyField = {
     label: "",
     apiName: "",
@@ -240,33 +242,33 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
     e.preventDefault();
 
     if (!field.label.trim()) {
-      alert("El label es obligatorio");
+      addToast("El label es obligatorio", "warning");
       return;
     }
 
     if (field.type === "lookup" && !field.referenceTo?.trim()) {
-      alert("Debe indicar el objeto relacionado para el lookup");
+      addToast("Debe indicar el objeto relacionado para el lookup", "warning");
       return;
     }
 
     if (field.type === "formula" && !field.formula?.expression?.trim()) {
-      alert("Debe indicar la expresión de la fórmula");
+      addToast("Debe indicar la expresión de la fórmula", "warning");
       return;
     }
 
     if (field.type === "rollup") {
       if (!field.rollup?.relatedObject?.trim()) {
-        alert("Debe indicar el objeto relacionado del rollup");
+        addToast("Debe indicar el objeto relacionado del rollup", "warning");
         return;
       }
 
       if (!field.rollup?.relatedField?.trim()) {
-        alert("Debe indicar el campo relación del rollup");
+        addToast("Debe indicar el campo relación del rollup", "warning");
         return;
       }
 
       if (!field.rollup?.operation?.trim()) {
-        alert("Debe indicar la operación del rollup");
+        addToast("Debe indicar la operación del rollup", "warning");
         return;
       }
 
@@ -274,7 +276,7 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
         ["sum", "avg", "min", "max"].includes(field.rollup?.operation) &&
         !field.rollup?.fieldToAggregate?.trim()
       ) {
-        alert("Debe indicar el campo a resumir");
+        addToast("Debe indicar el campo a resumir", "warning");
         return;
       }
 
@@ -282,7 +284,7 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
         field.rollup?.operation === "count" &&
         field.rollup?.fieldToAggregate?.trim()
       ) {
-        alert("COUNT no debe tener fieldToAggregate");
+        addToast("COUNT no debe tener fieldToAggregate", "warning");
         return;
       }
     }

@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { createObject, updateObject } from "../services/customService";
 import ObjectForm from "./ObjectForm";
+import { useToast } from "./ui/ToastContext";
 
 function ObjectModal({ open, onClose, onSaved, initialData = null }) {
   const [saving, setSaving] = useState(false);
+  const { addToast } = useToast();
 
   if (!open) return null;
 
@@ -19,7 +21,7 @@ function ObjectModal({ open, onClose, onSaved, initialData = null }) {
       onClose?.();
     } catch (error) {
       console.error(error);
-      alert(error?.response?.data?.error || "Error guardando el objeto");
+      addToast(error?.response?.data?.error || "Error guardando el objeto", "error");
     } finally {
       setSaving(false);
     }

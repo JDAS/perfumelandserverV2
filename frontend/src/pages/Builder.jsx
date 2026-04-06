@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createObject as createCustomObject } from '../services/customService';
+import { useToast } from '../components/ui/ToastContext';
 
 function optionsToMultiline(options = []) {
   return options.join('\n');
@@ -46,6 +47,7 @@ function buildDateDefaultValue(dateDefault) {
 }
 
 function Builder() {
+  const { addToast } = useToast();
   const [name, setName] = useState('');
   const [apiName, setApiName] = useState('');
   const [fields, setFields] = useState([]);
@@ -63,7 +65,7 @@ function Builder() {
 
   const addField = () => {
     if (!field.label.trim()) {
-      alert('El label del campo es obligatorio');
+      addToast('El label del campo es obligatorio', 'warning');
       return;
     }
 
@@ -98,7 +100,7 @@ function Builder() {
 
   const createObject = async () => {
     if (!name.trim()) {
-      alert('El nombre del objeto es obligatorio');
+      addToast('El nombre del objeto es obligatorio', 'warning');
       return;
     }
 
@@ -124,7 +126,7 @@ function Builder() {
         ],
       });
 
-      alert('Objeto creado 🚀');
+      addToast('Objeto creado', 'success');
       setName('');
       setApiName('');
       setFields([]);
@@ -138,7 +140,7 @@ function Builder() {
       });
     } catch (error) {
       console.error(error);
-      alert(error?.response?.data?.error || error?.response?.data?.message || 'Error al crear el objeto');
+      addToast(error?.response?.data?.error || error?.response?.data?.message || 'Error al crear el objeto', 'error');
     }
   };
 
@@ -322,3 +324,4 @@ function Builder() {
 }
 
 export default Builder;
+

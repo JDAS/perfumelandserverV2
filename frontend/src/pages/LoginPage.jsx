@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { login } from '../services/authService';
+import { useToast } from '../components/ui/ToastContext';
 
 function LoginPage() {
   const navigate = useNavigate();
   const { user, setAuth } = useAuthStore();
+  const { addToast } = useToast();
 
   const [form, setForm] = useState({
     email: '',
@@ -29,7 +31,7 @@ function LoginPage() {
     e.preventDefault();
 
     if (!form.email || !form.password) {
-      alert('Debes completar email y contraseña');
+      addToast('Debes completar email y contraseña', 'warning');
       return;
     }
 
@@ -46,7 +48,7 @@ function LoginPage() {
       navigate(data.user?.isAdmin ? '/admin' : '/');
     } catch (error) {
       console.error(error);
-      alert(error?.response?.data?.message || 'Error al iniciar sesión');
+      addToast(error?.response?.data?.message || 'Error al iniciar sesión', 'error');
     } finally {
       setLoading(false);
     }
@@ -79,7 +81,7 @@ function LoginPage() {
               className="w-full border rounded-lg p-3"
               value={form.password}
               onChange={handleChange}
-              placeholder="••••••••"
+              placeholder="********"
             />
           </div>
 

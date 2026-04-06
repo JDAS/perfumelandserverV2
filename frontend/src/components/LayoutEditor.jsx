@@ -5,9 +5,11 @@ import {
   Draggable,
 } from "@hello-pangea/dnd";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
+import { useToast } from "./ui/ToastContext";
 
 function LayoutEditor({ layout, allFields, onSave, onCancel }) {
   const { objects = [] } = useObjectMetadata();
+  const { addToast } = useToast();
 
   const [localLayout, setLocalLayout] = useState(
     JSON.parse(JSON.stringify(layout))
@@ -336,7 +338,7 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
     );
 
     if (missingRequired.length > 0) {
-      alert(
+      addToast(
         `Estos campos requeridos deben estar en alguna sección: ${missingRequired.join(
           ", "
         )}`
@@ -351,8 +353,9 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
     );
 
     if (invalidRelatedList) {
-      alert(
-        `La lista relacionada "${invalidRelatedList.label || "sin titulo"}" debe tener objeto relacionado y campo relacionado`
+      addToast(
+        `La lista relacionada "${invalidRelatedList.label || "sin titulo"}" debe tener objeto relacionado y campo relacionado`,
+        "warning"
       );
       return;
     }
@@ -794,3 +797,4 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
 }
 
 export default LayoutEditor;
+
