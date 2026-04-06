@@ -289,6 +289,13 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
       }
     }
 
+    const normalizeValue = (val) => {
+      if (val === "true") return true;
+      if (val === "false") return false;
+      if (val !== "" && !isNaN(val)) return Number(val);
+      return val;
+    };
+
     const finalField = {
       ...field,
       apiName: field.apiName?.trim()
@@ -359,12 +366,6 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
             filterOperator: "eq",
             filterValue: "",
           },
-    };
-    const normalizeValue = (val) => {
-      if (val === "true") return true;
-      if (val === "false") return false;
-      if (val !== "" && !isNaN(val)) return Number(val);
-      return val;
     };
     onSave(finalField);
   };
