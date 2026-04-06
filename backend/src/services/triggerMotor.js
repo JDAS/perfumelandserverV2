@@ -19,6 +19,10 @@ function valuesAreEqual(a, b) {
     return JSON.stringify(a) === JSON.stringify(b);
 }
 
+function isGroup(node) {
+    return node && typeof node === "object" && Array.isArray(node.conditions);
+}
+
 function evaluateCondition(condition, record, previousRecord = null) {
     const { field, operator, value } = condition || {};
     const currentValue = getValueByPath(record, field);
