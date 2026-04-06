@@ -144,6 +144,18 @@ function sanitizeField(rawField = {}, index = 0) {
   const label = String(rawField.label || `Campo ${index + 1}`).trim();
   const apiName = normalizeApiName(rawField.apiName || label);
   const type = FIELD_TYPES.includes(rawField.type) ? rawField.type : "text";
+  const legacyRollup = rawField.rollup || {};
+  const rollupSource = {
+    relatedObject: legacyRollup.relatedObject ?? rawField.relatedObject ?? "",
+    relatedField: legacyRollup.relatedField ?? rawField.relatedField ?? "",
+    operation: legacyRollup.operation ?? rawField.operation ?? "sum",
+    fieldToAggregate:
+      legacyRollup.fieldToAggregate ?? rawField.fieldToAggregate ?? "",
+    filterField: legacyRollup.filterField ?? rawField.filterField ?? "",
+    filterOperator:
+      legacyRollup.filterOperator ?? rawField.filterOperator ?? "eq",
+    filterValue: legacyRollup.filterValue ?? rawField.filterValue ?? "",
+  };
 
   return {
     label,
@@ -216,23 +228,23 @@ function sanitizeField(rawField = {}, index = 0) {
 
     ...(type === "rollup" && {
       rollup: {
-        relatedObject: normalizeApiName(rawField.rollup?.relatedObject || ""),
-        relatedField: normalizeApiName(rawField.rollup?.relatedField || ""),
+        relatedObject: normalizeApiName(rollupSource.relatedObject || ""),
+        relatedField: normalizeApiName(rollupSource.relatedField || ""),
         operation: ["sum", "count", "avg", "min", "max"].includes(
-          rawField.rollup?.operation
+          rollupSource.operation
         )
-          ? rawField.rollup.operation
+          ? rollupSource.operation
           : "sum",
         fieldToAggregate: normalizeApiName(
-          rawField.rollup?.fieldToAggregate || ""
+          rollupSource.fieldToAggregate || ""
         ),
-        filterField: normalizeApiName(rawField.rollup?.filterField || ""),
+        filterField: normalizeApiName(rollupSource.filterField || ""),
         filterOperator: ["eq", "ne", "gt", "gte", "lt", "lte", "contains"].includes(
-          rawField.rollup?.filterOperator
+          rollupSource.filterOperator
         )
-          ? rawField.rollup.filterOperator
+          ? rollupSource.filterOperator
           : "eq",
-        filterValue: rawField.rollup?.filterValue ?? "",
+        filterValue: rollupSource.filterValue ?? "",
       },
     }),
   };
