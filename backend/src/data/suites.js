@@ -634,6 +634,60 @@ const commerceSuiteObjects = [
           },
         ],
       },
+      {
+        name: "Generar plan de pago al crear venta a credito",
+        isActive: true,
+        when: "afterInsert",
+        runOrder: 10,
+        stopOnError: true,
+        conditions: {
+          operator: "AND",
+          conditions: [
+            { field: "status", operator: "eq", value: "Completada" },
+            { field: "type", operator: "eq", value: "Credito" },
+          ],
+        },
+        actions: [
+          {
+            type: "generatePaymentPlan",
+            config: {
+              totalField: "total",
+              typeField: "type",
+              creditTypeField: "credittype",
+              quotesField: "quotes",
+              salesDateField: "saledate",
+              targetObject: "payment_plan",
+            },
+          },
+        ],
+      },
+      {
+        name: "Regenerar plan de pago al editar venta a credito",
+        isActive: true,
+        when: "afterUpdate",
+        runOrder: 10,
+        stopOnError: true,
+        conditions: {
+          operator: "AND",
+          conditions: [
+            { field: "status", operator: "eq", value: "Completada" },
+            { field: "type", operator: "eq", value: "Credito" },
+          ],
+        },
+        actions: [
+          {
+            type: "generatePaymentPlan",
+            config: {
+              totalField: "total",
+              typeField: "type",
+              creditTypeField: "credittype",
+              quotesField: "quotes",
+              salesDateField: "saledate",
+              targetObject: "payment_plan",
+            },
+          },
+        ],
+      },
     ],
   },
   {

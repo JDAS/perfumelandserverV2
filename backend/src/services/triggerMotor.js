@@ -1,5 +1,6 @@
 const { getCustomRecordModel } = require("../models/CustomRecord");
 const { calculatePayments } = require("../utils/paymentEngine");
+const CustomObject = require("../models/CustomObject");
 
 function getValueByPath(obj, path) {
     if (!obj || !path) return undefined;
@@ -175,6 +176,234 @@ function resolveRelativeDateKeyword(value) {
     );
 }
 
+function normalizePaymentKeyword(value) {
+    return String(value || "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+}
+
+function formatDateOnly(value) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
+function buildPaymentPlanStatus(plan, todayString) {
+    const plannedAmount = Number(plan.planned_amount || 0);
+    const paidAmount = Number(plan.paid_amount || 0);
+
+    if (plannedAmount > 0 && paidAmount >= plannedAmount) {
+        return "Paid";
+    }
+
+    if (paidAmount > 0) {
+        return "Partial";
+    }
+
+    if (plan.due_date && plan.due_date < todayString) {
+        return "Overdue";
+    }
+
+    return "Pending";
+}
+
+function applyPaymentsToInstallments(installments, payments = []) {
+    const assignments = [];
+
+    for (const payment of payments) {
+        let remainingPayment = Number(payment?.amount || 0);
+        let firstTouchedInstallment = null;
+
+        if (!Number.isFinite(remainingPayment) || remainingPayment <= 0) {
+            assignments.push({
+                paymentId: String(payment?._id || ""),
+                installmentNumber: null,
+            });
+            continue;
+        }
+
+        for (const installment of installments) {
+            if (remainingPayment <= 0) break;
+
+            const plannedAmount = Number(installment.planned_amount || 0);
+            const paidAmount = Number(installment.paid_amount || 0);
+            const remainingInstallment = Math.max(plannedAmount - paidAmount, 0);
+
+            if (remainingInstallment <= 0) continue;
+
+            const appliedAmount = Math.min(remainingPayment, remainingInstallment);
+
+            if (appliedAmount <= 0) continue;
+
+            installment.paid_amount = paidAmount + appliedAmount;
+            installment.last_payment_date =
+                formatDateOnly(payment?.date) || installment.last_payment_date || null;
+
+            if (firstTouchedInstallment === null) {
+                firstTouchedInstallment = installment.installment_number;
+            }
+
+            remainingPayment -= appliedAmount;
+        }
+
+        assignments.push({
+            paymentId: String(payment?._id || ""),
+            installmentNumber: firstTouchedInstallment,
+        });
+    }
+
+    return assignments;
+}
+
+async function clearGeneratedPaymentPlans({
+    planObjectApiName,
+    paymentObjectApiName,
+    saleLookupField,
+    paymentPlanLookupField,
+    saleId,
+}) {
+    if (!saleId || !planObjectApiName) return;
+
+    const PaymentPlanModel = getCustomRecordModel(planObjectApiName);
+    await PaymentPlanModel.deleteMany({ [saleLookupField]: String(saleId) });
+
+    if (paymentObjectApiName && paymentPlanLookupField) {
+        const PaymentModel = getCustomRecordModel(paymentObjectApiName);
+        await PaymentModel.updateMany(
+            { [saleLookupField]: String(saleId) },
+            { $unset: { [paymentPlanLookupField]: 1 } }
+        );
+    }
+}
+
+async function generatePaymentPlanRecords(config = {}, record) {
+    const {
+        totalField = "total",
+        typeField = "type",
+        creditTypeField = "credittype",
+        quotesField = "quotes",
+        salesDateField = "saledate",
+        targetObject = "payment_plan",
+        paymentObject = "payment",
+        saleLookupField = "sale_id",
+        installmentNumberField = "installment_number",
+        dueDateField = "due_date",
+        plannedAmountField = "planned_amount",
+        paidAmountField = "paid_amount",
+        statusField = "status",
+        lastPaymentDateField = "last_payment_date",
+        versionField = "version",
+        paymentPlanLookupField = "payment_plan_id",
+    } = config;
+
+    const saleId = String(record?._id || "");
+    if (!saleId) return;
+
+    const normalizedType = normalizePaymentKeyword(record?.[typeField]);
+    const salesDate = record?.[salesDateField];
+    const total = Number(record?.[totalField]);
+
+    if (
+        normalizedType !== "credito" ||
+        !Number.isFinite(total) ||
+        total <= 0 ||
+        !salesDate
+    ) {
+        await clearGeneratedPaymentPlans({
+            planObjectApiName: targetObject,
+            paymentObjectApiName: paymentObject,
+            saleLookupField,
+            paymentPlanLookupField,
+            saleId,
+        });
+        return;
+    }
+
+    const installments = calculatePayments({
+        total,
+        type: normalizedType,
+        creditType: normalizePaymentKeyword(record?.[creditTypeField]),
+        quotes: record?.[quotesField],
+        salesDate,
+    });
+
+    const PaymentPlanModel = getCustomRecordModel(targetObject);
+    const PaymentModel = getCustomRecordModel(paymentObject);
+
+    const [existingPlans, payments] = await Promise.all([
+        PaymentPlanModel.find({ [saleLookupField]: saleId }).lean(),
+        PaymentModel.find({ [saleLookupField]: saleId })
+            .sort({ date: 1, createdAt: 1, _id: 1 })
+            .lean(),
+    ]);
+
+    const nextVersion =
+        existingPlans.reduce(
+            (maxVersion, item) => Math.max(maxVersion, Number(item?.[versionField] || 0)),
+            0
+        ) + 1;
+
+    const planDrafts = installments.map((item) => ({
+        [saleLookupField]: saleId,
+        [installmentNumberField]: item.number,
+        [dueDateField]: item.fecha,
+        [plannedAmountField]: item.expectedAmount,
+        [paidAmountField]: 0,
+        [statusField]: "Pending",
+        [lastPaymentDateField]: null,
+        [versionField]: nextVersion,
+    }));
+
+    const assignments = applyPaymentsToInstallments(planDrafts, payments);
+    const todayString = formatDateOnly(new Date());
+
+    for (const planDraft of planDrafts) {
+        planDraft[statusField] = buildPaymentPlanStatus(planDraft, todayString);
+    }
+
+    await PaymentPlanModel.deleteMany({ [saleLookupField]: saleId });
+
+    const createdPlans =
+        planDrafts.length > 0 ? await PaymentPlanModel.create(planDrafts) : [];
+
+    if (payments.length > 0) {
+        const installmentIdByNumber = new Map(
+            createdPlans.map((doc) => [
+                Number(doc?.[installmentNumberField]),
+                String(doc?._id),
+            ])
+        );
+
+        const bulkOps = assignments
+            .filter((item) => item.paymentId)
+            .map((item) => {
+                const linkedPlanId =
+                    item.installmentNumber !== null
+                        ? installmentIdByNumber.get(Number(item.installmentNumber)) || null
+                        : null;
+
+                return {
+                    updateOne: {
+                        filter: { _id: item.paymentId },
+                        update: linkedPlanId
+                            ? { $set: { [paymentPlanLookupField]: linkedPlanId } }
+                            : { $unset: { [paymentPlanLookupField]: 1 } },
+                    },
+                };
+            });
+
+        if (bulkOps.length > 0) {
+            await PaymentModel.bulkWrite(bulkOps);
+        }
+    }
+}
+
 async function executeAction(action, context) {
     const { type, config = {} } = action || {};
     const {
@@ -341,6 +570,10 @@ async function executeAction(action, context) {
 
             return nextRecord;
         }
+        case "generatePaymentPlan": {
+            await generatePaymentPlanRecords(config, record);
+            return record;
+        }
 
         default:
             return record;
@@ -427,8 +660,7 @@ async function resolveLookupPathValue({
         const relatedRecord = await RelatedModel.findById(lookupId).lean();
         if (!relatedRecord) return undefined;
 
-        const RelatedObjectModel = require("../models/CustomObject");
-        const relatedObjectDefinition = await RelatedObjectModel.findOne({
+        const relatedObjectDefinition = await CustomObject.findOne({
             apiName: fieldDef.referenceTo,
         }).lean();
 
