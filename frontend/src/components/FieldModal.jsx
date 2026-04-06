@@ -628,7 +628,7 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
                 )}
 
                 <p className="text-xs text-gray-500">
-                  Puedes usar valores dinamicos con plantillas como `{{sellerName}}` o `{{saleId}}`.
+                  Puedes usar valores dinamicos con plantillas como <code>{"{{sellerName}}"}</code> o <code>{"{{saleId}}"}</code>.
                 </p>
               </div>
             </div>

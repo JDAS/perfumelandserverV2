@@ -656,7 +656,7 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
                 }
               />
               <p className="text-xs text-gray-500 md:col-span-2">
-                Los filtros de lookup aceptan plantillas dinamicas como `{{sellerName}}` o `{{saleId}}`.
+                Los filtros de lookup aceptan plantillas dinamicas como <code>{"{{sellerName}}"}</code> o <code>{"{{saleId}}"}</code>.
               </p>
             </>
           )}
