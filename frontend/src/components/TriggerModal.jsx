@@ -328,8 +328,11 @@ function TriggerModal({
                                                 onChange={(e) =>
                                                     updateActionConfig(index, "value", e.target.value)
                                                 }
-                                                placeholder="Ej: Alta o {{nombre}}"
+                                                placeholder="Ej: Alta, {{nombre}}, today, today+7, today-3"
                                             />
+                                            <p className="mt-1 text-xs text-gray-500">
+                                                Si el campo destino es fecha, puedes usar <code>today</code>, <code>today+7</code> o <code>today-3</code>.
+                                            </p>
                                         </div>
                                     </div>
                                 )}

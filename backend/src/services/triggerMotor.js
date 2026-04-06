@@ -153,6 +153,28 @@ function applyTemplateValue(template, record, previousRecord = null) {
     return template;
 }
 
+function resolveRelativeDateKeyword(value) {
+    if (typeof value !== "string") return value;
+
+    const trimmed = value.trim().toLowerCase();
+    const match = trimmed.match(/^today(?:\s*([+-])\s*(\d+))?$/i);
+
+    if (!match) {
+        return value;
+    }
+
+    const sign = match[1] || "+";
+    const rawOffset = Number(match[2] || 0);
+    const offset = sign === "-" ? -rawOffset : rawOffset;
+    const now = new Date();
+
+    return new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + offset
+    );
+}
+
 async function executeAction(action, context) {
     const { type, config = {} } = action || {};
     const {
@@ -167,12 +189,19 @@ async function executeAction(action, context) {
         case "updateField": {
             if (!config.field) return record;
 
-            const nextRecord = { ...record };
-            nextRecord[config.field] = applyTemplateValue(
+            const targetField = (objectDefinition?.fields || []).find(
+                (field) => field.apiName === config.field
+            );
+            const resolvedValue = applyTemplateValue(
                 config.value,
                 record,
                 previousRecord
             );
+            const nextRecord = { ...record };
+            nextRecord[config.field] =
+                targetField?.type === "date"
+                    ? resolveRelativeDateKeyword(resolvedValue)
+                    : resolvedValue;
 
             return nextRecord;
         }
