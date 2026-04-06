@@ -7,6 +7,7 @@ const FIELD_TYPES = [
   "text",
   "textarea",
   "number",
+  "percentage",
   "select",
   "date",
   "boolean",
@@ -56,7 +57,8 @@ function normalizeFieldDefaultValue(type, rawValue, options = []) {
   }
 
   switch (type) {
-    case "number": {
+    case "number":
+    case "percentage": {
       if (rawValue === "") return "";
       const parsed = Number(rawValue);
       return Number.isNaN(parsed) ? "" : parsed;
@@ -427,7 +429,7 @@ function validateObjectMetadata(payload = {}) {
     }
 
     if (
-      field.type === "number" &&
+      ["number", "percentage"].includes(field.type) &&
       field.defaultValue !== "" &&
       typeof field.defaultValue !== "number"
     ) {

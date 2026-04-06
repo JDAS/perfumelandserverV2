@@ -91,6 +91,9 @@ export function formatFieldValue(field, value, record = null) {
         return String(value);
       }
 
+    case "percentage":
+      return `${value}%`;
+
     default:
       return String(value);
   }

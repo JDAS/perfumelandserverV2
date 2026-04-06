@@ -186,6 +186,7 @@ function Builder() {
         >
           <option value="text">Text</option>
           <option value="number">Number</option>
+          <option value="percentage">Percentage</option>
           <option value="select">Select</option>
           <option value="boolean">Boolean</option>
           <option value="date">Date</option>
@@ -297,7 +298,7 @@ function Builder() {
           <input
             placeholder="Valor por defecto"
             className="border p-2 col-span-2"
-            type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+            type={['number', 'percentage'].includes(field.type) ? 'number' : field.type === 'date' ? 'date' : 'text'}
             value={field.defaultValue ?? ''}
             onChange={(e) => setField({ ...field, defaultValue: e.target.value })}
           />

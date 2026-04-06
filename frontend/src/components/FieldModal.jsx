@@ -161,13 +161,13 @@ function renderDefaultValueInput(field, setField) {
     <div>
       <label className="mb-1 block text-sm font-medium">Valor por defecto</label>
       <input
-        type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
+        type={["number", "percentage"].includes(field.type) ? "number" : field.type === "date" ? "date" : "text"}
         className="w-full rounded border p-2"
         value={field.defaultValue ?? ""}
         onChange={(e) =>
           setField({
             ...field,
-            defaultValue: field.type === "number" ? e.target.value : e.target.value,
+            defaultValue: ["number", "percentage"].includes(field.type) ? e.target.value : e.target.value,
           })
         }
       />
@@ -484,6 +484,7 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
               <option value="text">Text</option>
               <option value="textarea">Textarea</option>
               <option value="number">Number</option>
+              <option value="percentage">Percentage</option>
               <option value="select">Select</option>
               <option value="date">Date</option>
               <option value="boolean">Boolean</option>

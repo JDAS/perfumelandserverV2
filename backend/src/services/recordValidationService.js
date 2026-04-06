@@ -39,6 +39,7 @@ function castFieldValue(field, value) {
 
   switch (field?.type) {
     case 'number':
+    case 'percentage':
       return value === '' ? null : Number(value);
     case 'boolean':
       if (typeof value === 'boolean') return value;
@@ -128,7 +129,7 @@ async function validateRecordPayload(payload = {}, objectDefinition, { partial =
 
     if (!hasOwnValue || isBlank(value)) continue;
 
-    if (field.type === 'number' && Number.isNaN(value)) {
+    if (['number', 'percentage'].includes(field.type) && Number.isNaN(value)) {
       errors.push(`${field.label} debe ser numérico`);
     }
 

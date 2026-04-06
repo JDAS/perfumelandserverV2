@@ -82,6 +82,7 @@ function buildMongoQuery({ objectDefinition, search, filters, viewFilters }) {
           "select",
           "date",
           "number",
+          "percentage",
           "email",
           "phone",
           "lookup",

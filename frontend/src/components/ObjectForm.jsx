@@ -146,7 +146,7 @@ function renderDefaultValueInput(field, setField) {
   return (
     <input
       placeholder="Valor por defecto"
-      type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
+      type={["number", "percentage"].includes(field.type) ? "number" : field.type === "date" ? "date" : "text"}
       className="rounded border p-2 md:col-span-2"
       value={field.defaultValue ?? ""}
       onChange={(e) =>
@@ -583,6 +583,7 @@ function ObjectForm({ initialData = null, onSave, saving = false }) {
             <option value="text">Text</option>
             <option value="textarea">Textarea</option>
             <option value="number">Number</option>
+            <option value="percentage">Percentage</option>
             <option value="select">Select</option>
             <option value="date">Date</option>
             <option value="boolean">Boolean</option>

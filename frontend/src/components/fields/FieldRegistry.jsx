@@ -33,6 +33,9 @@ export function renderFieldInput(field, value, onValueChange, context = {}) {
     case "number":
       return <BaseInput type="number" {...commonProps} />;
 
+    case "percentage":
+      return <BaseInput type="number" {...commonProps} />;
+
     case "date":
       return <BaseInput type="date" {...commonProps} />;
 
