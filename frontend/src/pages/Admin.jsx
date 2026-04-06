@@ -1,10 +1,11 @@
 import { useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import ObjectListView from "../components/ObjectListView";
+import SuiteSetupPanel from "../components/SuiteSetupPanel";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 
 function Admin() {
-  const { objects, loading } = useObjectMetadata();
+  const { objects, loading, refreshObjects } = useObjectMetadata();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const activeTab = searchParams.get("tab");
@@ -66,6 +67,23 @@ function Admin() {
 
       {loading ? (
         <div className="bg-white rounded-xl shadow p-6"><p>Cargando tabs...</p></div>
+      ) : objects.length === 0 ? (
+        <SuiteSetupPanel
+          onInstalled={async () => {
+            const installedObjects = await refreshObjects();
+            const firstObject = (installedObjects || [])
+              .filter((obj) => obj.active !== false && obj.tabsEnabled !== false)
+              .sort((a, b) => a.name.localeCompare(b.name))[0];
+
+            if (firstObject) {
+              const next = new URLSearchParams();
+              next.set("tab", firstObject.apiName);
+              next.set("view", "all");
+              next.set("page", "1");
+              setSearchParams(next, { replace: true });
+            }
+          }}
+        />
       ) : (
         <>
           <div className="bg-white rounded-xl shadow p-2 flex gap-2 flex-wrap">

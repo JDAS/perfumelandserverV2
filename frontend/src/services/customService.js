@@ -35,6 +35,16 @@ export const deleteObject = async (apiName) => {
   return res.data;
 };
 
+export const getSuites = async () => {
+  const res = await apiClient.get("/api/suites");
+  return res.data;
+};
+
+export const installSuite = async (suiteId) => {
+  const res = await apiClient.post(`/api/suites/${suiteId}/install`);
+  return res.data;
+};
+
 export const getCustomObjects = getObjects;
 export const getCustomObjectByApiName = getObjectByApiName;
 export const createCustomObject = createObject;

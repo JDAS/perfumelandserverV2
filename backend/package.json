@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "seed:sellers": "node src/scripts/upsertSellerObject.js",
+    "install:suite": "node src/scripts/installSuite.js"
   },
   "keywords": [],
   "author": "",
