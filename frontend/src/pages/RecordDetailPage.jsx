@@ -116,7 +116,7 @@ function RecordDetailPage() {
           </button>
 
           <Link
-            to={`/admin/${objectDef.apiName}/${record._id}?${backToListQuery}`}
+            to={`/admin/${objectDef.apiName}/${record._id}?${backToListQuery}&returnTo=detail`}
             className="bg-black text-white px-4 py-2 rounded"
           >
             Editar

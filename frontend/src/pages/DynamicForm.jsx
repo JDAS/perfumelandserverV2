@@ -98,7 +98,17 @@ function DynamicForm() {
   const activeLayout = objectDef?.layout?.[0];
   const isEditMode = Boolean(id);
   const backToListQuery = getBackToListSearch(searchParams, object);
+  const returnTo = searchParams.get("returnTo");
   const { addToast } = useToast();
+
+  const navigateBack = () => {
+    if (returnTo === "detail" && isEditMode) {
+      navigate(`/admin/${object}/${id}/view?${backToListQuery}`);
+      return;
+    }
+
+    navigate(`/admin?${backToListQuery}`);
+  };
 
   useEffect(() => {
     async function loadRecord() {
@@ -177,7 +187,7 @@ function DynamicForm() {
         addToast("Registro creado 🚀","success");
       }
 
-      navigate(`/admin?${backToListQuery}`);
+      navigateBack();
     } catch (error) {
       console.error("Error guardando registro:", error);
       addToast(error?.response?.data?.error || "Error al guardar el registro","error");
@@ -284,7 +294,7 @@ function DynamicForm() {
         <div className="flex justify-end gap-3">
           <button
             type="button"
-            onClick={() => navigate(`/admin?${backToListQuery}`)}
+            onClick={navigateBack}
             className="rounded bg-gray-200 px-4 py-2"
           >
             Cancelar
