@@ -80,9 +80,16 @@ export const deleteRecord = async (object, id) => {
   return res.data;
 };
 
-export const getRelatedRecords = async (object, id, relatedObject, relatedField) => {
+export const getRelatedRecords = async (
+  object,
+  id,
+  relatedObject,
+  relatedField,
+  params = {}
+) => {
   const res = await apiClient.get(
-    `/api/custom-records/${object}/${id}/related/${relatedObject}/${relatedField}`
+    `/api/custom-records/${object}/${id}/related/${relatedObject}/${relatedField}`,
+    { params }
   );
   return res.data;
 };

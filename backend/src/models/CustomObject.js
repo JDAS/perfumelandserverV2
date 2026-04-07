@@ -53,6 +53,8 @@ const layoutSectionSchema = new mongoose.Schema(
     relatedObject: { type: String, default: "" },
     relatedField: { type: String, default: "" },
     relatedColumns: { type: [String], default: [] },
+    sortField: { type: String, default: "" },
+    sortOrder: { type: String, enum: ["asc", "desc"], default: "desc" },
   },
   { _id: false }
 );

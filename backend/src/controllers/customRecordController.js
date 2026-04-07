@@ -55,7 +55,11 @@ exports.getRelatedRecords = async (req, res) => {
       object,
       id,
       relatedObject,
-      relatedField
+      relatedField,
+      {
+        sortField: req.query.sortField,
+        sortOrder: req.query.sortOrder,
+      }
     );
 
     res.json({

@@ -340,6 +340,14 @@ function sanitizeObjectPayload(payload = {}, existingObject = null) {
               Array.isArray(section.relatedColumns)
               ? section.relatedColumns
               : [],
+          sortField:
+            section.type === "relatedList"
+              ? normalizeApiName(section.sortField || "")
+              : "",
+          sortOrder:
+            section.type === "relatedList" && section.sortOrder === "asc"
+              ? "asc"
+              : "desc",
         }))
         : createDefaultLayout(fields.map((field) => field.apiName))[0].sections,
   }));

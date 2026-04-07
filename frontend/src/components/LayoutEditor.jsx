@@ -26,6 +26,8 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
       relatedObject: section.relatedObject || "",
       relatedField: section.relatedField || "",
       relatedColumns: section.relatedColumns || [],
+      sortField: section.sortField || "",
+      sortOrder: section.sortOrder === "asc" ? "asc" : "desc",
     }));
 
   const [sections, setSections] = useState(
@@ -82,6 +84,8 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
         relatedObject: "",
         relatedField: "",
         relatedColumns: [],
+        sortField: "",
+        sortOrder: "desc",
       },
     ]);
   };
@@ -101,6 +105,8 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
         relatedObject: "",
         relatedField: "",
         relatedColumns: [],
+        sortField: "",
+        sortOrder: "desc",
       },
     ]);
   };
@@ -379,6 +385,11 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
           section.type === "relatedList" ? section.relatedField || "" : "",
         relatedColumns:
           section.type === "relatedList" ? section.relatedColumns || [] : [],
+        sortField: section.type === "relatedList" ? section.sortField || "" : "",
+        sortOrder:
+          section.type === "relatedList" && section.sortOrder === "asc"
+            ? "asc"
+            : "desc",
       })),
     };
 
@@ -501,6 +512,12 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
                               nextType === "relatedList"
                                 ? section.relatedColumns || []
                                 : [],
+                            sortField:
+                              nextType === "relatedList" ? section.sortField || "" : "",
+                            sortOrder:
+                              nextType === "relatedList"
+                                ? section.sortOrder || "desc"
+                                : "desc",
                           });
                         }}
                       >
@@ -765,6 +782,48 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
                             Selecciona un objeto relacionado para elegir columnas.
                           </p>
                         )}
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div>
+                          <label className="block text-sm font-medium mb-1">
+                            Ordenar por
+                          </label>
+                          <select
+                            className="border p-2 rounded w-full"
+                            value={section.sortField || ""}
+                            onChange={(e) =>
+                              updateSection(section.id, {
+                                sortField: e.target.value,
+                              })
+                            }
+                          >
+                            <option value="">Fecha de creacion</option>
+                            {relatedFields.map((field) => (
+                              <option key={field.apiName} value={field.apiName}>
+                                {field.label} ({field.apiName})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium mb-1">
+                            Orden
+                          </label>
+                          <select
+                            className="border p-2 rounded w-full"
+                            value={section.sortOrder || "desc"}
+                            onChange={(e) =>
+                              updateSection(section.id, {
+                                sortOrder: e.target.value,
+                              })
+                            }
+                          >
+                            <option value="desc">Descendente</option>
+                            <option value="asc">Ascendente</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
                   )}

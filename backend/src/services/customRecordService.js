@@ -276,7 +276,13 @@ async function getRecordByIdEnriched(apiName, recordId) {
   return applyFormulaFields(objectDefinition.fields, enriched);
 }
 
-async function getRelatedRecords(parentObjectApiName, parentId, relatedObjectApiName, relatedField) {
+async function getRelatedRecords(
+  parentObjectApiName,
+  parentId,
+  relatedObjectApiName,
+  relatedField,
+  options = {}
+) {
   const parentObjectDef = await getObjectOrThrow(parentObjectApiName);
   const relatedObjectDef = await getObjectOrThrow(relatedObjectApiName);
 
@@ -294,7 +300,10 @@ async function getRelatedRecords(parentObjectApiName, parentId, relatedObjectApi
   const rawRecords = await RelatedModel.find({
     [relatedField]: String(parentRecord._id),
   })
-    .sort({ createdAt: -1 })
+    .sort({
+      [options.sortField || "createdAt"]: options.sortOrder === "asc" ? 1 : -1,
+      _id: -1,
+    })
     .lean();
 
   const lookupResolved = await resolveLookupData(rawRecords, relatedObjectDef);

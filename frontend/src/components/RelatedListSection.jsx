@@ -21,7 +21,11 @@ function RelatedListSection({ parentObject, parentId, section }) {
           parentObject,
           parentId,
           section.relatedObject,
-          section.relatedField
+          section.relatedField,
+          {
+            sortField: section.sortField || "",
+            sortOrder: section.sortOrder || "desc",
+          }
         );
         setRecords(data.records || []);
       } catch (error) {
@@ -35,7 +39,14 @@ function RelatedListSection({ parentObject, parentId, section }) {
     if (section.relatedObject && section.relatedField) {
       load();
     }
-  }, [parentObject, parentId, section.relatedObject, section.relatedField]);
+  }, [
+    parentObject,
+    parentId,
+    section.relatedObject,
+    section.relatedField,
+    section.sortField,
+    section.sortOrder,
+  ]);
 
   const columns = useMemo(() => {
     return (section.relatedColumns || [])
@@ -50,9 +61,22 @@ function RelatedListSection({ parentObject, parentId, section }) {
     detailQuery.set("tab", section.relatedObject);
   }
 
+  const createQuery = new URLSearchParams(searchParams);
+  createQuery.set("tab", section.relatedObject);
+  createQuery.set(`prefill_${section.relatedField}`, parentId);
+  createQuery.set("returnTo", "detail");
+
   return (
     <div className="bg-white rounded-xl shadow p-6">
-      <h2 className="font-bold mb-4 text-lg">{section.label}</h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="font-bold text-lg">{section.label}</h2>
+        <Link
+          to={`/admin/${section.relatedObject}/new?${createQuery.toString()}`}
+          className="rounded bg-black px-3 py-2 text-sm text-white"
+        >
+          Nuevo relacionado
+        </Link>
+      </div>
 
       {loading ? (
         <p className="text-sm text-gray-500">Cargando...</p>

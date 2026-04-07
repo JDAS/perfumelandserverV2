@@ -84,6 +84,23 @@ function getFieldDefaultValue(field) {
   return "";
 }
 
+function getPrefillValueForField(searchParams, field) {
+  const rawValue = searchParams.get(`prefill_${field.apiName}`);
+
+  if (rawValue === null) return undefined;
+
+  if (field.type === "boolean") {
+    return rawValue === "true";
+  }
+
+  if (["number", "percentage"].includes(field.type)) {
+    const parsed = Number(rawValue);
+    return Number.isNaN(parsed) ? "" : parsed;
+  }
+
+  return rawValue;
+}
+
 function DynamicForm() {
   const { object, id } = useParams();
   const navigate = useNavigate();
@@ -122,7 +139,11 @@ function DynamicForm() {
 
         const initialState = Object.fromEntries(
           fields.map((field) => {
-            return [field.apiName, getFieldDefaultValue(field)];
+            return [
+              field.apiName,
+              getPrefillValueForField(searchParams, field) ??
+                getFieldDefaultValue(field),
+            ];
           })
         );
 
@@ -148,7 +169,7 @@ function DynamicForm() {
     }
 
     loadRecord();
-  }, [objectDef, fields, object, id, isEditMode]);
+  }, [objectDef, fields, object, id, isEditMode, searchParams]);
 
   const handleChange = (apiName, value) => {
     setFormData((prev) => ({
