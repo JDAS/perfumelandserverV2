@@ -99,7 +99,7 @@ async function recalculateRollupsForParent({
   }
 
   await ParentModel.findByIdAndUpdate(parentRecordId, updateData, {
-    new: false,
+    returnDocument: "before",
     runValidators: false,
   });
 }
