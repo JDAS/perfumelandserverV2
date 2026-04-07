@@ -1,5 +1,6 @@
 const CustomObject = require("../models/CustomObject");
 const { getCustomRecordModel } = require("../models/CustomRecord");
+const { runTriggers } = require("../services/triggerMotor");
 
 function buildFilterCondition({ filterField, filterOperator, filterValue }) {
   if (
@@ -79,6 +80,9 @@ async function recalculateRollupsForParent({
   if (!rollupFields.length) return;
 
   const ParentModel = getCustomRecordModel(parentObjectApiName);
+  const previousParentRecord = await ParentModel.findById(parentRecordId).lean();
+  if (!previousParentRecord) return;
+
   const updateData = {};
 
   for (const field of rollupFields) {
@@ -98,9 +102,31 @@ async function recalculateRollupsForParent({
     );
   }
 
-  await ParentModel.findByIdAndUpdate(parentRecordId, updateData, {
+  const hasChanges = Object.entries(updateData).some(
+    ([key, value]) => previousParentRecord?.[key] !== value
+  );
+
+  if (!hasChanges) {
+    return;
+  }
+
+  const updatedParentRecord = await ParentModel.findByIdAndUpdate(parentRecordId, updateData, {
     returnDocument: "before",
     runValidators: false,
+    lean: true,
+  });
+
+  const nextParentRecord = {
+    ...(updatedParentRecord || previousParentRecord),
+    ...updateData,
+  };
+
+  await runTriggers({
+    objectDefinition: parentObject,
+    when: "afterUpdate",
+    objectApiName: parentObjectApiName,
+    record: nextParentRecord,
+    previousRecord: previousParentRecord,
   });
 }
 
