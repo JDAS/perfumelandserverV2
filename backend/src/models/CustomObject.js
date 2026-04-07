@@ -47,8 +47,12 @@ const fieldSchema = new mongoose.Schema(
 const layoutSectionSchema = new mongoose.Schema(
   {
     label: String,
+    type: { type: String, default: "fields" },
     columns: { type: Number, default: 2 },
     fields: [String],
+    relatedObject: { type: String, default: "" },
+    relatedField: { type: String, default: "" },
+    relatedColumns: { type: [String], default: [] },
   },
   { _id: false }
 );
