@@ -116,11 +116,18 @@ function DynamicForm() {
   const isEditMode = Boolean(id);
   const backToListQuery = getBackToListSearch(searchParams, object);
   const returnTo = searchParams.get("returnTo");
+  const returnObject = searchParams.get("returnObject");
+  const returnId = searchParams.get("returnId");
   const { addToast } = useToast();
 
   const navigateBack = () => {
     if (returnTo === "detail" && isEditMode) {
       navigate(`/admin/${object}/${id}/view?${backToListQuery}`);
+      return;
+    }
+
+    if (returnTo === "detail" && returnObject && returnId) {
+      navigate(`/admin/${returnObject}/${returnId}/view?${backToListQuery}`);
       return;
     }
 

@@ -65,6 +65,8 @@ function RelatedListSection({ parentObject, parentId, section }) {
   createQuery.set("tab", section.relatedObject);
   createQuery.set(`prefill_${section.relatedField}`, parentId);
   createQuery.set("returnTo", "detail");
+  createQuery.set("returnObject", parentObject);
+  createQuery.set("returnId", parentId);
 
   return (
     <div className="bg-white rounded-xl shadow p-6">
