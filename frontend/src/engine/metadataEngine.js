@@ -66,6 +66,22 @@ export function getBackToListSearch(searchParams, objectApiName) {
   return next.toString();
 }
 
+function parseLocalDateValue(value) {
+  if (value instanceof Date) {
+    return value;
+  }
+
+  const stringValue = String(value || "").trim();
+  const localDateMatch = stringValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (localDateMatch) {
+    const [, year, month, day] = localDateMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
+  return new Date(stringValue);
+}
+
 export function formatFieldValue(field, value, record = null) {
   if (field?.type === "lookup") {
     const lookupLabel =
@@ -86,7 +102,11 @@ export function formatFieldValue(field, value, record = null) {
 
     case "date":
       try {
-        return new Date(value).toLocaleDateString();
+        const parsedDate = parseLocalDateValue(value);
+        if (Number.isNaN(parsedDate.getTime())) {
+          return String(value);
+        }
+        return parsedDate.toLocaleDateString();
       } catch {
         return String(value);
       }
