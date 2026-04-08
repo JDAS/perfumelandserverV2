@@ -53,14 +53,6 @@ function Home() {
         <div className="relative grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
           <div className="space-y-6">
             <div className="space-y-4">
-              <div className="inline-flex rounded-[26px] bg-white/10 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.12)] backdrop-blur">
-                <img
-                  src="/logoName.png"
-                  alt="Perfumeland"
-                  className="h-12 w-auto sm:h-14"
-                />
-              </div>
-
               <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.28em] text-[#ffd8ea]">
                 Boutique de fragancias
               </span>
