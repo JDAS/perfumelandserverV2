@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { getRelatedRecords } from "../services/customService";
 import { formatFieldValue } from "../engine/metadataEngine";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
+import AttachmentRelatedListSection from "./AttachmentRelatedListSection";
 
 function RelatedListSection({ parentObject, parentId, section }) {
   const { getObjectByApiNameFromCache } = useObjectMetadata();
@@ -12,6 +13,16 @@ function RelatedListSection({ parentObject, parentId, section }) {
   const [loading, setLoading] = useState(true);
 
   const relatedObjectDef = getObjectByApiNameFromCache(section.relatedObject);
+
+  if (section.relatedObject === "attachments") {
+    return (
+      <AttachmentRelatedListSection
+        parentObject={parentObject}
+        parentId={parentId}
+        section={section}
+      />
+    );
+  }
 
   useEffect(() => {
     async function load() {

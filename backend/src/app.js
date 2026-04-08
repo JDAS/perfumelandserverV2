@@ -7,6 +7,7 @@ const authRoutes = require('./routes/authRoutes');
 const customObjectRoutes = require('./routes/customObjectRoutes');
 const customRecordRoutes = require('./routes/customRecordRoutes');
 const suiteRoutes = require('./routes/suiteRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 const { createCorsOptions } = require('./config/cors');
 
 app.use(cors(createCorsOptions()));
@@ -17,6 +18,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/custom-objects', customObjectRoutes);
 app.use('/api/custom-records', customRecordRoutes);
 app.use('/api/suites', suiteRoutes);
+app.use('/api/uploads', uploadRoutes);
 
 app.get('/api/test', (req, res) => {
   res.json({ message: 'API funcionando 🚀' });

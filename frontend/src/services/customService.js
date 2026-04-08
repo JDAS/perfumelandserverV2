@@ -70,6 +70,19 @@ export const createRecord = async (object, payload) => {
   return res.data;
 };
 
+export const uploadAttachment = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await apiClient.post("/api/uploads/attachments", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return res.data;
+};
+
 export const updateRecord = async (object, id, payload) => {
   const res = await apiClient.put(`/api/custom-records/${object}/${id}`, payload);
   return res.data;
