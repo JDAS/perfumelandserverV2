@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getProducts } from "../services/productService";
 import ProductCard from "../components/ProductCard";
+import BrandLogo from "../components/BrandLogo";
 
 function Home() {
   const [loading, setLoading] = useState(true);
@@ -146,12 +147,24 @@ function Home() {
               key={brand}
               type="button"
               onClick={() => setActiveBrand(brand)}
-              className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
+              className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
                 activeBrand === brand
                   ? "bg-[#0d2f6b] text-white"
                   : "bg-[#f3f6ff] text-[#48506c] hover:bg-[#e8eefc]"
               }`}
             >
+              {brand !== "Todas" && (
+                <BrandLogo
+                  brand={brand}
+                  className={`px-2 py-1 ${
+                    activeBrand === brand ? "bg-white/90" : "bg-white"
+                  }`}
+                  imgClassName="max-h-5 max-w-[64px]"
+                  fallbackClassName={
+                    activeBrand === brand ? "text-[#0d2f6b]" : "text-[#48506c]"
+                  }
+                />
+              )}
               {brand}
             </button>
           ))}

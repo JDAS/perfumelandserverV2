@@ -1,5 +1,6 @@
 import { useCartStore } from "../store/cartStore";
 import { useToast } from "./ui/ToastContext";
+import BrandLogo from "./BrandLogo";
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat("es-CR", {
@@ -43,8 +44,12 @@ function ProductCard({ product }) {
           </div>
         )}
 
-        <div className="absolute left-4 top-4 rounded-full bg-[#0d2f6b]/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-white">
-          {brand}
+        <div className="absolute left-4 top-4">
+          <BrandLogo
+            brand={brand}
+            className="border border-white/40 bg-white/95"
+            fallbackClassName="bg-[#0d2f6b]/90 text-white"
+          />
         </div>
       </div>
 
