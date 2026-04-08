@@ -10,18 +10,12 @@ function MainLayout({ children }) {
       <header className="sticky top-0 z-40 border-b border-white/50 bg-white/78 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <Link to="/" className="min-w-0">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0d2f6b] text-lg font-semibold text-white shadow-[0_10px_30px_rgba(13,47,107,0.25)]">
-                P
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xl font-semibold tracking-tight text-[#0d2f6b]">
-                  Perfumeland
-                </p>
-                <p className="truncate text-xs uppercase tracking-[0.25em] text-[#a06386]">
-                  Boutique store
-                </p>
-              </div>
+            <div className="rounded-[22px] bg-[#0d2f6b] px-4 py-2 shadow-[0_10px_30px_rgba(13,47,107,0.18)]">
+              <img
+                src="/logoName.png"
+                alt="Perfumeland"
+                className="h-9 w-auto sm:h-10"
+              />
             </div>
           </Link>
 
@@ -57,7 +51,14 @@ function MainLayout({ children }) {
 
       <footer className="border-t border-white/50 bg-white/70 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-sm text-[#5e6682] sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-          <p>Perfumeland, una vitrina boutique pensada para explorar y cotizar mejor.</p>
+          <div className="flex items-center gap-3">
+            <img
+              src="/logoName.png"
+              alt="Perfumeland"
+              className="h-8 w-auto rounded bg-[#0d2f6b] px-2 py-1"
+            />
+            <p>Perfumeland, una vitrina boutique pensada para explorar y cotizar mejor.</p>
+          </div>
           <p className="text-xs uppercase tracking-[0.22em] text-[#a06386]">
             Responsive storefront
           </p>
