@@ -99,7 +99,7 @@ function ProductDetailPage() {
               <img
                 src={activeImage}
                 alt={product.name}
-                className="h-[360px] w-full object-cover sm:h-[460px]"
+                className="h-[360px] w-full object-contain bg-white p-4 sm:h-[460px] sm:p-6"
               />
             ) : (
               <div className="flex h-[360px] items-center justify-center sm:h-[460px]">
@@ -128,7 +128,7 @@ function ProductDetailPage() {
                   <img
                     src={image}
                     alt={product.name}
-                    className="h-20 w-full object-cover"
+                    className="h-20 w-full bg-white object-contain p-1"
                   />
                 </button>
               ))}
