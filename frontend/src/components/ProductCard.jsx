@@ -35,7 +35,7 @@ function ProductCard({ product }) {
           <img
             src={imageUrl}
             alt={product.name}
-            className="relative h-64 w-full object-cover transition duration-500 group-hover:scale-[1.04] sm:h-72"
+            className="relative h-64 w-full bg-white p-4 object-contain transition duration-500 group-hover:scale-[1.02] sm:h-72 sm:p-5"
           />
         ) : (
           <div className="relative flex h-64 w-full items-center justify-center sm:h-72">
