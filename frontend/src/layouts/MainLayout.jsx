@@ -6,7 +6,7 @@ function MainLayout({ children }) {
   const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#eef3ff_0%,#fdf7fb_42%,#f6f8ff_100%)] text-[#102750]">
+    <div className="flex min-h-screen flex-col bg-[linear-gradient(180deg,#eef3ff_0%,#fdf7fb_42%,#f6f8ff_100%)] text-[#102750]">
       <header className="sticky top-0 z-40 border-b border-white/50 bg-white/78 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <Link to="/" className="min-w-0">
@@ -45,7 +45,7 @@ function MainLayout({ children }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {children}
       </main>
 
