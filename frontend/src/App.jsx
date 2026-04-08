@@ -4,6 +4,7 @@ import { ToastProvider } from "./components/ui/ToastContext";
 
 import Home from "./pages/Home";
 import Cart from "./pages/Cart";
+import ProductDetailPage from "./pages/ProductDetailPage";
 import LoginPage from "./pages/LoginPage";
 import Admin from "./pages/Admin";
 import DynamicForm from "./pages/DynamicForm";
@@ -24,6 +25,7 @@ function App() {
         <Routes>
           <Route path="/" element={<MainLayout><Home /></MainLayout>} />
           <Route path="/cart" element={<MainLayout><Cart /></MainLayout>} />
+          <Route path="/products/:id" element={<MainLayout><ProductDetailPage /></MainLayout>} />
           <Route path="/login" element={<LoginPage />} />
 
           <Route

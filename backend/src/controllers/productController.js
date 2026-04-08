@@ -11,6 +11,7 @@ function normalizeLegacyProduct(product) {
     price: Number(product.price) || 0,
     description: product.description || "",
     image: product.image || "",
+    gallery: product.image ? [product.image] : [],
     category: product.category || "",
     source: "legacy",
   };
@@ -25,15 +26,22 @@ function normalizeDynamicProduct(product) {
     oldprice: product.oldprice || 0,
     description: product.description || "",
     image: product.image || "",
+    gallery: Array.isArray(product.gallery) ? product.gallery : [],
     category: product.category || "",
     isactive: product.isactive !== false,
     source: "dynamic",
   };
 }
 
-async function loadDynamicProducts() {
+async function loadDynamicProductContext() {
   const objectDefinition = await CustomObject.findOne({ apiName: "product" }).lean();
-  if (!objectDefinition) return [];
+  if (!objectDefinition) {
+    return {
+      objectDefinition: null,
+      rawProducts: [],
+      attachments: [],
+    };
+  }
 
   const ProductRecord = getCustomRecordModel("product");
   const AttachmentRecord = getCustomRecordModel("attachments");
@@ -42,7 +50,13 @@ async function loadDynamicProducts() {
     .sort({ createdAt: -1, _id: -1 })
     .lean();
 
-  if (!rawProducts.length) return [];
+  if (!rawProducts.length) {
+    return {
+      objectDefinition,
+      rawProducts: [],
+      attachments: [],
+    };
+  }
 
   const productIds = rawProducts.map((item) => String(item._id));
 
@@ -57,29 +71,52 @@ async function loadDynamicProducts() {
     .sort({ createdAt: -1, _id: -1 })
     .lean();
 
-  const imageByProductId = new Map();
+  return {
+    objectDefinition,
+    rawProducts,
+    attachments,
+  };
+}
+
+function buildDynamicProducts(rawProducts, objectDefinition, attachments) {
+  if (!rawProducts.length || !objectDefinition) return [];
+
+  const imagesByProductId = new Map();
 
   for (const attachment of attachments) {
     const linkedId = String(
       attachment.linked_record_id || attachment.linkedrecordid || ""
     );
 
-    if (!linkedId || imageByProductId.has(linkedId)) continue;
+    if (!linkedId) continue;
 
-    imageByProductId.set(linkedId, attachment.file_url || attachment.url || "");
+    const fileUrl = attachment.file_url || attachment.url || "";
+    if (!fileUrl) continue;
+
+    if (!imagesByProductId.has(linkedId)) {
+      imagesByProductId.set(linkedId, []);
+    }
+
+    imagesByProductId.get(linkedId).push(fileUrl);
   }
 
   return rawProducts.map((product) => {
     const enriched = applyFormulaFields(objectDefinition.fields, product);
+    const gallery = imagesByProductId.get(String(product._id)) || [];
+
     return normalizeDynamicProduct({
       ...enriched,
-      image:
-        imageByProductId.get(String(product._id)) ||
-        enriched.image ||
-        product.image ||
-        "",
+      image: gallery[0] || enriched.image || product.image || "",
+      gallery,
     });
   });
+}
+
+async function loadDynamicProducts() {
+  const { objectDefinition, rawProducts, attachments } =
+    await loadDynamicProductContext();
+
+  return buildDynamicProducts(rawProducts, objectDefinition, attachments);
 }
 
 // Crear producto
@@ -107,6 +144,29 @@ exports.getProducts = async (req, res) => {
     return res.json(legacyProducts.map(normalizeLegacyProduct));
   } catch (error) {
     console.error("getProducts error:", error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getProductById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const dynamicProducts = await loadDynamicProducts();
+    const dynamicMatch = dynamicProducts.find((product) => String(product._id) === String(id));
+
+    if (dynamicMatch) {
+      return res.json(dynamicMatch);
+    }
+
+    const legacyProduct = await Product.findById(id).lean();
+    if (legacyProduct) {
+      return res.json(normalizeLegacyProduct(legacyProduct));
+    }
+
+    return res.status(404).json({ error: "Producto no encontrado" });
+  } catch (error) {
+    console.error("getProductById error:", error);
     return res.status(500).json({ error: error.message });
   }
 };

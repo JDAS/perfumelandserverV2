@@ -1,4 +1,5 @@
 import { useCartStore } from "../store/cartStore";
+import { Link } from "react-router-dom";
 import { useToast } from "./ui/ToastContext";
 import BrandLogo from "./BrandLogo";
 
@@ -73,6 +74,15 @@ function ProductCard({ product }) {
               {formatCurrency(product.price)}
             </p>
           </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Link
+            to={`/products/${product._id}`}
+            className="inline-flex flex-1 items-center justify-center rounded-full border border-[#d7def1] px-4 py-3 text-sm font-semibold text-[#102750] transition hover:bg-[#f6f8ff]"
+          >
+            Ver detalle
+          </Link>
 
           <button
             onClick={handleAddToCart}
