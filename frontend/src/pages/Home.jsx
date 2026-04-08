@@ -46,22 +46,32 @@ function Home() {
   return (
     <div className="space-y-8 pb-12 sm:space-y-10 sm:pb-16">
       <section className="relative overflow-hidden rounded-[32px] bg-[#0d2f6b] px-5 py-8 text-white shadow-[0_30px_90px_rgba(13,47,107,0.28)] sm:px-8 sm:py-10 lg:px-12 lg:py-14">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(244,168,199,0.35),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(167,134,218,0.28),_transparent_28%)]" />
-        <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full border border-white/10 bg-white/5 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(244,168,199,0.30),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(167,134,218,0.20),_transparent_30%)]" />
+        <div className="absolute -right-24 top-10 h-64 w-64 rounded-full border border-white/10 bg-white/5 blur-3xl" />
         <div className="absolute bottom-0 left-0 h-40 w-40 rounded-full bg-[#f4a8c7]/10 blur-3xl" />
 
-        <div className="relative grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-          <div className="space-y-5">
-            <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.28em] text-[#ffd8ea]">
-              Perfumeland Boutique
-            </span>
+        <div className="relative grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div className="inline-flex rounded-[26px] bg-white/10 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.12)] backdrop-blur">
+                <img
+                  src="/logoName.png"
+                  alt="Perfumeland"
+                  className="h-12 w-auto sm:h-14"
+                />
+              </div>
+
+              <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.28em] text-[#ffd8ea]">
+                Boutique de fragancias
+              </span>
+            </div>
 
             <div className="space-y-4">
               <h1 className="max-w-2xl text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">
-                Perfumes con presencia, elegancia y una vitrina lista para vender.
+                Una vitrina mas elegante para descubrir, regalar y cotizar perfumes.
               </h1>
               <p className="max-w-xl text-sm leading-7 text-[#d8e4ff] sm:text-base">
-                Descubre fragancias seleccionadas para regalar, coleccionar o acompanar tu estilo diario. Una experiencia visual pensada para mobile y lista para crecer contigo.
+                Perfumeland combina una experiencia visual limpia con una seleccion de fragancias pensada para venta rapida, cotizacion por WhatsApp y navegacion comoda desde movil.
               </p>
             </div>
 
@@ -70,7 +80,7 @@ function Home() {
                 href="#catalogo"
                 className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#0d2f6b] transition hover:bg-[#fef2f7]"
               >
-                Ver catalogo
+                Explorar catalogo
               </a>
               <a
                 href="https://wa.me/50600000000"
@@ -78,39 +88,57 @@ function Home() {
                 rel="noreferrer"
                 className="inline-flex items-center justify-center rounded-full border border-white/25 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
               >
-                Cotizar por WhatsApp
+                Pedir cotizacion
               </a>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 text-[#0d2f6b] sm:gap-4">
-            <div className="rounded-[28px] bg-white/92 p-4 backdrop-blur sm:p-5">
+          <div className="grid gap-4 text-[#102750]">
+            <div className="rounded-[30px] bg-white/95 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.10)] backdrop-blur sm:p-6">
               <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
-                Marcas
+                Curaduria
               </p>
-              <p className="mt-3 text-3xl font-bold">{Math.max(brands.length - 1, 0)}</p>
-              <p className="mt-2 text-sm text-[#5e6682]">
-                Curaduria con enfoque comercial y presentacion premium.
+              <p className="mt-3 text-2xl font-semibold leading-snug">
+                Fragancias organizadas por marca, listas para una experiencia mas premium.
               </p>
+              <div className="mt-5 grid grid-cols-2 gap-3 border-t border-[#edf0f8] pt-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-[#a06386]">
+                    Marcas
+                  </p>
+                  <p className="mt-2 text-3xl font-bold text-[#0d2f6b]">
+                    {Math.max(brands.length - 1, 0)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-[#a06386]">
+                    Catalogo
+                  </p>
+                  <p className="mt-2 text-3xl font-bold text-[#0d2f6b]">
+                    {products.length}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="rounded-[28px] bg-[#f7d7e4] p-4 sm:p-5">
-              <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#7b4964]">
-                Catalogo
-              </p>
-              <p className="mt-3 text-3xl font-bold">{products.length}</p>
-              <p className="mt-2 text-sm text-[#6e5870]">
-                Productos listos para una experiencia storefront mas cuidada.
-              </p>
-            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-[26px] border border-white/10 bg-white/10 p-5 text-white backdrop-blur">
+                <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#ffd8ea]">
+                  Mobile first
+                </p>
+                <p className="mt-3 text-lg font-semibold">
+                  Catalogo limpio, rapido y listo para vender desde el telefono.
+                </p>
+              </div>
 
-            <div className="col-span-2 rounded-[28px] border border-white/10 bg-white/10 p-4 text-white backdrop-blur sm:p-5">
-              <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#ffd8ea]">
-                Estilo visual
-              </p>
-              <p className="mt-3 text-xl font-semibold">
-                Azul profundo, rosa suave y composicion boutique pensada primero para movil.
-              </p>
+              <div className="rounded-[26px] bg-[#f7d7e4] p-5 text-[#6b4b60]">
+                <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#8d5d76]">
+                  Conversa y vende
+                </p>
+                <p className="mt-3 text-lg font-semibold">
+                  Del producto al carrito y de ahi a WhatsApp sin friccion.
+                </p>
+              </div>
             </div>
           </div>
         </div>
