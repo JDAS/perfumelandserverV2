@@ -9,14 +9,6 @@ function hasCloudinaryConfig() {
 }
 
 function ensureCloudinaryConfigured() {
-  console.log("Cloudinary env check:", {
-    hasCloudName: Boolean(process.env.CLOUDINARY_CLOUD_NAME),
-    hasApiKey: Boolean(process.env.CLOUDINARY_API_KEY),
-    hasApiSecret: Boolean(process.env.CLOUDINARY_API_SECRET),
-    hasFolder: Boolean(process.env.CLOUDINARY_FOLDER),
-    nodeEnv: process.env.NODE_ENV || "undefined",
-  });
-
   if (!hasCloudinaryConfig()) {
     const error = new Error(
       "Cloudinary no esta configurado. Define CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET."

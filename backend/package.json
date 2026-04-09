@@ -7,7 +7,8 @@
     "dev": "nodemon src/server.js",
     "seed:sellers": "node src/scripts/upsertSellerObject.js",
     "install:suite": "node src/scripts/installSuite.js",
-    "migrate:legacy": "node src/scripts/migrateLegacyData.js"
+    "migrate:legacy": "node src/scripts/migrateLegacyData.js",
+    "migrate:assets:cloudinary": "node src/scripts/migrateAssetsToCloudinary.js"
   },
   "keywords": [],
   "author": "",
