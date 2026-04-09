@@ -107,16 +107,16 @@ function Home() {
           <div className="space-y-5">
             <div className="space-y-3">
               <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.28em] text-[#ffd8ea]">
-                Boutique de fragancias
+                Perfumes que dejan huella
               </span>
             </div>
 
             <div className="space-y-3">
               <h1 className="max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl">
-                Fragancias para descubrir, regalar y cotizar sin friccion.
+                Encuentra esa fragancia especial para regalar, enamorar o consentirte.
               </h1>
               <p className="max-w-xl text-sm leading-6 text-[#d8e4ff] sm:text-base">
-                Un catalogo limpio, rapido y pensado para moverse bien en movil, con una experiencia visual mas boutique.
+                Descubre aromas irresistibles, marcas reconocidas y opciones para cada estilo, todo en una experiencia pensada para inspirarte y ayudarte a elegir con facilidad.
               </p>
             </div>
 
@@ -125,7 +125,7 @@ function Home() {
                 href="#catalogo"
                 className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#0d2f6b] transition hover:bg-[#fef2f7]"
               >
-                Explorar catalogo
+                Ver colección
               </a>
               <a
                 href="https://wa.me/50600000000"
@@ -133,7 +133,7 @@ function Home() {
                 rel="noreferrer"
                 className="inline-flex items-center justify-center rounded-full border border-white/25 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
               >
-                Pedir cotizacion
+                Cotizar por WhatsApp
               </a>
             </div>
           </div>
@@ -141,10 +141,10 @@ function Home() {
           <div className="grid gap-4 text-[#102750]">
             <div className="rounded-[28px] bg-white/95 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.10)] backdrop-blur sm:p-6">
               <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
-                Curaduria
+                Selección especial
               </p>
               <p className="mt-3 text-xl font-semibold leading-snug sm:text-2xl">
-                Una tienda mas clara para encontrar perfumes rapido y convertir mejor.
+                Fragancias elegidas para que encuentres ese aroma que habla por ti.
               </p>
               <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#edf0f8] pt-4">
                 <div>
@@ -169,19 +169,19 @@ function Home() {
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-[24px] border border-white/10 bg-white/10 p-4 text-white backdrop-blur">
                 <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#ffd8ea]">
-                  Mobile first
+                  Compra fácil
                 </p>
                 <p className="mt-2 text-base font-semibold">
-                  Navegacion agil para vender desde el telefono.
+                  Explora tus favoritos de forma rápida desde tu celular.
                 </p>
               </div>
 
               <div className="rounded-[24px] bg-[#f7d7e4] p-4 text-[#6b4b60]">
                 <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#8d5d76]">
-                  Conversa y vende
+                  Atención cercana
                 </p>
                 <p className="mt-2 text-base font-semibold">
-                  Del producto a WhatsApp en pocos pasos.
+                  Te acompañamos por WhatsApp para cotizar y elegir mejor.
                 </p>
               </div>
             </div>
@@ -193,10 +193,10 @@ function Home() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
             <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
-              Explora el catalogo
+              Encuentra tu aroma
             </p>
             <h2 className="text-2xl font-semibold text-[#102750] sm:text-3xl">
-              Encuentra una fragancia con filtros mas utiles
+              Busca por marca, estilo o el perfume que tienes en mente
             </h2>
           </div>
 
@@ -205,7 +205,7 @@ function Home() {
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar perfumes, marcas o aliases"
+              placeholder="Ejemplo: 9PM, Yara, Afnan, dulce, unisex..."
               className="w-full rounded-full border border-[#d9dfef] bg-[#f8faff] px-5 py-3 text-sm text-[#102750] outline-none transition focus:border-[#0d2f6b] focus:bg-white"
             />
             <div className="rounded-full bg-[#f8faff] px-5 py-3 text-center text-sm font-medium text-[#5e6682]">
@@ -308,10 +308,10 @@ function Home() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
-              Catalogo
+              Colección Perfumeland
             </p>
             <h2 className="text-2xl font-semibold text-[#102750] sm:text-3xl">
-              Una vitrina mas elegante para descubrir cada fragancia
+              Descubre perfumes para cada ocasión, estilo y personalidad
             </h2>
           </div>
         </div>
@@ -345,10 +345,10 @@ function Home() {
               <div className="space-y-4">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
-                    Seleccion curada
+                    Destacados
                   </p>
                   <h3 className="mt-2 text-xl font-semibold text-[#102750] sm:text-2xl">
-                    Fragancias destacadas para empezar la experiencia
+                    Los favoritos del momento
                   </h3>
                 </div>
 
@@ -364,10 +364,10 @@ function Home() {
               <div className="space-y-4">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
-                    Todo el catalogo
+                    Más para descubrir
                   </p>
                   <h3 className="mt-2 text-xl font-semibold text-[#102750] sm:text-2xl">
-                    Encuentra tu proxima fragancia favorita
+                    Sigue explorando y encuentra tu próxima obsesión
                   </h3>
                 </div>
 
