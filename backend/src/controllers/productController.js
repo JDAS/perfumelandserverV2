@@ -13,6 +13,12 @@ function normalizeLegacyProduct(product) {
     image: product.image || "",
     gallery: product.image ? [product.image] : [],
     category: product.category || "",
+    short_description: product.short_description || "",
+    featured: Boolean(product.featured),
+    sort_order: Number(product.sort_order) || 0,
+    volume: product.volume || null,
+    gender: product.gender || "",
+    aliases: product.aliases || "",
     source: "legacy",
   };
 }
@@ -25,9 +31,15 @@ function normalizeDynamicProduct(product) {
     price: Number(product.price) || 0,
     oldprice: product.oldprice || 0,
     description: product.description || "",
+    short_description: product.short_description || "",
     image: product.image || "",
     gallery: Array.isArray(product.gallery) ? product.gallery : [],
     category: product.category || "",
+    featured: Boolean(product.featured),
+    sort_order: Number(product.sort_order) || 0,
+    volume: product.volume || null,
+    gender: product.gender || "",
+    aliases: product.aliases || "",
     isactive: product.isactive !== false,
     source: "dynamic",
   };
@@ -47,7 +59,7 @@ async function loadDynamicProductContext() {
   const AttachmentRecord = getCustomRecordModel("attachments");
 
   const rawProducts = await ProductRecord.find({ isactive: { $ne: false } })
-    .sort({ createdAt: -1, _id: -1 })
+    .sort({ sort_order: 1, featured: -1, createdAt: -1, _id: -1 })
     .lean();
 
   if (!rawProducts.length) {

@@ -8,7 +8,8 @@
     "seed:sellers": "node src/scripts/upsertSellerObject.js",
     "install:suite": "node src/scripts/installSuite.js",
     "migrate:legacy": "node src/scripts/migrateLegacyData.js",
-    "migrate:assets:cloudinary": "node src/scripts/migrateAssetsToCloudinary.js"
+    "migrate:assets:cloudinary": "node src/scripts/migrateAssetsToCloudinary.js",
+    "enrich:products": "node src/scripts/enrichProductCatalog.js"
   },
   "keywords": [],
   "author": "",

@@ -174,6 +174,20 @@ function ProductDetailPage() {
               <p className="text-sm uppercase tracking-[0.28em] text-[#a06386]">
                 {product.brand || "Seleccion Perfumeland"}
               </p>
+              {(product.gender || product.volume) && (
+                <div className="flex flex-wrap gap-2">
+                  {product.gender && (
+                    <span className="rounded-full bg-[#f4f7ff] px-3 py-1 text-xs font-medium text-[#55607c]">
+                      {product.gender}
+                    </span>
+                  )}
+                  {product.volume && (
+                    <span className="rounded-full bg-[#fef3f8] px-3 py-1 text-xs font-medium text-[#8c5f76]">
+                      {product.volume} ml
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="rounded-[24px] bg-[#f6f8ff] p-5">
@@ -186,7 +200,8 @@ function ProductDetailPage() {
             </div>
 
             <p className="text-base leading-8 text-[#56617f]">
-              {product.description ||
+              {product.short_description ||
+                product.description ||
                 "Una fragancia lista para una experiencia de compra mas clara, visual y facil de cotizar desde movil o escritorio."}
             </p>
 

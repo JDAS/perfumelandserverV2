@@ -17,6 +17,10 @@ function ProductCard({ product }) {
 
   const imageUrl = product.image || "";
   const brand = product.brand || "Perfumeria selecta";
+  const summary =
+    product.short_description ||
+    product.description ||
+    "Una seleccion pensada para regalar, coleccionar o elevar tu estilo diario.";
 
   const handleAddToCart = () => {
     addToCart(product);
@@ -60,10 +64,24 @@ function ProductCard({ product }) {
             {product.name}
           </h3>
           <p className="line-clamp-2 min-h-[44px] text-sm leading-6 text-[#5e6682]">
-            {product.description ||
-              "Una seleccion pensada para regalar, coleccionar o elevar tu estilo diario."}
+            {summary}
           </p>
         </div>
+
+        {(product.volume || product.gender) && (
+          <div className="flex flex-wrap gap-2">
+            {product.gender && (
+              <span className="rounded-full bg-[#f4f7ff] px-3 py-1 text-xs font-medium text-[#55607c]">
+                {product.gender}
+              </span>
+            )}
+            {product.volume && (
+              <span className="rounded-full bg-[#fef3f8] px-3 py-1 text-xs font-medium text-[#8c5f76]">
+                {product.volume} ml
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="flex items-end justify-between gap-4">
           <div>

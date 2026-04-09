@@ -31,15 +31,37 @@ function Home() {
     return products.filter((product) => {
       const matchesBrand = activeBrand === "Todas" || product.brand === activeBrand;
       const term = search.trim().toLowerCase();
+      const aliasText = Array.isArray(product.aliases)
+        ? product.aliases.join(" ")
+        : String(product.aliases || "").replace(/\n/g, " ");
       const matchesSearch =
         !term ||
-        [product.name, product.brand, product.description, product.category]
+        [
+          product.name,
+          product.brand,
+          product.short_description,
+          product.description,
+          product.category,
+          aliasText,
+          product.gender,
+          product.volume ? `${product.volume} ml` : "",
+        ]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(term));
 
       return matchesBrand && matchesSearch;
     });
   }, [products, activeBrand, search]);
+
+  const featuredProducts = useMemo(() => {
+    const featured = filteredProducts.filter((product) => product.featured);
+    return (featured.length > 0 ? featured : filteredProducts).slice(0, 3);
+  }, [filteredProducts]);
+
+  const catalogProducts = useMemo(() => {
+    const featuredIds = new Set(featuredProducts.map((product) => String(product._id)));
+    return filteredProducts.filter((product) => !featuredIds.has(String(product._id)));
+  }, [filteredProducts, featuredProducts]);
 
   return (
     <div className="space-y-8 pb-12 sm:space-y-10 sm:pb-16">
@@ -202,23 +224,67 @@ function Home() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div
-                key={index}
-                className="h-[390px] animate-pulse rounded-[28px] bg-white/60"
-              />
-            ))}
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={`featured-${index}`}
+                  className="h-[390px] animate-pulse rounded-[28px] bg-white/60"
+                />
+              ))}
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={`catalog-${index}`}
+                  className="h-[390px] animate-pulse rounded-[28px] bg-white/60"
+                />
+              ))}
+            </div>
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="rounded-[28px] bg-white p-10 text-center text-[#5e6682] shadow-[0_18px_50px_rgba(13,47,107,0.08)]">
             No encontramos productos con esos filtros.
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredProducts.map((product) => (
-              <ProductCard key={product._id} product={product} />
-            ))}
+          <div className="space-y-8">
+            {featuredProducts.length > 0 && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
+                    Seleccion curada
+                  </p>
+                  <h3 className="mt-2 text-xl font-semibold text-[#102750] sm:text-2xl">
+                    Fragancias destacadas para empezar la experiencia
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+                  {featuredProducts.map((product) => (
+                    <ProductCard key={product._id} product={product} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {catalogProducts.length > 0 && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
+                    Todo el catalogo
+                  </p>
+                  <h3 className="mt-2 text-xl font-semibold text-[#102750] sm:text-2xl">
+                    Encuentra tu proxima fragancia favorita
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                  {catalogProducts.map((product) => (
+                    <ProductCard key={product._id} product={product} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
