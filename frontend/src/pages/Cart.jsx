@@ -1,4 +1,6 @@
 import { useCartStore } from "../store/cartStore";
+import { Link } from "react-router-dom";
+import { useStorefront } from "../context/StorefrontContext";
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat("es-CR", {
@@ -10,12 +12,37 @@ function formatCurrency(amount) {
 
 function Cart() {
   const { cart, removeFromCart, addToCart, decreaseQuantity } = useCartStore();
+  const { storefront } = useStorefront();
+  const palette = storefront.theme?.palette || {};
+  const cartEnabled = storefront.showCart;
+  const whatsappEnabled = storefront.showWhatsapp && storefront.whatsappNumber;
 
   const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
+  if (!cartEnabled) {
+    return (
+      <div className="rounded-[28px] bg-white p-10 text-center shadow-[0_20px_60px_rgba(13,47,107,0.09)]">
+        <h2 className="text-2xl font-semibold text-[#102750]">El carrito no está disponible</h2>
+        <p className="mt-3 text-[#5e6682]">
+          Puedes seguir explorando fragancias mientras activas esta experiencia desde configuración.
+        </p>
+        <Link
+          to="/"
+          className="mt-6 inline-flex rounded-full px-6 py-3 text-sm font-semibold text-white"
+          style={{ backgroundColor: palette.primary || "#0d2f6b" }}
+        >
+          Volver al catálogo
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <section className="rounded-[30px] bg-[#0d2f6b] px-5 py-7 text-white shadow-[0_30px_90px_rgba(13,47,107,0.22)] sm:px-8">
+      <section
+        className="rounded-[30px] px-5 py-7 text-white shadow-[0_30px_90px_rgba(13,47,107,0.22)] sm:px-8"
+        style={{ backgroundColor: palette.primary || "#0d2f6b" }}
+      >
         <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#ffd8ea]">
           Carrito
         </p>
@@ -122,17 +149,22 @@ function Cart() {
               </div>
             </div>
 
-            <a
-              href={`https://wa.me/50600000000?text=${encodeURIComponent("Hola, quiero cotizar los productos de mi carrito en Perfumeland.")}`}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-[#0d2f6b] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#173b80]"
-            >
-              Continuar por WhatsApp
-            </a>
+            {whatsappEnabled && (
+              <a
+                href={`https://wa.me/${storefront.whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent("Hola, quiero cotizar los productos de mi carrito en Perfumeland.")}`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold text-white transition"
+                style={{ backgroundColor: palette.primary || "#0d2f6b" }}
+              >
+                Continuar por WhatsApp
+              </a>
+            )}
 
             <p className="mt-4 text-sm leading-6 text-[#6a738d]">
-              Te llevamos a WhatsApp con esta seleccion para cerrar la cotizacion mas rapido.
+              {whatsappEnabled
+                ? "Te llevamos a WhatsApp con esta seleccion para cerrar la cotizacion mas rapido."
+                : "Activa WhatsApp cuando quieras convertir esta selección en una cotización guiada."}
             </p>
           </aside>
         </div>

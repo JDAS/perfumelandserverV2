@@ -2,6 +2,7 @@ import { useCartStore } from "../store/cartStore";
 import { Link } from "react-router-dom";
 import { useToast } from "./ui/ToastContext";
 import BrandLogo from "./BrandLogo";
+import { useStorefront } from "../context/StorefrontContext";
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat("es-CR", {
@@ -14,6 +15,9 @@ function formatCurrency(amount) {
 function ProductCard({ product }) {
   const addToCart = useCartStore((state) => state.addToCart);
   const { addToast } = useToast();
+  const { storefront } = useStorefront();
+  const palette = storefront.theme?.palette || {};
+  const cartEnabled = storefront.showCart;
 
   const imageUrl = product.image || "";
   const brand = product.brand || "Perfumeria selecta";
@@ -102,12 +106,15 @@ function ProductCard({ product }) {
             Ver detalle
           </Link>
 
-          <button
-            onClick={handleAddToCart}
-            className="rounded-full bg-[#0d2f6b] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#173b80]"
-          >
-            Agregar
-          </button>
+          {cartEnabled && (
+            <button
+              onClick={handleAddToCart}
+              className="rounded-full px-5 py-3 text-sm font-semibold text-white transition"
+              style={{ backgroundColor: palette.primary || "#0d2f6b" }}
+            >
+              Agregar
+            </button>
+          )}
         </div>
       </div>
     </article>

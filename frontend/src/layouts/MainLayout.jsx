@@ -1,16 +1,34 @@
 import { useCartStore } from "../store/cartStore";
 import { Link } from "react-router-dom";
+import { useStorefront } from "../context/StorefrontContext";
 
 function MainLayout({ children }) {
   const cart = useCartStore((state) => state.cart);
   const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const { storefront } = useStorefront();
+  const palette = storefront.theme?.palette || {};
+  const whatsappEnabled = storefront.showWhatsapp && storefront.whatsappNumber;
+  const cartEnabled = storefront.showCart;
+
+  const whatsappLink = whatsappEnabled
+    ? `https://wa.me/${storefront.whatsappNumber.replace(/\D/g, "")}`
+    : "";
 
   return (
-    <div className="flex min-h-screen flex-col bg-[linear-gradient(180deg,#eef3ff_0%,#fdf7fb_42%,#f6f8ff_100%)] text-[#102750]">
+    <div
+      className="flex min-h-screen flex-col text-[#102750]"
+      style={{
+        background: `linear-gradient(180deg, ${palette.background || "#eef3ff"} 0%, ${palette.accentSoft || "#fdf7fb"} 42%, ${palette.background || "#f6f8ff"} 100%)`,
+        color: palette.text || "#102750",
+      }}
+    >
       <header className="sticky top-0 z-40 border-b border-white/50 bg-white/78 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <Link to="/" className="min-w-0">
-            <div className="rounded-[22px] bg-[#0d2f6b] px-4 py-2 shadow-[0_10px_30px_rgba(13,47,107,0.18)]">
+            <div
+              className="rounded-[22px] px-4 py-2 shadow-[0_10px_30px_rgba(13,47,107,0.18)]"
+              style={{ backgroundColor: palette.primary || "#0d2f6b" }}
+            >
               <img
                 src="/logoName.png"
                 alt="Perfumeland"
@@ -23,25 +41,30 @@ function MainLayout({ children }) {
             <Link to="/" className="transition hover:text-[#0d2f6b]">
               Catalogo
             </Link>
-            <a
-              href="https://wa.me/50600000000"
-              target="_blank"
-              rel="noreferrer"
-              className="transition hover:text-[#0d2f6b]"
-            >
-              WhatsApp
-            </a>
+            {whatsappEnabled && (
+              <a
+                href={whatsappLink}
+                target="_blank"
+                rel="noreferrer"
+                className="transition hover:text-[#0d2f6b]"
+              >
+                WhatsApp
+              </a>
+            )}
           </nav>
 
-          <Link
-            to="/cart"
-            className="inline-flex items-center gap-3 rounded-full bg-[#0d2f6b] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(13,47,107,0.25)] transition hover:bg-[#173b80]"
-          >
-            <span>Carrito</span>
-            <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-white/15 px-2 text-xs">
-              {totalItems}
-            </span>
-          </Link>
+          {cartEnabled && (
+            <Link
+              to="/cart"
+              className="inline-flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(13,47,107,0.25)] transition"
+              style={{ backgroundColor: palette.primary || "#0d2f6b" }}
+            >
+              <span>Carrito</span>
+              <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-white/15 px-2 text-xs">
+                {totalItems}
+              </span>
+            </Link>
+          )}
         </div>
       </header>
 
@@ -55,12 +78,16 @@ function MainLayout({ children }) {
             <img
               src="/logoName.png"
               alt="Perfumeland"
-              className="h-8 w-auto rounded bg-[#0d2f6b] px-2 py-1"
+              className="h-8 w-auto rounded px-2 py-1"
+              style={{ backgroundColor: palette.primary || "#0d2f6b" }}
             />
-            <p>Perfumeland, una vitrina boutique pensada para explorar y cotizar mejor.</p>
+            <p>{storefront.siteTagline}</p>
           </div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[#a06386]">
-            Responsive storefront
+          <p
+            className="text-xs uppercase tracking-[0.22em]"
+            style={{ color: palette.accent || "#a06386" }}
+          >
+            {storefront.variant?.name || "Storefront"}
           </p>
         </div>
       </footer>

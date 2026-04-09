@@ -45,6 +45,16 @@ export const installSuite = async (suiteId) => {
   return res.data;
 };
 
+export const getStorefrontSettings = async () => {
+  const res = await apiClient.get("/api/storefront-settings");
+  return res.data;
+};
+
+export const updateStorefrontSettings = async (payload) => {
+  const res = await apiClient.put("/api/storefront-settings", payload);
+  return res.data;
+};
+
 export const getCustomObjects = getObjects;
 export const getCustomObjectByApiName = getObjectByApiName;
 export const createCustomObject = createObject;

@@ -6,6 +6,7 @@ import { useToast } from "../components/ui/ToastContext";
 import BrandLogo from "../components/BrandLogo";
 import ProductCard from "../components/ProductCard";
 import Seo from "../components/Seo";
+import { useStorefront } from "../context/StorefrontContext";
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat("es-CR", {
@@ -19,6 +20,10 @@ function ProductDetailPage() {
   const { id } = useParams();
   const addToCart = useCartStore((state) => state.addToCart);
   const { addToast } = useToast();
+  const { storefront } = useStorefront();
+  const palette = storefront.theme?.palette || {};
+  const cartEnabled = storefront.showCart;
+  const whatsappEnabled = storefront.showWhatsapp && storefront.whatsappNumber;
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -245,22 +250,27 @@ function ProductDetailPage() {
             </p>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                className="inline-flex items-center justify-center rounded-full bg-[#0d2f6b] px-6 py-4 text-sm font-semibold text-white transition hover:bg-[#173b80]"
-              >
-                Agregar al carrito
-              </button>
+              {cartEnabled && (
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  className="inline-flex items-center justify-center rounded-full px-6 py-4 text-sm font-semibold text-white transition"
+                  style={{ backgroundColor: palette.primary || "#0d2f6b" }}
+                >
+                  Agregar al carrito
+                </button>
+              )}
 
-              <a
-                href={`https://wa.me/50600000000?text=${encodeURIComponent(`Hola, quiero cotizar ${product.name}.`)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center rounded-full border border-[#d7def1] px-6 py-4 text-sm font-semibold text-[#102750] transition hover:bg-[#f6f8ff]"
-              >
-                Cotizar por WhatsApp
-              </a>
+              {whatsappEnabled && (
+                <a
+                  href={`https://wa.me/${storefront.whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola, quiero cotizar ${product.name}.`)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center rounded-full border border-[#d7def1] px-6 py-4 text-sm font-semibold text-[#102750] transition hover:bg-[#f6f8ff]"
+                >
+                  Cotizar por WhatsApp
+                </a>
+              )}
             </div>
           </div>
         </div>

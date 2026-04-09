@@ -3,6 +3,7 @@ import { getProducts } from "../services/productService";
 import ProductCard from "../components/ProductCard";
 import BrandLogo from "../components/BrandLogo";
 import Seo from "../components/Seo";
+import { useStorefront } from "../context/StorefrontContext";
 
 function Home() {
   const [loading, setLoading] = useState(true);
@@ -11,6 +12,13 @@ function Home() {
   const [activeGender, setActiveGender] = useState("Todos");
   const [sortBy, setSortBy] = useState("featured");
   const [products, setProducts] = useState([]);
+  const { storefront } = useStorefront();
+  const palette = storefront.theme?.palette || {};
+  const variantId = storefront.variantId || "boutique";
+  const whatsappEnabled = storefront.showWhatsapp && storefront.whatsappNumber;
+  const whatsappLink = whatsappEnabled
+    ? `https://wa.me/${storefront.whatsappNumber.replace(/\D/g, "")}`
+    : "";
 
   useEffect(() => {
     loadProducts();
@@ -114,43 +122,65 @@ function Home() {
           url: `${window.location.origin}/`,
         }}
       />
-      <section className="relative overflow-hidden rounded-[32px] bg-[#0d2f6b] px-5 py-6 text-white shadow-[0_24px_70px_rgba(13,47,107,0.24)] sm:px-8 sm:py-8 lg:px-12 lg:py-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(244,168,199,0.30),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(167,134,218,0.20),_transparent_30%)]" />
+      <section
+        className="relative overflow-hidden rounded-[32px] px-5 py-6 text-white shadow-[0_24px_70px_rgba(13,47,107,0.24)] sm:px-8 sm:py-8 lg:px-12 lg:py-10"
+        style={{
+          background:
+            variantId === "festive"
+              ? `linear-gradient(135deg, ${palette.primary || "#0f5c24"} 0%, ${palette.primarySoft || "#147332"} 100%)`
+              : `linear-gradient(135deg, ${palette.primary || "#0d2f6b"} 0%, ${palette.primarySoft || "#173b80"} 100%)`,
+        }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              variantId === "editorial"
+                ? `radial-gradient(circle at top left, ${palette.accentSoft || "rgba(244,168,199,0.20)"} 0%, transparent 32%), radial-gradient(circle at bottom right, ${palette.secondary || "rgba(167,134,218,0.18)"} 0%, transparent 34%)`
+                : `radial-gradient(circle at top left, rgba(244,168,199,0.30), transparent 28%), radial-gradient(circle at bottom right, rgba(167,134,218,0.20), transparent 30%)`,
+          }}
+        />
         <div className="absolute -right-24 top-6 h-52 w-52 rounded-full border border-white/10 bg-white/5 blur-3xl" />
         <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-[#f4a8c7]/10 blur-3xl" />
 
         <div className="relative grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <div className="space-y-5">
             <div className="space-y-3">
-              <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.28em] text-[#ffd8ea]">
-                Perfumes que dejan huella
+              <span
+                className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.28em]"
+                style={{ color: palette.accentSoft || "#ffd8ea" }}
+              >
+                {storefront.heroBadge}
               </span>
             </div>
 
             <div className="space-y-3">
               <h1 className="max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl">
-                Encuentra esa fragancia especial para regalar, enamorar o consentirte.
+                {storefront.heroTitle}
               </h1>
               <p className="max-w-xl text-sm leading-6 text-[#d8e4ff] sm:text-base">
-                Descubre aromas irresistibles, marcas reconocidas y opciones para cada estilo, todo en una experiencia pensada para inspirarte y ayudarte a elegir con facilidad.
+                {storefront.heroSubtitle}
               </p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <a
                 href="#catalogo"
-                className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#0d2f6b] transition hover:bg-[#fef2f7]"
+                className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold transition hover:bg-[#fef2f7]"
+                style={{ color: palette.primary || "#0d2f6b" }}
               >
-                Ver colección
+                {storefront.heroPrimaryCtaLabel}
               </a>
-              <a
-                href="https://wa.me/50600000000"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center rounded-full border border-white/25 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
-              >
-                Cotizar por WhatsApp
-              </a>
+              {whatsappEnabled && (
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center rounded-full border border-white/25 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
+                >
+                  {storefront.heroSecondaryCtaLabel}
+                </a>
+              )}
             </div>
           </div>
 
