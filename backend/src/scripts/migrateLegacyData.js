@@ -105,6 +105,18 @@ function inferPaymentPlanStatus(payment) {
   return "Pending";
 }
 
+function inferSalePaymentStatus({ saleStatus, total, totalPaid }) {
+  if (saleStatus === "Cancelada") return "Cancelada";
+  if (saleStatus === "Borrador") return "Borrador";
+
+  const safeTotal = Number(total) || 0;
+  const safePaid = Number(totalPaid) || 0;
+
+  if (safeTotal > 0 && safePaid >= safeTotal) return "Pagada";
+  if (safePaid > 0) return "Parcial";
+  return "Pendiente";
+}
+
 async function connectToDatabase(dbName) {
   if (!process.env.MONGO_URI) {
     throw new Error("MONGO_URI no esta definida.");
@@ -517,19 +529,28 @@ async function migrateLegacySalesPhase({
       sellerMap.byName.get(normalizeNameKey(sellerName));
 
     const mappedCreditType = mapLegacyCreditType(legacySale.creditType);
+    const saleStatus = legacySale.canceled ? "Cancelada" : "Completada";
+    const saleTotal = Number(legacySale.totalSales) || 0;
+    const saleTotalPaid = Number(legacySale.totalPaid) || 0;
     const salePayload = {
       name: normalizeString(legacySale.client) || sellerName || "Venta migrada",
       saledate: normalizeString(legacySale.salesDate) || "",
-      status: legacySale.canceled ? "Cancelada" : "Completada",
+      status: saleStatus,
       type: mapLegacySaleType(legacySale.type),
       quotes: Number(legacySale.quotes) || 1,
       seller_id: seller ? String(seller._id) : undefined,
+      total_paid: saleTotalPaid,
+      payment_status: inferSalePaymentStatus({
+        saleStatus,
+        total: saleTotal,
+        totalPaid: saleTotalPaid,
+      }),
       legacyId: String(legacySale._id),
       legacyClient: normalizeString(legacySale.client),
       legacySellerName: sellerName,
       legacySourceType: normalizeString(legacySale.type),
-      legacyTotalSales: Number(legacySale.totalSales) || 0,
-      legacyTotalPaid: Number(legacySale.totalPaid) || 0,
+      legacyTotalSales: saleTotal,
+      legacyTotalPaid: saleTotalPaid,
       legacyOwes: Number(legacySale.owes) || 0,
       legacyCommissionApplies: toBoolean(legacySale.commissionApplies, false),
       legacyCommissionAmount: Number(legacySale.commissionAmount) || 0,
@@ -585,7 +606,22 @@ async function migrateLegacySalesPhase({
         product: String(product._id),
         quantity: Number(item?.quantity) || 1,
         price: Number(item?.unitprice) || Number(item?.total) || 0,
+        list_price:
+          Number(item?.originalPrice) ||
+          Number(item?.unitprice) ||
+          Number(item?.total) ||
+          0,
+        cost_snapshot: Number(item?.wholesalePrice) || 0,
         discount: Number(item?.discount) || 0,
+        subtotal:
+          (Number(item?.quantity) || 1) *
+          (Number(item?.originalPrice) || Number(item?.unitprice) || Number(item?.total) || 0),
+        total:
+          Number(item?.total) ||
+          ((Number(item?.quantity) || 1) *
+            (Number(item?.originalPrice) || Number(item?.unitprice) || Number(item?.total) || 0) -
+            (Number(item?.discount) || 0)),
+        sale_status: saleStatus,
         commission_applies:
           (Number(item?.commission) || 0) > 0 || toBoolean(legacySale.commissionApplies, false),
         legacySaleId: String(legacySale._id),
@@ -680,6 +716,39 @@ async function migrateLegacySalesPhase({
         }
       }
     }
+  }
+
+  const completedSaleItemTotals = await SaleItemModel.aggregate([
+    {
+      $match: {
+        sale_status: "Completada",
+      },
+    },
+    {
+      $group: {
+        _id: "$product",
+        totalQuantity: { $sum: { $ifNull: ["$quantity", 0] } },
+      },
+    },
+  ]);
+
+  const soldByProduct = new Map(
+    completedSaleItemTotals.map((item) => [String(item._id), Number(item.totalQuantity || 0)])
+  );
+
+  const productBulkOps = products.map((product) => ({
+    updateOne: {
+      filter: { _id: String(product._id) },
+      update: {
+        $set: {
+          sold: soldByProduct.get(String(product._id)) || 0,
+        },
+      },
+    },
+  }));
+
+  if (!dryRun && productBulkOps.length > 0) {
+    await ProductModel.bulkWrite(productBulkOps);
   }
 
   return summary;

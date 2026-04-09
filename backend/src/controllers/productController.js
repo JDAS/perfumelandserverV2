@@ -45,6 +45,10 @@ function normalizeDynamicProduct(product) {
   };
 }
 
+function isCloudinaryUrl(value) {
+  return /^https:\/\/res\.cloudinary\.com\//i.test(String(value || ""));
+}
+
 async function loadDynamicProductContext() {
   const objectDefinition = await CustomObject.findOne({ apiName: "product" }).lean();
   if (!objectDefinition) {
@@ -109,12 +113,17 @@ function buildDynamicProducts(rawProducts, objectDefinition, attachments) {
       imagesByProductId.set(linkedId, []);
     }
 
-    imagesByProductId.get(linkedId).push(fileUrl);
+    imagesByProductId.get(linkedId).push({
+      fileUrl,
+      priority: isCloudinaryUrl(fileUrl) ? 0 : 1,
+    });
   }
 
   return rawProducts.map((product) => {
     const enriched = applyFormulaFields(objectDefinition.fields, product);
-    const gallery = imagesByProductId.get(String(product._id)) || [];
+    const gallery = (imagesByProductId.get(String(product._id)) || [])
+      .sort((a, b) => a.priority - b.priority)
+      .map((item) => item.fileUrl);
 
     return normalizeDynamicProduct({
       ...enriched,
