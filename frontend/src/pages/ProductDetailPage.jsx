@@ -241,6 +241,10 @@ function ProductDetailPage() {
               <p className="mt-2 text-4xl font-bold text-[#0d2f6b]">
                 {formatCurrency(product.price)}
               </p>
+              <p className="mt-3 text-sm leading-6 text-[#6a738d]">
+                Precio de referencia. Puede variar segun promociones, forma de pago o condiciones de venta.
+                Si deseas confirmar el monto final, consulta con tu vendedor.
+              </p>
             </div>
 
             <p className="text-base leading-8 text-[#56617f]">

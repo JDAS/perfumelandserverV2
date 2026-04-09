@@ -899,14 +899,21 @@ const commerceSuiteObjects = [
         stopOnError: true,
         conditions: {
           operator: "AND",
-          conditions: [{ field: "product", operator: "isNotEmpty", value: "" }],
+          conditions: [
+            { field: "product", operator: "isNotEmpty", value: "" },
+            { field: "sale", operator: "isNotEmpty", value: "" },
+          ],
         },
         actions: [
           {
-            type: "copyFromLookup",
+            type: "setSaleItemPrice",
             config: {
-              sourcePath: "product.price",
+              productLookupField: "product",
+              saleLookupField: "sale",
+              cashPriceSourceField: "price",
               targetField: "price",
+              saleTypeField: "type",
+              creditSurcharge: 5000,
             },
           },
         ],
@@ -919,14 +926,21 @@ const commerceSuiteObjects = [
         stopOnError: true,
         conditions: {
           operator: "AND",
-          conditions: [{ field: "product", operator: "isNotEmpty", value: "" }],
+          conditions: [
+            { field: "product", operator: "isNotEmpty", value: "" },
+            { field: "sale", operator: "isNotEmpty", value: "" },
+          ],
         },
         actions: [
           {
-            type: "copyFromLookup",
+            type: "setSaleItemPrice",
             config: {
-              sourcePath: "product.price",
+              productLookupField: "product",
+              saleLookupField: "sale",
+              cashPriceSourceField: "price",
               targetField: "price",
+              saleTypeField: "type",
+              creditSurcharge: 5000,
             },
           },
         ],

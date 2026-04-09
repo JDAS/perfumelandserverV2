@@ -22,7 +22,7 @@ const CONDITION_OPERATORS = [
     "isNotEmpty",
 ];
 
-const ACTION_TYPES = ["updateField", "copyFromLookup", "createRecord", "log", "generatePayments", "generatePaymentPlan"];
+const ACTION_TYPES = ["updateField", "copyFromLookup", "createRecord", "log", "generatePayments", "generatePaymentPlan", "setSaleItemPrice"];
 
 const emptyTrigger = {
     name: "",
@@ -564,6 +564,76 @@ function TriggerModal({
                                                 value={action.config?.targetObject || "payment_plan"}
                                                 onChange={(e) =>
                                                     updateActionConfig(index, "targetObject", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                {action.type === "setSaleItemPrice" && (
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Lookup producto</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.productLookupField || "product"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "productLookupField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Lookup venta</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.saleLookupField || "sale"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "saleLookupField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo precio contado en producto</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.cashPriceSourceField || "price"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "cashPriceSourceField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo destino</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.targetField || "price"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "targetField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo tipo de venta</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.saleTypeField || "type"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "saleTypeField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Recargo por credito</label>
+                                            <input
+                                                type="number"
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.creditSurcharge ?? 5000}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "creditSurcharge", Number(e.target.value))
                                                 }
                                             />
                                         </div>

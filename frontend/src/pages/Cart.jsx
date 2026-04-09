@@ -166,6 +166,10 @@ function Cart() {
                 ? "Te llevamos a WhatsApp con esta seleccion para cerrar la cotizacion mas rapido."
                 : "Activa WhatsApp cuando quieras convertir esta selección en una cotización guiada."}
             </p>
+            <div className="mt-4 rounded-[20px] bg-[#fff7fb] px-4 py-3 text-sm leading-6 text-[#7a5f71]">
+              Los precios mostrados son de referencia y pueden variar segun promociones, forma de pago o condiciones comerciales.
+              Para confirmar el monto final, consulta con tu vendedor.
+            </div>
           </aside>
         </div>
       )}

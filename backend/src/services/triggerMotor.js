@@ -404,6 +404,81 @@ async function generatePaymentPlanRecords(config = {}, record) {
     }
 }
 
+async function setSaleItemPrice(config = {}, context) {
+    const {
+        objectDefinition,
+        record,
+        logger = console,
+    } = context;
+
+    const {
+        productLookupField = "product",
+        saleLookupField = "sale",
+        cashPriceSourceField = "price",
+        targetField = "price",
+        saleTypeField = "type",
+        creditKeyword = "credito",
+        creditSurcharge = 5000,
+    } = config;
+
+    const productId = record?.[productLookupField];
+    const saleId = record?.[saleLookupField];
+
+    if (!productId || !saleId) {
+        return record;
+    }
+
+    const productFieldDef = (objectDefinition?.fields || []).find(
+        (field) =>
+            field.apiName === productLookupField &&
+            field.type === "lookup" &&
+            field.referenceTo
+    );
+    const saleFieldDef = (objectDefinition?.fields || []).find(
+        (field) =>
+            field.apiName === saleLookupField &&
+            field.type === "lookup" &&
+            field.referenceTo
+    );
+
+    if (!productFieldDef?.referenceTo || !saleFieldDef?.referenceTo) {
+        logger.warn?.(
+            `[Trigger setSaleItemPrice] Lookups invalidos en ${objectDefinition?.apiName || "sale_item"}`
+        );
+        return record;
+    }
+
+    const ProductModel = getCustomRecordModel(productFieldDef.referenceTo);
+    const SaleModel = getCustomRecordModel(saleFieldDef.referenceTo);
+
+    const [productRecord, saleRecord] = await Promise.all([
+        ProductModel.findById(productId).lean(),
+        SaleModel.findById(saleId).lean(),
+    ]);
+
+    if (!productRecord || !saleRecord) {
+        return record;
+    }
+
+    const cashPrice = Number(productRecord?.[cashPriceSourceField]);
+
+    if (!Number.isFinite(cashPrice)) {
+        return record;
+    }
+
+    const normalizedSaleType = normalizePaymentKeyword(saleRecord?.[saleTypeField]);
+    const surcharge = Number(creditSurcharge) || 0;
+    const nextPrice =
+        normalizedSaleType === normalizePaymentKeyword(creditKeyword)
+            ? cashPrice + surcharge
+            : cashPrice;
+
+    return {
+        ...record,
+        [targetField]: nextPrice,
+    };
+}
+
 async function executeAction(action, context) {
     const { type, config = {} } = action || {};
     const {
@@ -573,6 +648,9 @@ async function executeAction(action, context) {
         case "generatePaymentPlan": {
             await generatePaymentPlanRecords(config, record);
             return record;
+        }
+        case "setSaleItemPrice": {
+            return setSaleItemPrice(config, context);
         }
 
         default:
