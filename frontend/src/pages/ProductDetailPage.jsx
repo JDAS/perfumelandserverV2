@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getProductById } from "../services/productService";
+import { getProductById, getProducts } from "../services/productService";
 import { useCartStore } from "../store/cartStore";
 import { useToast } from "../components/ui/ToastContext";
 import BrandLogo from "../components/BrandLogo";
+import ProductCard from "../components/ProductCard";
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat("es-CR", {
@@ -21,17 +22,20 @@ function ProductDetailPage() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState("");
+  const [catalogProducts, setCatalogProducts] = useState([]);
 
   useEffect(() => {
     async function loadProduct() {
       try {
         setLoading(true);
-        const data = await getProductById(id);
+        const [data, catalog] = await Promise.all([getProductById(id), getProducts()]);
         setProduct(data);
         setActiveImage(data.image || data.gallery?.[0] || "");
+        setCatalogProducts(Array.isArray(catalog) ? catalog : []);
       } catch (error) {
         console.error("Error cargando producto:", error);
         setProduct(null);
+        setCatalogProducts([]);
       } finally {
         setLoading(false);
       }
@@ -46,6 +50,25 @@ function ProductDetailPage() {
     const images = [product.image, ...(product.gallery || [])].filter(Boolean);
     return [...new Set(images)];
   }, [product]);
+
+  const relatedProducts = useMemo(() => {
+    if (!product || !catalogProducts.length) return [];
+
+    const sameBrand = catalogProducts.filter(
+      (item) =>
+        String(item._id) !== String(product._id) &&
+        item.brand &&
+        product.brand &&
+        String(item.brand).toLowerCase() === String(product.brand).toLowerCase()
+    );
+
+    const fallback = catalogProducts.filter(
+      (item) => String(item._id) !== String(product._id)
+    );
+
+    const source = sameBrand.length > 0 ? sameBrand : fallback;
+    return source.slice(0, 3);
+  }, [catalogProducts, product]);
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -188,6 +211,29 @@ function ProductDetailPage() {
           </div>
         </div>
       </section>
+
+      {relatedProducts.length > 0 && (
+        <section className="space-y-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
+                Sigue explorando
+              </p>
+              <h2 className="text-2xl font-semibold text-[#102750] sm:text-3xl">
+                {product.brand
+                  ? `Mas fragancias de ${product.brand}`
+                  : "Mas fragancias para descubrir"}
+              </h2>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {relatedProducts.map((item) => (
+              <ProductCard key={item._id} product={item} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

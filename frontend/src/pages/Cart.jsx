@@ -47,7 +47,7 @@ function Cart() {
                     <img
                       src={item.image}
                       alt={item.name}
-                      className="h-32 w-full object-cover sm:h-full"
+                      className="h-32 w-full bg-white p-3 object-contain sm:h-full sm:p-4"
                     />
                   ) : (
                     <div className="flex h-32 items-center justify-center text-sm font-medium uppercase tracking-[0.25em] text-[#0d2f6b] sm:h-full">
@@ -130,6 +130,10 @@ function Cart() {
             >
               Continuar por WhatsApp
             </a>
+
+            <p className="mt-4 text-sm leading-6 text-[#6a738d]">
+              Te llevamos a WhatsApp con esta seleccion para cerrar la cotizacion mas rapido.
+            </p>
           </aside>
         </div>
       )}
