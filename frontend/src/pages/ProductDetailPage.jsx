@@ -5,6 +5,7 @@ import { useCartStore } from "../store/cartStore";
 import { useToast } from "../components/ui/ToastContext";
 import BrandLogo from "../components/BrandLogo";
 import ProductCard from "../components/ProductCard";
+import Seo from "../components/Seo";
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat("es-CR", {
@@ -111,6 +112,40 @@ function ProductDetailPage() {
 
   return (
     <div className="space-y-6">
+      <Seo
+        title={`${product.name} | Perfumeland`}
+        description={
+          product.short_description ||
+          product.description ||
+          `${product.name} de ${product.brand || "Perfumeland"} disponible para cotizar y descubrir en Perfumeland.`
+        }
+        image={activeImage || product.image || "/logoName.png"}
+        type="product"
+        canonicalPath={`/products/${product._id}`}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: product.name,
+          image: gallery.length > 0 ? gallery : [product.image || "/logoName.png"],
+          description:
+            product.short_description ||
+            product.description ||
+            `${product.name} disponible en Perfumeland.`,
+          brand: product.brand
+            ? {
+                "@type": "Brand",
+                name: product.brand,
+              }
+            : undefined,
+          offers: {
+            "@type": "Offer",
+            priceCurrency: "CRC",
+            price: Number(product.price) || 0,
+            availability: "https://schema.org/InStock",
+            url: `${window.location.origin}/products/${product._id}`,
+          },
+        }}
+      />
       <div className="flex items-center gap-2 text-sm text-[#66708d]">
         <Link to="/" className="transition hover:text-[#0d2f6b]">
           Catalogo

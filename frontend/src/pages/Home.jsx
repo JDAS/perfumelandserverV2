@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getProducts } from "../services/productService";
 import ProductCard from "../components/ProductCard";
 import BrandLogo from "../components/BrandLogo";
+import Seo from "../components/Seo";
 
 function Home() {
   const [loading, setLoading] = useState(true);
@@ -98,6 +99,21 @@ function Home() {
 
   return (
     <div className="space-y-8 pb-12 sm:space-y-10 sm:pb-16">
+      <Seo
+        title="Perfumeland | Perfumes originales y fragancias para cada ocasión"
+        description="Descubre perfumes originales, fragancias irresistibles y opciones para regalar, consentirte o cotizar por WhatsApp. Explora la colección de Perfumeland."
+        image="/logoName.png"
+        canonicalPath="/"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Store",
+          name: "Perfumeland",
+          description:
+            "Tienda de perfumes y fragancias para regalar, descubrir y cotizar por WhatsApp.",
+          image: `${window.location.origin}/logoName.png`,
+          url: `${window.location.origin}/`,
+        }}
+      />
       <section className="relative overflow-hidden rounded-[32px] bg-[#0d2f6b] px-5 py-6 text-white shadow-[0_24px_70px_rgba(13,47,107,0.24)] sm:px-8 sm:py-8 lg:px-12 lg:py-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(244,168,199,0.30),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(167,134,218,0.20),_transparent_30%)]" />
         <div className="absolute -right-24 top-6 h-52 w-52 rounded-full border border-white/10 bg-white/5 blur-3xl" />
