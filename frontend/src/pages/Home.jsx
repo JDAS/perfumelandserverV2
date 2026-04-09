@@ -7,6 +7,8 @@ function Home() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeBrand, setActiveBrand] = useState("Todas");
+  const [activeGender, setActiveGender] = useState("Todos");
+  const [sortBy, setSortBy] = useState("featured");
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
@@ -27,9 +29,15 @@ function Home() {
     return ["Todas", ...uniqueBrands.sort((a, b) => a.localeCompare(b))];
   }, [products]);
 
+  const genders = useMemo(() => {
+    const uniqueGenders = [...new Set(products.map((product) => product.gender).filter(Boolean))];
+    return ["Todos", ...uniqueGenders.sort((a, b) => a.localeCompare(b))];
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
+    const result = products.filter((product) => {
       const matchesBrand = activeBrand === "Todas" || product.brand === activeBrand;
+      const matchesGender = activeGender === "Todos" || product.gender === activeGender;
       const term = search.trim().toLowerCase();
       const aliasText = Array.isArray(product.aliases)
         ? product.aliases.join(" ")
@@ -49,9 +57,34 @@ function Home() {
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(term));
 
-      return matchesBrand && matchesSearch;
+      return matchesBrand && matchesGender && matchesSearch;
     });
-  }, [products, activeBrand, search]);
+
+    const sorted = [...result];
+
+    if (sortBy === "price-asc") {
+      sorted.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+      return sorted;
+    }
+
+    if (sortBy === "price-desc") {
+      sorted.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+      return sorted;
+    }
+
+    if (sortBy === "name") {
+      sorted.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+      return sorted;
+    }
+
+    sorted.sort((a, b) => {
+      const featuredDelta = Number(Boolean(b.featured)) - Number(Boolean(a.featured));
+      if (featuredDelta !== 0) return featuredDelta;
+      return (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0);
+    });
+
+    return sorted;
+  }, [products, activeBrand, activeGender, search, sortBy]);
 
   const featuredProducts = useMemo(() => {
     const featured = filteredProducts.filter((product) => product.featured);
@@ -65,25 +98,25 @@ function Home() {
 
   return (
     <div className="space-y-8 pb-12 sm:space-y-10 sm:pb-16">
-      <section className="relative overflow-hidden rounded-[32px] bg-[#0d2f6b] px-5 py-8 text-white shadow-[0_30px_90px_rgba(13,47,107,0.28)] sm:px-8 sm:py-10 lg:px-12 lg:py-14">
+      <section className="relative overflow-hidden rounded-[32px] bg-[#0d2f6b] px-5 py-6 text-white shadow-[0_24px_70px_rgba(13,47,107,0.24)] sm:px-8 sm:py-8 lg:px-12 lg:py-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(244,168,199,0.30),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(167,134,218,0.20),_transparent_30%)]" />
-        <div className="absolute -right-24 top-10 h-64 w-64 rounded-full border border-white/10 bg-white/5 blur-3xl" />
-        <div className="absolute bottom-0 left-0 h-40 w-40 rounded-full bg-[#f4a8c7]/10 blur-3xl" />
+        <div className="absolute -right-24 top-6 h-52 w-52 rounded-full border border-white/10 bg-white/5 blur-3xl" />
+        <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-[#f4a8c7]/10 blur-3xl" />
 
-        <div className="relative grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-          <div className="space-y-6">
-            <div className="space-y-4">
+        <div className="relative grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div className="space-y-5">
+            <div className="space-y-3">
               <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.28em] text-[#ffd8ea]">
                 Boutique de fragancias
               </span>
             </div>
 
-            <div className="space-y-4">
-              <h1 className="max-w-2xl text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">
-                Una vitrina mas elegante para descubrir, regalar y cotizar perfumes.
+            <div className="space-y-3">
+              <h1 className="max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl">
+                Fragancias para descubrir, regalar y cotizar sin friccion.
               </h1>
-              <p className="max-w-xl text-sm leading-7 text-[#d8e4ff] sm:text-base">
-                Perfumeland combina una experiencia visual limpia con una seleccion de fragancias pensada para venta rapida, cotizacion por WhatsApp y navegacion comoda desde movil.
+              <p className="max-w-xl text-sm leading-6 text-[#d8e4ff] sm:text-base">
+                Un catalogo limpio, rapido y pensado para moverse bien en movil, con una experiencia visual mas boutique.
               </p>
             </div>
 
@@ -106,14 +139,14 @@ function Home() {
           </div>
 
           <div className="grid gap-4 text-[#102750]">
-            <div className="rounded-[30px] bg-white/95 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.10)] backdrop-blur sm:p-6">
+            <div className="rounded-[28px] bg-white/95 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.10)] backdrop-blur sm:p-6">
               <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
                 Curaduria
               </p>
-              <p className="mt-3 text-2xl font-semibold leading-snug">
-                Fragancias organizadas por marca, listas para una experiencia mas premium.
+              <p className="mt-3 text-xl font-semibold leading-snug sm:text-2xl">
+                Una tienda mas clara para encontrar perfumes rapido y convertir mejor.
               </p>
-              <div className="mt-5 grid grid-cols-2 gap-3 border-t border-[#edf0f8] pt-4">
+              <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#edf0f8] pt-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.24em] text-[#a06386]">
                     Marcas
@@ -133,22 +166,22 @@ function Home() {
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-[26px] border border-white/10 bg-white/10 p-5 text-white backdrop-blur">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-[24px] border border-white/10 bg-white/10 p-4 text-white backdrop-blur">
                 <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#ffd8ea]">
                   Mobile first
                 </p>
-                <p className="mt-3 text-lg font-semibold">
-                  Catalogo limpio, rapido y listo para vender desde el telefono.
+                <p className="mt-2 text-base font-semibold">
+                  Navegacion agil para vender desde el telefono.
                 </p>
               </div>
 
-              <div className="rounded-[26px] bg-[#f7d7e4] p-5 text-[#6b4b60]">
+              <div className="rounded-[24px] bg-[#f7d7e4] p-4 text-[#6b4b60]">
                 <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#8d5d76]">
                   Conversa y vende
                 </p>
-                <p className="mt-3 text-lg font-semibold">
-                  Del producto al carrito y de ahi a WhatsApp sin friccion.
+                <p className="mt-2 text-base font-semibold">
+                  Del producto a WhatsApp en pocos pasos.
                 </p>
               </div>
             </div>
@@ -163,7 +196,7 @@ function Home() {
               Explora el catalogo
             </p>
             <h2 className="text-2xl font-semibold text-[#102750] sm:text-3xl">
-              Encuentra una fragancia por marca o nombre
+              Encuentra una fragancia con filtros mas utiles
             </h2>
           </div>
 
@@ -172,7 +205,7 @@ function Home() {
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar perfumes, marcas o descripciones"
+              placeholder="Buscar perfumes, marcas o aliases"
               className="w-full rounded-full border border-[#d9dfef] bg-[#f8faff] px-5 py-3 text-sm text-[#102750] outline-none transition focus:border-[#0d2f6b] focus:bg-white"
             />
             <div className="rounded-full bg-[#f8faff] px-5 py-3 text-center text-sm font-medium text-[#5e6682]">
@@ -181,33 +214,93 @@ function Home() {
           </div>
         </div>
 
-        <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
-          {brands.map((brand) => (
-            <button
-              key={brand}
-              type="button"
-              onClick={() => setActiveBrand(brand)}
-              className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
-                activeBrand === brand
-                  ? "bg-[#0d2f6b] text-white"
-                  : "bg-[#f3f6ff] text-[#48506c] hover:bg-[#e8eefc]"
-              }`}
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[1.1fr_1fr_0.9fr_auto]">
+          <label className="space-y-2">
+            <span className="text-xs font-medium uppercase tracking-[0.24em] text-[#a06386]">
+              Marca
+            </span>
+            <select
+              value={activeBrand}
+              onChange={(event) => setActiveBrand(event.target.value)}
+              className="w-full rounded-2xl border border-[#d9dfef] bg-[#f8faff] px-4 py-3 text-sm text-[#102750] outline-none transition focus:border-[#0d2f6b] focus:bg-white"
             >
-              {brand !== "Todas" && (
-                <BrandLogo
-                  brand={brand}
-                  className={`px-2 py-1 ${
-                    activeBrand === brand ? "bg-white/90" : "bg-white"
-                  }`}
-                  imgClassName="max-h-5 max-w-[64px]"
-                  fallbackClassName={
-                    activeBrand === brand ? "text-[#0d2f6b]" : "text-[#48506c]"
-                  }
-                />
-              )}
-              {brand}
-            </button>
-          ))}
+              {brands.map((brand) => (
+                <option key={brand} value={brand}>
+                  {brand}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-xs font-medium uppercase tracking-[0.24em] text-[#a06386]">
+              Perfil
+            </span>
+            <select
+              value={activeGender}
+              onChange={(event) => setActiveGender(event.target.value)}
+              className="w-full rounded-2xl border border-[#d9dfef] bg-[#f8faff] px-4 py-3 text-sm text-[#102750] outline-none transition focus:border-[#0d2f6b] focus:bg-white"
+            >
+              {genders.map((gender) => (
+                <option key={gender} value={gender}>
+                  {gender}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-xs font-medium uppercase tracking-[0.24em] text-[#a06386]">
+              Ordenar
+            </span>
+            <select
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value)}
+              className="w-full rounded-2xl border border-[#d9dfef] bg-[#f8faff] px-4 py-3 text-sm text-[#102750] outline-none transition focus:border-[#0d2f6b] focus:bg-white"
+            >
+              <option value="featured">Destacados</option>
+              <option value="name">Nombre</option>
+              <option value="price-asc">Precio: menor a mayor</option>
+              <option value="price-desc">Precio: mayor a menor</option>
+            </select>
+          </label>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearch("");
+              setActiveBrand("Todas");
+              setActiveGender("Todos");
+              setSortBy("featured");
+            }}
+            className="rounded-2xl border border-[#d9dfef] px-4 py-3 text-sm font-semibold text-[#102750] transition hover:bg-[#f6f8ff] xl:self-end"
+          >
+            Limpiar
+          </button>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {activeBrand !== "Todas" && (
+            <span className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-3 py-2 text-sm font-medium text-[#102750]">
+              <BrandLogo
+                brand={activeBrand}
+                className="bg-white px-2 py-1"
+                imgClassName="max-h-4 max-w-[56px]"
+                fallbackClassName="text-[#102750]"
+              />
+              {activeBrand}
+            </span>
+          )}
+          {activeGender !== "Todos" && (
+            <span className="inline-flex items-center rounded-full bg-[#fef3f8] px-3 py-2 text-sm font-medium text-[#8c5f76]">
+              {activeGender}
+            </span>
+          )}
+          {sortBy === "featured" && (
+            <span className="inline-flex items-center rounded-full bg-[#f4f7ff] px-3 py-2 text-sm font-medium text-[#55607c]">
+              Destacados primero
+            </span>
+          )}
         </div>
       </section>
 
