@@ -19,6 +19,8 @@ function Home() {
   const whatsappLink = whatsappEnabled
     ? `https://wa.me/${storefront.whatsappNumber.replace(/\D/g, "")}`
     : "";
+  const isEditorial = variantId === "editorial";
+  const isFestive = variantId === "festive";
 
   useEffect(() => {
     loadProducts();
@@ -125,9 +127,10 @@ function Home() {
       <section
         className="relative overflow-hidden rounded-[32px] px-5 py-6 text-white shadow-[0_24px_70px_rgba(13,47,107,0.24)] sm:px-8 sm:py-8 lg:px-12 lg:py-10"
         style={{
-          background:
-            variantId === "festive"
-              ? `linear-gradient(135deg, ${palette.primary || "#0f5c24"} 0%, ${palette.primarySoft || "#147332"} 100%)`
+          background: isFestive
+            ? `linear-gradient(135deg, ${palette.primary || "#0f5c24"} 0%, ${palette.primarySoft || "#147332"} 100%)`
+            : isEditorial
+              ? `linear-gradient(135deg, ${palette.primary || "#7a244f"} 0%, ${palette.primarySoft || "#93325f"} 100%)`
               : `linear-gradient(135deg, ${palette.primary || "#0d2f6b"} 0%, ${palette.primarySoft || "#173b80"} 100%)`,
         }}
       >
@@ -141,9 +144,29 @@ function Home() {
           }}
         />
         <div className="absolute -right-24 top-6 h-52 w-52 rounded-full border border-white/10 bg-white/5 blur-3xl" />
-        <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-[#f4a8c7]/10 blur-3xl" />
+        <div
+          className="absolute bottom-0 left-0 h-28 w-28 blur-3xl"
+          style={{
+            borderRadius: isEditorial ? "28px" : "9999px",
+            backgroundColor: isFestive
+              ? "rgba(243,178,59,0.16)"
+              : "rgba(244,168,199,0.10)",
+          }}
+        />
+        {isFestive && (
+          <>
+            <div className="absolute right-10 top-10 text-4xl opacity-20">✦</div>
+            <div className="absolute bottom-10 right-24 text-3xl opacity-20">✦</div>
+          </>
+        )}
 
-        <div className="relative grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        <div
+          className={`relative grid gap-6 ${
+            isEditorial
+              ? "lg:grid-cols-[1.25fr_0.75fr] lg:items-start"
+              : "lg:grid-cols-[1.1fr_0.9fr] lg:items-center"
+          }`}
+        >
           <div className="space-y-5">
             <div className="space-y-3">
               <span
@@ -155,10 +178,20 @@ function Home() {
             </div>
 
             <div className="space-y-3">
-              <h1 className="max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl">
+              <h1
+                className={`max-w-2xl font-semibold leading-tight ${
+                  isEditorial
+                    ? "text-4xl sm:text-5xl lg:text-6xl"
+                    : "text-3xl sm:text-4xl lg:text-5xl"
+                }`}
+              >
                 {storefront.heroTitle}
               </h1>
-              <p className="max-w-xl text-sm leading-6 text-[#d8e4ff] sm:text-base">
+              <p
+                className={`max-w-xl text-[#d8e4ff] ${
+                  isEditorial ? "text-base leading-7 sm:text-lg" : "text-sm leading-6 sm:text-base"
+                }`}
+              >
                 {storefront.heroSubtitle}
               </p>
             </div>
@@ -182,10 +215,37 @@ function Home() {
                 </a>
               )}
             </div>
+
+            {isEditorial && (
+              <div className="grid gap-3 pt-2 sm:grid-cols-3">
+                <div className="rounded-[20px] border border-white/12 bg-white/8 p-4 backdrop-blur">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-white/70">
+                    Marcas
+                  </p>
+                  <p className="mt-2 text-2xl font-bold">{Math.max(brands.length - 1, 0)}</p>
+                </div>
+                <div className="rounded-[20px] border border-white/12 bg-white/8 p-4 backdrop-blur">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-white/70">
+                    Catálogo
+                  </p>
+                  <p className="mt-2 text-2xl font-bold">{products.length}</p>
+                </div>
+                <div className="rounded-[20px] border border-white/12 bg-white/8 p-4 backdrop-blur">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-white/70">
+                    Estilo
+                  </p>
+                  <p className="mt-2 text-2xl font-bold">{activeGender === "Todos" ? "Todos" : activeGender}</p>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="grid gap-4 text-[#102750]">
-            <div className="rounded-[28px] bg-white/95 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.10)] backdrop-blur sm:p-6">
+          <div className={`grid text-[#102750] ${isFestive ? "gap-3" : "gap-4"}`}>
+            <div
+              className={`bg-white/95 shadow-[0_18px_50px_rgba(0,0,0,0.10)] backdrop-blur ${
+                isEditorial ? "rounded-[32px] p-6 sm:p-7" : "rounded-[28px] p-5 sm:p-6"
+              }`}
+            >
               <p
                 className="text-xs font-medium uppercase tracking-[0.28em]"
                 style={{ color: palette.accent || "#a06386" }}
@@ -198,7 +258,7 @@ function Home() {
               >
                 {storefront.highlightTitle}
               </p>
-              <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#edf0f8] pt-4">
+              <div className={`grid grid-cols-2 gap-3 border-t border-[#edf0f8] ${isEditorial ? "mt-6 pt-5" : "mt-4 pt-4"}`}>
                 <div>
                   <p className="text-xs uppercase tracking-[0.24em] text-[#a06386]">
                     Marcas
@@ -218,15 +278,12 @@ function Home() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className={`grid gap-3 ${isEditorial ? "lg:grid-cols-1" : "sm:grid-cols-2"}`}>
               <div
                 className="rounded-[24px] border p-4 backdrop-blur"
                 style={{
                   borderColor: "rgba(255,255,255,0.14)",
-                  backgroundColor:
-                    variantId === "festive"
-                      ? "rgba(255,255,255,0.10)"
-                      : "rgba(255,255,255,0.10)",
+                  backgroundColor: isFestive ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.10)",
                   color: "#ffffff",
                 }}
               >
@@ -244,7 +301,9 @@ function Home() {
               <div
                 className="rounded-[24px] p-4"
                 style={{
-                  backgroundColor: palette.accentSoft || "#f7d7e4",
+                  backgroundColor: isFestive
+                    ? "rgba(255,244,234,0.96)"
+                    : palette.accentSoft || "#f7d7e4",
                   color: palette.text || "#6b4b60",
                 }}
               >
