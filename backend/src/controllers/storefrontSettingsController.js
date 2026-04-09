@@ -11,11 +11,21 @@ function sanitizeString(value, fallback = "") {
   return typeof value === "string" ? value.trim() : fallback;
 }
 
+function withDefaultString(value, fallback) {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
 function mergeSettings(rawSettings = {}) {
-  const settings = {
-    ...DEFAULT_STOREFRONT_SETTINGS,
-    ...rawSettings,
-  };
+  const settings = { ...DEFAULT_STOREFRONT_SETTINGS, ...rawSettings };
+
+  Object.keys(DEFAULT_STOREFRONT_SETTINGS).forEach((key) => {
+    if (typeof DEFAULT_STOREFRONT_SETTINGS[key] === "string") {
+      settings[key] = withDefaultString(
+        rawSettings?.[key],
+        DEFAULT_STOREFRONT_SETTINGS[key]
+      );
+    }
+  });
 
   const theme = getThemeById(settings.themeId);
   const variant = getVariantById(settings.variantId);
