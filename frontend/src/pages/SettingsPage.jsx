@@ -106,6 +106,7 @@ function SettingsPage() {
   };
 
   const selectedTheme = availableThemes.find((theme) => theme.id === storefrontForm.themeId);
+  const previewPalette = selectedTheme?.palette || {};
 
   return (
     <div className="min-h-screen flex bg-gray-100">
@@ -450,6 +451,123 @@ function SettingsPage() {
                         }
                       />
                     </label>
+                  </div>
+                </section>
+
+                <section className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">Preview rápido</h3>
+                    <p className="text-sm text-gray-500">
+                      Una vista compacta del storefront con la configuración actual antes de guardar.
+                    </p>
+                  </div>
+
+                  <div className="overflow-hidden rounded-[28px] border bg-[#f8fafc] p-4">
+                    <div
+                      className="overflow-hidden rounded-[24px] px-4 py-5 text-white shadow-[0_18px_40px_rgba(13,47,107,0.18)]"
+                      style={{
+                        background: `linear-gradient(135deg, ${previewPalette.primary || "#0d2f6b"} 0%, ${previewPalette.primarySoft || "#173b80"} 100%)`,
+                      }}
+                    >
+                      <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+                        <div className="space-y-4">
+                          <span
+                            className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.28em]"
+                            style={{ color: previewPalette.accentSoft || "#ffd8ea" }}
+                          >
+                            {storefrontForm.heroBadge || "Badge"}
+                          </span>
+
+                          <div className="space-y-3">
+                            <h4 className="max-w-xl text-2xl font-semibold leading-tight">
+                              {storefrontForm.heroTitle || "Título principal del storefront"}
+                            </h4>
+                            <p className="max-w-xl text-sm leading-6 text-white/85">
+                              {storefrontForm.heroSubtitle ||
+                                "Subtítulo descriptivo para presentar la propuesta del storefront."}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-3">
+                            <span
+                              className="inline-flex rounded-full bg-white px-4 py-2 text-xs font-semibold"
+                              style={{ color: previewPalette.primary || "#0d2f6b" }}
+                            >
+                              {storefrontForm.heroPrimaryCtaLabel || "CTA principal"}
+                            </span>
+                            {storefrontForm.showWhatsapp && (
+                              <span className="inline-flex rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-semibold text-white">
+                                {storefrontForm.heroSecondaryCtaLabel || "CTA secundario"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3">
+                          <div className="rounded-[22px] bg-white/95 p-4 text-[#102750]">
+                            <p
+                              className="text-[10px] font-semibold uppercase tracking-[0.24em]"
+                              style={{ color: previewPalette.accent || "#a06386" }}
+                            >
+                              {storefrontForm.highlightEyebrow || "Eyebrow"}
+                            </p>
+                            <p className="mt-2 text-lg font-semibold">
+                              {storefrontForm.highlightTitle ||
+                                "Texto principal del bloque destacado"}
+                            </p>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-[20px] border border-white/10 bg-white/10 p-4 text-white">
+                              <p
+                                className="text-[10px] font-semibold uppercase tracking-[0.24em]"
+                                style={{ color: previewPalette.accentSoft || "#ffd8ea" }}
+                              >
+                                {storefrontForm.featureOneEyebrow || "Tarjeta 1"}
+                              </p>
+                              <p className="mt-2 text-sm font-semibold leading-6">
+                                {storefrontForm.featureOneText ||
+                                  "Texto corto de apoyo para la primera tarjeta."}
+                              </p>
+                            </div>
+
+                            <div
+                              className="rounded-[20px] p-4"
+                              style={{
+                                backgroundColor: previewPalette.accentSoft || "#f7d7e4",
+                                color: previewPalette.text || "#102750",
+                              }}
+                            >
+                              <p
+                                className="text-[10px] font-semibold uppercase tracking-[0.24em]"
+                                style={{ color: previewPalette.accent || "#8d5d76" }}
+                              >
+                                {storefrontForm.featureTwoEyebrow || "Tarjeta 2"}
+                              </p>
+                              <p className="mt-2 text-sm font-semibold leading-6">
+                                {storefrontForm.featureTwoText ||
+                                  "Texto corto de apoyo para la segunda tarjeta."}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-full bg-white px-3 py-2 text-gray-700 shadow-sm">
+                        Variant: {storefrontForm.variantId}
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-2 text-gray-700 shadow-sm">
+                        Theme: {storefrontForm.themeId}
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-2 text-gray-700 shadow-sm">
+                        Carrito: {storefrontForm.showCart ? "Activo" : "Oculto"}
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-2 text-gray-700 shadow-sm">
+                        WhatsApp: {storefrontForm.showWhatsapp ? "Activo" : "Oculto"}
+                      </span>
+                    </div>
                   </div>
                 </section>
 
