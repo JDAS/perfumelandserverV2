@@ -41,8 +41,6 @@ function Home() {
     });
   }, [products, activeBrand, search]);
 
-  const featuredProducts = filteredProducts.slice(0, 6);
-
   return (
     <div className="space-y-8 pb-12 sm:space-y-10 sm:pb-16">
       <section className="relative overflow-hidden rounded-[32px] bg-[#0d2f6b] px-5 py-8 text-white shadow-[0_30px_90px_rgba(13,47,107,0.28)] sm:px-8 sm:py-10 lg:px-12 lg:py-14">
@@ -195,10 +193,10 @@ function Home() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
-              Seleccion destacada
+              Catalogo
             </p>
             <h2 className="text-2xl font-semibold text-[#102750] sm:text-3xl">
-              Una vitrina mas elegante para vender mejor
+              Una vitrina mas elegante para descubrir cada fragancia
             </h2>
           </div>
         </div>
@@ -212,13 +210,13 @@ function Home() {
               />
             ))}
           </div>
-        ) : featuredProducts.length === 0 ? (
+        ) : filteredProducts.length === 0 ? (
           <div className="rounded-[28px] bg-white p-10 text-center text-[#5e6682] shadow-[0_18px_50px_rgba(13,47,107,0.08)]">
             No encontramos productos con esos filtros.
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {featuredProducts.map((product) => (
+            {filteredProducts.map((product) => (
               <ProductCard key={product._id} product={product} />
             ))}
           </div>
