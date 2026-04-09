@@ -25,6 +25,7 @@ function Home() {
   const isHalloweenTheme = themeId === "halloween-night";
   const isChristmasTheme =
     themeId === "winter-noel" || themeId === "holiday-festive";
+  const isDarkTheme = isHalloweenTheme;
 
   useEffect(() => {
     loadProducts();
@@ -267,7 +268,10 @@ function Home() {
             )}
           </div>
 
-          <div className={`grid text-[#102750] ${isFestive ? "gap-3" : "gap-4"}`}>
+          <div
+            className={`grid ${isFestive ? "gap-3" : "gap-4"}`}
+            style={{ color: palette.text || "#102750" }}
+          >
             <div
               className={`bg-white/95 shadow-[0_18px_50px_rgba(0,0,0,0.10)] backdrop-blur ${
                 isEditorial ? "rounded-[32px] p-6 sm:p-7" : "rounded-[28px] p-5 sm:p-6"
@@ -287,18 +291,30 @@ function Home() {
               </p>
               <div className={`grid grid-cols-2 gap-3 border-t border-[#edf0f8] ${isEditorial ? "mt-6 pt-5" : "mt-4 pt-4"}`}>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-[#a06386]">
+                  <p
+                    className="text-xs uppercase tracking-[0.24em]"
+                    style={{ color: palette.accent || "#a06386" }}
+                  >
                     Marcas
                   </p>
-                  <p className="mt-2 text-3xl font-bold text-[#0d2f6b]">
+                  <p
+                    className="mt-2 text-3xl font-bold"
+                    style={{ color: palette.text || "#0d2f6b" }}
+                  >
                     {Math.max(brands.length - 1, 0)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-[#a06386]">
+                  <p
+                    className="text-xs uppercase tracking-[0.24em]"
+                    style={{ color: palette.accent || "#a06386" }}
+                  >
                     Catalogo
                   </p>
-                  <p className="mt-2 text-3xl font-bold text-[#0d2f6b]">
+                  <p
+                    className="mt-2 text-3xl font-bold"
+                    style={{ color: palette.text || "#0d2f6b" }}
+                  >
                     {products.length}
                   </p>
                 </div>
@@ -349,13 +365,25 @@ function Home() {
         </div>
       </section>
 
-      <section className="rounded-[28px] bg-white/85 p-4 shadow-[0_20px_60px_rgba(13,47,107,0.09)] backdrop-blur sm:p-6">
+      <section
+        className="rounded-[28px] p-4 shadow-[0_20px_60px_rgba(13,47,107,0.09)] backdrop-blur sm:p-6"
+        style={{
+          backgroundColor: isDarkTheme ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.85)",
+          color: isDarkTheme ? palette.text || "#f7f2ff" : palette.text || "#102750",
+        }}
+      >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
-            <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
+            <p
+              className="text-xs font-medium uppercase tracking-[0.28em]"
+              style={{ color: palette.accent || "#a06386" }}
+            >
               Encuentra tu aroma
             </p>
-            <h2 className="text-2xl font-semibold text-[#102750] sm:text-3xl">
+            <h2
+              className="text-2xl font-semibold sm:text-3xl"
+              style={{ color: palette.text || "#102750" }}
+            >
               Busca por marca, estilo o el perfume que tienes en mente
             </h2>
           </div>
@@ -366,9 +394,20 @@ function Home() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Ejemplo: 9PM, Yara, Afnan, dulce, unisex..."
-              className="w-full rounded-full border border-[#d9dfef] bg-[#f8faff] px-5 py-3 text-sm text-[#102750] outline-none transition focus:border-[#0d2f6b] focus:bg-white"
+              className="w-full rounded-full border px-5 py-3 text-sm outline-none transition focus:bg-white"
+              style={{
+                borderColor: isDarkTheme ? "rgba(255,255,255,0.14)" : "#d9dfef",
+                backgroundColor: isDarkTheme ? "rgba(255,255,255,0.08)" : "#f8faff",
+                color: isDarkTheme ? palette.text || "#f7f2ff" : palette.text || "#102750",
+              }}
             />
-            <div className="rounded-full bg-[#f8faff] px-5 py-3 text-center text-sm font-medium text-[#5e6682]">
+            <div
+              className="rounded-full px-5 py-3 text-center text-sm font-medium"
+              style={{
+                backgroundColor: isDarkTheme ? "rgba(255,255,255,0.08)" : "#f8faff",
+                color: isDarkTheme ? palette.mutedText || "#ccbfe9" : palette.mutedText || "#5e6682",
+              }}
+            >
               {filteredProducts.length} resultado{filteredProducts.length === 1 ? "" : "s"}
             </div>
           </div>
@@ -376,13 +415,21 @@ function Home() {
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[1.1fr_1fr_0.9fr_auto]">
           <label className="space-y-2">
-            <span className="text-xs font-medium uppercase tracking-[0.24em] text-[#a06386]">
+            <span
+              className="text-xs font-medium uppercase tracking-[0.24em]"
+              style={{ color: palette.accent || "#a06386" }}
+            >
               Marca
             </span>
             <select
               value={activeBrand}
               onChange={(event) => setActiveBrand(event.target.value)}
-              className="w-full rounded-2xl border border-[#d9dfef] bg-[#f8faff] px-4 py-3 text-sm text-[#102750] outline-none transition focus:border-[#0d2f6b] focus:bg-white"
+              className="w-full rounded-2xl border px-4 py-3 text-sm outline-none transition focus:bg-white"
+              style={{
+                borderColor: isDarkTheme ? "rgba(255,255,255,0.14)" : "#d9dfef",
+                backgroundColor: isDarkTheme ? "rgba(255,255,255,0.08)" : "#f8faff",
+                color: isDarkTheme ? palette.text || "#f7f2ff" : palette.text || "#102750",
+              }}
             >
               {brands.map((brand) => (
                 <option key={brand} value={brand}>
@@ -393,13 +440,21 @@ function Home() {
           </label>
 
           <label className="space-y-2">
-            <span className="text-xs font-medium uppercase tracking-[0.24em] text-[#a06386]">
+            <span
+              className="text-xs font-medium uppercase tracking-[0.24em]"
+              style={{ color: palette.accent || "#a06386" }}
+            >
               Perfil
             </span>
             <select
               value={activeGender}
               onChange={(event) => setActiveGender(event.target.value)}
-              className="w-full rounded-2xl border border-[#d9dfef] bg-[#f8faff] px-4 py-3 text-sm text-[#102750] outline-none transition focus:border-[#0d2f6b] focus:bg-white"
+              className="w-full rounded-2xl border px-4 py-3 text-sm outline-none transition focus:bg-white"
+              style={{
+                borderColor: isDarkTheme ? "rgba(255,255,255,0.14)" : "#d9dfef",
+                backgroundColor: isDarkTheme ? "rgba(255,255,255,0.08)" : "#f8faff",
+                color: isDarkTheme ? palette.text || "#f7f2ff" : palette.text || "#102750",
+              }}
             >
               {genders.map((gender) => (
                 <option key={gender} value={gender}>
@@ -410,13 +465,21 @@ function Home() {
           </label>
 
           <label className="space-y-2">
-            <span className="text-xs font-medium uppercase tracking-[0.24em] text-[#a06386]">
+            <span
+              className="text-xs font-medium uppercase tracking-[0.24em]"
+              style={{ color: palette.accent || "#a06386" }}
+            >
               Ordenar
             </span>
             <select
               value={sortBy}
               onChange={(event) => setSortBy(event.target.value)}
-              className="w-full rounded-2xl border border-[#d9dfef] bg-[#f8faff] px-4 py-3 text-sm text-[#102750] outline-none transition focus:border-[#0d2f6b] focus:bg-white"
+              className="w-full rounded-2xl border px-4 py-3 text-sm outline-none transition focus:bg-white"
+              style={{
+                borderColor: isDarkTheme ? "rgba(255,255,255,0.14)" : "#d9dfef",
+                backgroundColor: isDarkTheme ? "rgba(255,255,255,0.08)" : "#f8faff",
+                color: isDarkTheme ? palette.text || "#f7f2ff" : palette.text || "#102750",
+              }}
             >
               <option value="featured">Destacados</option>
               <option value="name">Nombre</option>
@@ -433,7 +496,11 @@ function Home() {
               setActiveGender("Todos");
               setSortBy("featured");
             }}
-            className="rounded-2xl border border-[#d9dfef] px-4 py-3 text-sm font-semibold text-[#102750] transition hover:bg-[#f6f8ff] xl:self-end"
+            className="rounded-2xl border px-4 py-3 text-sm font-semibold transition hover:bg-[#f6f8ff] xl:self-end"
+            style={{
+              borderColor: isDarkTheme ? "rgba(255,255,255,0.14)" : "#d9dfef",
+              color: isDarkTheme ? palette.text || "#f7f2ff" : palette.text || "#102750",
+            }}
           >
             Limpiar
           </button>
@@ -441,7 +508,13 @@ function Home() {
 
         <div className="mt-4 flex flex-wrap gap-2">
           {activeBrand !== "Todas" && (
-            <span className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-3 py-2 text-sm font-medium text-[#102750]">
+            <span
+              className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium"
+              style={{
+                backgroundColor: isDarkTheme ? "rgba(255,255,255,0.10)" : "#eef3ff",
+                color: isDarkTheme ? palette.text || "#f7f2ff" : palette.text || "#102750",
+              }}
+            >
               <BrandLogo
                 brand={activeBrand}
                 className="bg-white px-2 py-1"
@@ -452,12 +525,24 @@ function Home() {
             </span>
           )}
           {activeGender !== "Todos" && (
-            <span className="inline-flex items-center rounded-full bg-[#fef3f8] px-3 py-2 text-sm font-medium text-[#8c5f76]">
+            <span
+              className="inline-flex items-center rounded-full px-3 py-2 text-sm font-medium"
+              style={{
+                backgroundColor: isDarkTheme ? "rgba(255,225,191,0.12)" : "#fef3f8",
+                color: isDarkTheme ? palette.accentSoft || "#ffe1bf" : palette.accent || "#8c5f76",
+              }}
+            >
               {activeGender}
             </span>
           )}
           {sortBy === "featured" && (
-            <span className="inline-flex items-center rounded-full bg-[#f4f7ff] px-3 py-2 text-sm font-medium text-[#55607c]">
+            <span
+              className="inline-flex items-center rounded-full px-3 py-2 text-sm font-medium"
+              style={{
+                backgroundColor: isDarkTheme ? "rgba(255,255,255,0.08)" : "#f4f7ff",
+                color: isDarkTheme ? palette.mutedText || "#ccbfe9" : palette.mutedText || "#55607c",
+              }}
+            >
               Destacados primero
             </span>
           )}
@@ -467,10 +552,16 @@ function Home() {
       <section id="catalogo" className="space-y-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
+            <p
+              className="text-xs font-medium uppercase tracking-[0.28em]"
+              style={{ color: palette.accent || "#a06386" }}
+            >
               Colección Perfumeland
             </p>
-            <h2 className="text-2xl font-semibold text-[#102750] sm:text-3xl">
+            <h2
+              className="text-2xl font-semibold sm:text-3xl"
+              style={{ color: palette.text || "#102750" }}
+            >
               Descubre perfumes para cada ocasión, estilo y personalidad
             </h2>
           </div>
@@ -496,7 +587,10 @@ function Home() {
             </div>
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="rounded-[28px] bg-white p-10 text-center text-[#5e6682] shadow-[0_18px_50px_rgba(13,47,107,0.08)]">
+          <div
+            className="rounded-[28px] bg-white p-10 text-center shadow-[0_18px_50px_rgba(13,47,107,0.08)]"
+            style={{ color: palette.mutedText || "#5e6682" }}
+          >
             No encontramos productos con esos filtros.
           </div>
         ) : (
@@ -504,10 +598,16 @@ function Home() {
             {featuredProducts.length > 0 && (
               <div className="space-y-4">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
+                  <p
+                    className="text-xs font-medium uppercase tracking-[0.28em]"
+                    style={{ color: palette.accent || "#a06386" }}
+                  >
                     Destacados
                   </p>
-                  <h3 className="mt-2 text-xl font-semibold text-[#102750] sm:text-2xl">
+                  <h3
+                    className="mt-2 text-xl font-semibold sm:text-2xl"
+                    style={{ color: palette.text || "#102750" }}
+                  >
                     Los favoritos del momento
                   </h3>
                 </div>
@@ -523,10 +623,16 @@ function Home() {
             {catalogProducts.length > 0 && (
               <div className="space-y-4">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
+                  <p
+                    className="text-xs font-medium uppercase tracking-[0.28em]"
+                    style={{ color: palette.accent || "#a06386" }}
+                  >
                     Más para descubrir
                   </p>
-                  <h3 className="mt-2 text-xl font-semibold text-[#102750] sm:text-2xl">
+                  <h3
+                    className="mt-2 text-xl font-semibold sm:text-2xl"
+                    style={{ color: palette.text || "#102750" }}
+                  >
                     Sigue explorando y encuentra tu próxima obsesión
                   </h3>
                 </div>

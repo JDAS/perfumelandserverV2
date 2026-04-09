@@ -22,7 +22,7 @@ const CONDITION_OPERATORS = [
     "isNotEmpty",
 ];
 
-const ACTION_TYPES = ["updateField", "copyFromLookup", "createRecord", "log", "generatePayments", "generatePaymentPlan", "setSaleItemPrice"];
+const ACTION_TYPES = ["updateField", "copyFromLookup", "createRecord", "log", "generatePayments", "generatePaymentPlan", "setSaleItemPrice", "syncSaleItemStatus", "setSalePaymentStatus"];
 
 const emptyTrigger = {
     name: "",
@@ -616,6 +616,28 @@ function TriggerModal({
                                         </div>
 
                                         <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo precio lista</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.listPriceTargetField || "list_price"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "listPriceTargetField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo costo snapshot</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.costTargetField || "cost_snapshot"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "costTargetField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+
+                                        <div>
                                             <label className="mb-1 block text-xs font-medium">Campo tipo de venta</label>
                                             <input
                                                 className="w-full rounded border p-2"
@@ -634,6 +656,50 @@ function TriggerModal({
                                                 value={action.config?.creditSurcharge ?? 5000}
                                                 onChange={(e) =>
                                                     updateActionConfig(index, "creditSurcharge", Number(e.target.value))
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                {action.type === "setSalePaymentStatus" && (
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo estado venta</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.statusField || "status"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "statusField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo total</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.totalField || "total"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "totalField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo total pagado</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.totalPaidField || "total_paid"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "totalPaidField", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Campo destino</label>
+                                            <input
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.targetField || "payment_status"}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "targetField", e.target.value)
                                                 }
                                             />
                                         </div>

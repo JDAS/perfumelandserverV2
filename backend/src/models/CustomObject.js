@@ -97,7 +97,7 @@ const triggerActionSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ["updateField", "copyFromLookup", "createRecord", "log", "generatePayments", "generatePaymentPlan", "setSaleItemPrice"],
+      enum: ["updateField", "copyFromLookup", "createRecord", "log", "generatePayments", "generatePaymentPlan", "setSaleItemPrice", "syncSaleItemStatus", "setSalePaymentStatus"],
     },
     config: {
       type: mongoose.Schema.Types.Mixed,

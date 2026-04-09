@@ -416,9 +416,14 @@ async function setSaleItemPrice(config = {}, context) {
         saleLookupField = "sale",
         cashPriceSourceField = "price",
         targetField = "price",
+        listPriceTargetField = "list_price",
+        costTargetField = "cost_snapshot",
         saleTypeField = "type",
         creditKeyword = "credito",
         creditSurcharge = 5000,
+        stockObject = "stock",
+        stockProductField = "product",
+        stockCostField = "wholesaleprice",
     } = config;
 
     const productId = record?.[productLookupField];
@@ -450,10 +455,14 @@ async function setSaleItemPrice(config = {}, context) {
 
     const ProductModel = getCustomRecordModel(productFieldDef.referenceTo);
     const SaleModel = getCustomRecordModel(saleFieldDef.referenceTo);
+    const StockModel = getCustomRecordModel(stockObject);
 
-    const [productRecord, saleRecord] = await Promise.all([
+    const [productRecord, saleRecord, latestStockRecord] = await Promise.all([
         ProductModel.findById(productId).lean(),
         SaleModel.findById(saleId).lean(),
+        StockModel.findOne({ [stockProductField]: String(productId) })
+            .sort({ createdAt: -1, _id: -1 })
+            .lean(),
     ]);
 
     if (!productRecord || !saleRecord) {
@@ -473,10 +482,143 @@ async function setSaleItemPrice(config = {}, context) {
             ? cashPrice + surcharge
             : cashPrice;
 
-    return {
+    const nextRecord = {
         ...record,
         [targetField]: nextPrice,
     };
+
+    if (listPriceTargetField) {
+        nextRecord[listPriceTargetField] = nextPrice;
+    }
+
+    if (costTargetField) {
+        const latestCost = Number(latestStockRecord?.[stockCostField]);
+        if (Number.isFinite(latestCost)) {
+            nextRecord[costTargetField] = latestCost;
+        }
+    }
+
+    return nextRecord;
+}
+
+async function setSalePaymentStatus(config = {}, context) {
+    const { record } = context;
+    const {
+        statusField = "status",
+        totalField = "total",
+        totalPaidField = "total_paid",
+        targetField = "payment_status",
+        canceledValue = "Cancelada",
+        draftValue = "Borrador",
+        pendingValue = "Pendiente",
+        partialValue = "Parcial",
+        paidValue = "Pagada",
+    } = config;
+
+    const currentStatus = String(record?.[statusField] || "");
+    const total = Number(record?.[totalField] || 0);
+    const totalPaid = Number(record?.[totalPaidField] || 0);
+
+    let nextStatus = pendingValue;
+
+    if (currentStatus === canceledValue) {
+        nextStatus = canceledValue;
+    } else if (currentStatus === draftValue) {
+        nextStatus = draftValue;
+    } else if (total > 0 && totalPaid >= total) {
+        nextStatus = paidValue;
+    } else if (totalPaid > 0) {
+        nextStatus = partialValue;
+    }
+
+    return {
+        ...record,
+        [targetField]: nextStatus,
+    };
+}
+
+async function syncSaleItemStatus(config = {}, context) {
+    const { record } = context;
+    const {
+        saleIdField = "_id",
+        saleStatusField = "status",
+        targetObject = "sale_item",
+        saleLookupField = "sale",
+        targetStatusField = "sale_status",
+        completedStatus = "Completada",
+        productLookupField = "product",
+        productObject = "product",
+        soldField = "sold",
+    } = config;
+
+    const saleId = String(record?.[saleIdField] || "");
+    const nextStatus = record?.[saleStatusField];
+
+    if (!saleId || !nextStatus) {
+        return record;
+    }
+
+    const SaleItemModel = getCustomRecordModel(targetObject);
+    const ProductModel = getCustomRecordModel(productObject);
+
+    const saleItems = await SaleItemModel.find({ [saleLookupField]: saleId }).lean();
+
+    if (!saleItems.length) {
+        return record;
+    }
+
+    await SaleItemModel.updateMany(
+        { [saleLookupField]: saleId },
+        { $set: { [targetStatusField]: nextStatus } }
+    );
+
+    const affectedProductIds = [
+        ...new Set(
+            saleItems
+                .map((item) => String(item?.[productLookupField] || ""))
+                .filter(Boolean)
+        ),
+    ];
+
+    if (!affectedProductIds.length) {
+        return record;
+    }
+
+    const completedItems = await SaleItemModel.aggregate([
+        {
+            $match: {
+                [productLookupField]: { $in: affectedProductIds },
+                [targetStatusField]: completedStatus,
+            },
+        },
+        {
+            $group: {
+                _id: `$${productLookupField}`,
+                totalQuantity: { $sum: { $ifNull: ["$quantity", 0] } },
+            },
+        },
+    ]);
+
+    const soldByProduct = new Map(
+        completedItems.map((item) => [String(item._id), Number(item.totalQuantity || 0)])
+    );
+
+    const bulkOps = affectedProductIds.map((productId) => ({
+        updateOne: {
+            filter: { _id: productId },
+            update: {
+                $set: {
+                    [soldField]: soldByProduct.get(String(productId)) || 0,
+                },
+            },
+        },
+    }));
+
+    if (bulkOps.length > 0) {
+        await ProductModel.bulkWrite(bulkOps);
+    }
+
+    return record;
 }
 
 async function executeAction(action, context) {
@@ -651,6 +793,12 @@ async function executeAction(action, context) {
         }
         case "setSaleItemPrice": {
             return setSaleItemPrice(config, context);
+        }
+        case "syncSaleItemStatus": {
+            return syncSaleItemStatus(config, context);
+        }
+        case "setSalePaymentStatus": {
+            return setSalePaymentStatus(config, context);
         }
 
         default:

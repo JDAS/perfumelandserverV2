@@ -10,7 +10,8 @@
     "migrate:legacy": "node src/scripts/migrateLegacyData.js",
     "migrate:assets:cloudinary": "node src/scripts/migrateAssetsToCloudinary.js",
     "enrich:products": "node src/scripts/enrichProductCatalog.js",
-    "sync:sale-item-pricing": "node src/scripts/syncSaleItemPricingTrigger.js"
+    "sync:sale-item-pricing": "node src/scripts/syncSaleItemPricingTrigger.js",
+    "sync:sales-inventory": "node src/scripts/syncSalesInventoryMetadata.js"
   },
   "keywords": [],
   "author": "",
