@@ -79,6 +79,30 @@ exports.updateStorefrontSettings = async (req, res) => {
         payload.heroSecondaryCtaLabel,
         DEFAULT_STOREFRONT_SETTINGS.heroSecondaryCtaLabel
       ),
+      highlightEyebrow: sanitizeString(
+        payload.highlightEyebrow,
+        DEFAULT_STOREFRONT_SETTINGS.highlightEyebrow
+      ),
+      highlightTitle: sanitizeString(
+        payload.highlightTitle,
+        DEFAULT_STOREFRONT_SETTINGS.highlightTitle
+      ),
+      featureOneEyebrow: sanitizeString(
+        payload.featureOneEyebrow,
+        DEFAULT_STOREFRONT_SETTINGS.featureOneEyebrow
+      ),
+      featureOneText: sanitizeString(
+        payload.featureOneText,
+        DEFAULT_STOREFRONT_SETTINGS.featureOneText
+      ),
+      featureTwoEyebrow: sanitizeString(
+        payload.featureTwoEyebrow,
+        DEFAULT_STOREFRONT_SETTINGS.featureTwoEyebrow
+      ),
+      featureTwoText: sanitizeString(
+        payload.featureTwoText,
+        DEFAULT_STOREFRONT_SETTINGS.featureTwoText
+      ),
       siteTagline: sanitizeString(
         payload.siteTagline,
         DEFAULT_STOREFRONT_SETTINGS.siteTagline

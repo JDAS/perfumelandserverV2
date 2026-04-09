@@ -21,6 +21,12 @@ const defaultStorefrontForm = {
   heroSubtitle: "",
   heroPrimaryCtaLabel: "",
   heroSecondaryCtaLabel: "",
+  highlightEyebrow: "",
+  highlightTitle: "",
+  featureOneEyebrow: "",
+  featureOneText: "",
+  featureTwoEyebrow: "",
+  featureTwoText: "",
   siteTagline: "",
 };
 
@@ -352,6 +358,82 @@ function SettingsPage() {
                               "heroSecondaryCtaLabel",
                               event.target.value
                             )
+                          }
+                        />
+                      </label>
+                    </div>
+
+                    <label className="space-y-2">
+                      <span className="text-sm font-medium">Eyebrow de tarjeta principal</span>
+                      <input
+                        type="text"
+                        className="w-full rounded-lg border p-3"
+                        value={storefrontForm.highlightEyebrow}
+                        onChange={(event) =>
+                          handleStorefrontChange("highlightEyebrow", event.target.value)
+                        }
+                      />
+                    </label>
+
+                    <label className="space-y-2">
+                      <span className="text-sm font-medium">Título de tarjeta principal</span>
+                      <input
+                        type="text"
+                        className="w-full rounded-lg border p-3"
+                        value={storefrontForm.highlightTitle}
+                        onChange={(event) =>
+                          handleStorefrontChange("highlightTitle", event.target.value)
+                        }
+                      />
+                    </label>
+
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <label className="space-y-2">
+                        <span className="text-sm font-medium">Tarjeta 1 · Eyebrow</span>
+                        <input
+                          type="text"
+                          className="w-full rounded-lg border p-3"
+                          value={storefrontForm.featureOneEyebrow}
+                          onChange={(event) =>
+                            handleStorefrontChange("featureOneEyebrow", event.target.value)
+                          }
+                        />
+                      </label>
+
+                      <label className="space-y-2">
+                        <span className="text-sm font-medium">Tarjeta 1 · Texto</span>
+                        <input
+                          type="text"
+                          className="w-full rounded-lg border p-3"
+                          value={storefrontForm.featureOneText}
+                          onChange={(event) =>
+                            handleStorefrontChange("featureOneText", event.target.value)
+                          }
+                        />
+                      </label>
+                    </div>
+
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <label className="space-y-2">
+                        <span className="text-sm font-medium">Tarjeta 2 · Eyebrow</span>
+                        <input
+                          type="text"
+                          className="w-full rounded-lg border p-3"
+                          value={storefrontForm.featureTwoEyebrow}
+                          onChange={(event) =>
+                            handleStorefrontChange("featureTwoEyebrow", event.target.value)
+                          }
+                        />
+                      </label>
+
+                      <label className="space-y-2">
+                        <span className="text-sm font-medium">Tarjeta 2 · Texto</span>
+                        <input
+                          type="text"
+                          className="w-full rounded-lg border p-3"
+                          value={storefrontForm.featureTwoText}
+                          onChange={(event) =>
+                            handleStorefrontChange("featureTwoText", event.target.value)
                           }
                         />
                       </label>

@@ -77,6 +77,13 @@ const DEFAULT_STOREFRONT_SETTINGS = {
     "Descubre aromas irresistibles, marcas reconocidas y opciones para cada estilo, todo en una experiencia pensada para inspirarte y ayudarte a elegir con facilidad.",
   heroPrimaryCtaLabel: "Ver colección",
   heroSecondaryCtaLabel: "Cotizar por WhatsApp",
+  highlightEyebrow: "Selección especial",
+  highlightTitle:
+    "Fragancias elegidas para que encuentres ese aroma que habla por ti.",
+  featureOneEyebrow: "Compra fácil",
+  featureOneText: "Explora tus favoritos de forma rápida desde tu celular.",
+  featureTwoEyebrow: "Atención cercana",
+  featureTwoText: "Te acompañamos por WhatsApp para cotizar y elegir mejor.",
   siteTagline:
     "Perfumeland, una vitrina boutique pensada para explorar y cotizar mejor.",
 };

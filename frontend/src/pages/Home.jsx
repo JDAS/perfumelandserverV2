@@ -187,10 +187,10 @@ function Home() {
           <div className="grid gap-4 text-[#102750]">
             <div className="rounded-[28px] bg-white/95 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.10)] backdrop-blur sm:p-6">
               <p className="text-xs font-medium uppercase tracking-[0.28em] text-[#a06386]">
-                Selección especial
+                {storefront.highlightEyebrow}
               </p>
               <p className="mt-3 text-xl font-semibold leading-snug sm:text-2xl">
-                Fragancias elegidas para que encuentres ese aroma que habla por ti.
+                {storefront.highlightTitle}
               </p>
               <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#edf0f8] pt-4">
                 <div>
@@ -215,19 +215,19 @@ function Home() {
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-[24px] border border-white/10 bg-white/10 p-4 text-white backdrop-blur">
                 <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#ffd8ea]">
-                  Compra fácil
+                  {storefront.featureOneEyebrow}
                 </p>
                 <p className="mt-2 text-base font-semibold">
-                  Explora tus favoritos de forma rápida desde tu celular.
+                  {storefront.featureOneText}
                 </p>
               </div>
 
               <div className="rounded-[24px] bg-[#f7d7e4] p-4 text-[#6b4b60]">
                 <p className="text-xs font-medium uppercase tracking-[0.24em] text-[#8d5d76]">
-                  Atención cercana
+                  {storefront.featureTwoEyebrow}
                 </p>
                 <p className="mt-2 text-base font-semibold">
-                  Te acompañamos por WhatsApp para cotizar y elegir mejor.
+                  {storefront.featureTwoText}
                 </p>
               </div>
             </div>
