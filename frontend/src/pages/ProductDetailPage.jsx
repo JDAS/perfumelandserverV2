@@ -25,6 +25,10 @@ function ProductDetailPage() {
   const [catalogProducts, setCatalogProducts] = useState([]);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [id]);
+
+  useEffect(() => {
     async function loadProduct() {
       try {
         setLoading(true);
