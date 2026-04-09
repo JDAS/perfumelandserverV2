@@ -44,6 +44,36 @@ const THEMES = [
       mutedText: "#5d6f60",
     },
   },
+  {
+    id: "halloween-night",
+    name: "Halloween Night",
+    palette: {
+      primary: "#2a145c",
+      primarySoft: "#43207f",
+      accent: "#f57c00",
+      accentSoft: "#ffe1bf",
+      secondary: "#6e3aa8",
+      background: "#160d2d",
+      surface: "#221242",
+      text: "#f7f2ff",
+      mutedText: "#ccbfe9",
+    },
+  },
+  {
+    id: "winter-noel",
+    name: "Winter Noel",
+    palette: {
+      primary: "#123b2a",
+      primarySoft: "#1c5c41",
+      accent: "#c62828",
+      accentSoft: "#fff1ea",
+      secondary: "#d4af37",
+      background: "#f8fbf8",
+      surface: "#fffdf8",
+      text: "#183126",
+      mutedText: "#5f7368",
+    },
+  },
 ];
 
 const VARIANTS = [

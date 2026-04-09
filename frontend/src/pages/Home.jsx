@@ -15,12 +15,16 @@ function Home() {
   const { storefront } = useStorefront();
   const palette = storefront.theme?.palette || {};
   const variantId = storefront.variantId || "boutique";
+  const themeId = storefront.themeId || "boutique-classic";
   const whatsappEnabled = storefront.showWhatsapp && storefront.whatsappNumber;
   const whatsappLink = whatsappEnabled
     ? `https://wa.me/${storefront.whatsappNumber.replace(/\D/g, "")}`
     : "";
   const isEditorial = variantId === "editorial";
   const isFestive = variantId === "festive";
+  const isHalloweenTheme = themeId === "halloween-night";
+  const isChristmasTheme =
+    themeId === "winter-noel" || themeId === "holiday-festive";
 
   useEffect(() => {
     loadProducts();
@@ -153,10 +157,33 @@ function Home() {
               : "rgba(244,168,199,0.10)",
           }}
         />
-        {isFestive && (
+        {isFestive && !isHalloweenTheme && !isChristmasTheme && (
           <>
             <div className="absolute right-10 top-10 text-4xl opacity-20">✦</div>
             <div className="absolute bottom-10 right-24 text-3xl opacity-20">✦</div>
+          </>
+        )}
+        {isHalloweenTheme && (
+          <>
+            <div className="absolute left-8 top-8 text-3xl opacity-25">🦇</div>
+            <div className="absolute right-12 top-10 text-4xl opacity-25">🎃</div>
+            <div className="absolute bottom-10 right-24 text-3xl opacity-20">🕸️</div>
+            <div
+              className="absolute left-1/2 top-8 h-24 w-24 -translate-x-1/2 rounded-full blur-3xl"
+              style={{ backgroundColor: "rgba(245,124,0,0.20)" }}
+            />
+          </>
+        )}
+        {isChristmasTheme && (
+          <>
+            <div className="absolute left-8 top-10 text-3xl opacity-25">❄</div>
+            <div className="absolute right-10 top-10 text-3xl opacity-25">✦</div>
+            <div className="absolute bottom-10 left-16 text-2xl opacity-20">❄</div>
+            <div className="absolute bottom-12 right-24 text-3xl opacity-20">✦</div>
+            <div
+              className="absolute right-1/4 top-1/4 h-28 w-28 rounded-full blur-3xl"
+              style={{ backgroundColor: "rgba(212,175,55,0.16)" }}
+            />
           </>
         )}
 
