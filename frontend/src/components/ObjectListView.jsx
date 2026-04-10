@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { deleteRecord, getRecords } from "../services/customService";
+import {
+  deleteRecord,
+  getClientSummary,
+  getRecords,
+} from "../services/customService";
 import { buildListQuery, buildRecordListRequest } from "../engine/listEngine";
 import { formatFieldValue, getBackToListSearch } from "../engine/metadataEngine";
+import ClientSummaryModal from "./ClientSummaryModal";
 import Pagination from "./ui/Pagination";
 import { useToast } from "./ui/ToastContext";
 
@@ -13,6 +18,11 @@ function ObjectListView({ objectDef }) {
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
   const [searchParams, setSearchParams] = useSearchParams();
+  const [summary, setSummary] = useState(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryLoadingId, setSummaryLoadingId] = useState(null);
+  const [copying, setCopying] = useState(false);
+  const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
 
   const listState = useMemo(
     () => buildListQuery({ searchParams, objectDef }),
@@ -20,6 +30,8 @@ function ObjectListView({ objectDef }) {
   );
 
   const backToListQuery = getBackToListSearch(searchParams, objectDef.apiName);
+  const supportsClientSummary =
+    objectDef.apiName === "sales" || objectDef.apiName === "quote";
 
   useEffect(() => {
     setSearchInput(listState.search || "");
@@ -94,6 +106,50 @@ function ObjectListView({ objectDef }) {
       sortOrder: sameField && listState.sortOrder === "asc" ? "desc" : "asc",
       page: 1,
     });
+  };
+
+  const handleOpenSummary = async (recordId) => {
+    try {
+      setSummaryLoadingId(recordId);
+      const data = await getClientSummary(objectDef.apiName, recordId);
+      setSummary(data);
+      setSummaryOpen(true);
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudo generar el resumen", "error");
+    } finally {
+      setSummaryLoadingId(null);
+    }
+  };
+
+  const handleCopySummary = async () => {
+    if (!summary?.whatsappText) return;
+
+    try {
+      setCopying(true);
+      await navigator.clipboard.writeText(summary.whatsappText);
+      addToast("Resumen copiado al portapapeles", "success");
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudo copiar el resumen", "error");
+    } finally {
+      setCopying(false);
+    }
+  };
+
+  const handleOpenWhatsApp = async () => {
+    if (!summary?.whatsappText) return;
+
+    try {
+      setOpeningWhatsApp(true);
+      const encoded = encodeURIComponent(summary.whatsappText);
+      window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudo abrir WhatsApp", "error");
+    } finally {
+      setOpeningWhatsApp(false);
+    }
   };
 
   const columns = listState.columns || [];
@@ -241,6 +297,28 @@ function ObjectListView({ objectDef }) {
                           Editar
                         </Link>
 
+                        {objectDef.apiName === "sales" ? (
+                          <Link
+                            to={`/admin/payment/new?${backToListQuery}&prefill_sale_id=${record._id}`}
+                            className="rounded bg-violet-600 px-3 py-1 text-white"
+                          >
+                            Registrar pago
+                          </Link>
+                        ) : null}
+
+                        {supportsClientSummary ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenSummary(record._id)}
+                            disabled={summaryLoadingId === record._id}
+                            className="rounded bg-emerald-600 px-3 py-1 text-white disabled:opacity-60"
+                          >
+                            {summaryLoadingId === record._id
+                              ? "Cargando..."
+                              : "Resumen"}
+                          </button>
+                        ) : null}
+
                         <button
                           onClick={() => handleDelete(record._id)}
                           className="rounded bg-red-600 px-3 py-1 text-white"
@@ -261,6 +339,16 @@ function ObjectListView({ objectDef }) {
           />
         </>
       )}
+
+      <ClientSummaryModal
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        summary={summary}
+        onCopy={handleCopySummary}
+        onOpenWhatsApp={handleOpenWhatsApp}
+        copying={copying}
+        openingWhatsApp={openingWhatsApp}
+      />
     </div>
   );
 }
