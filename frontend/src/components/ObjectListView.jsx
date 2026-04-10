@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
+  convertQuoteToSale,
   deleteRecord,
   getClientSummary,
   getRecords,
@@ -23,6 +24,7 @@ function ObjectListView({ objectDef }) {
   const [summaryLoadingId, setSummaryLoadingId] = useState(null);
   const [copying, setCopying] = useState(false);
   const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
+  const [convertingQuoteId, setConvertingQuoteId] = useState(null);
 
   const listState = useMemo(
     () => buildListQuery({ searchParams, objectDef }),
@@ -149,6 +151,34 @@ function ObjectListView({ objectDef }) {
       addToast("No se pudo abrir WhatsApp", "error");
     } finally {
       setOpeningWhatsApp(false);
+    }
+  };
+
+  const handleConvertQuote = async (record) => {
+    if (!record?._id) return;
+
+    if (record.status === "Convertida") {
+      addToast("Esta cotizacion ya fue convertida", "warning");
+      return;
+    }
+
+    if (!window.confirm("¿Convertir esta cotizacion en una venta borrador?")) {
+      return;
+    }
+
+    try {
+      setConvertingQuoteId(record._id);
+      const result = await convertQuoteToSale(record._id);
+      addToast("Cotizacion convertida en venta", "success");
+      window.location.href = `/admin/sales/${result.saleId}/view?tab=sales`;
+    } catch (error) {
+      console.error(error);
+      addToast(
+        error?.response?.data?.error || "No se pudo convertir la cotizacion",
+        "error"
+      );
+    } finally {
+      setConvertingQuoteId(null);
     }
   };
 
@@ -304,6 +334,24 @@ function ObjectListView({ objectDef }) {
                           >
                             Registrar pago
                           </Link>
+                        ) : null}
+
+                        {objectDef.apiName === "quote" ? (
+                          <button
+                            type="button"
+                            onClick={() => handleConvertQuote(record)}
+                            disabled={
+                              convertingQuoteId === record._id ||
+                              record.status === "Convertida"
+                            }
+                            className="rounded bg-violet-600 px-3 py-1 text-white disabled:opacity-60"
+                          >
+                            {record.status === "Convertida"
+                              ? "Convertida"
+                              : convertingQuoteId === record._id
+                                ? "Convirtiendo..."
+                                : "Convertir"}
+                          </button>
                         ) : null}
 
                         {supportsClientSummary ? (

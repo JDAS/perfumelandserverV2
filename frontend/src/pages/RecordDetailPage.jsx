@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
-import { getClientSummary, getRecordById } from "../services/customService";
+import {
+  convertQuoteToSale,
+  getClientSummary,
+  getRecordById,
+} from "../services/customService";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 import {
   formatFieldValue,
@@ -24,6 +28,7 @@ function RecordDetailPage() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [copying, setCopying] = useState(false);
   const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
+  const [converting, setConverting] = useState(false);
   const { addToast } = useToast();
 
   const objectDef = getObjectByApiNameFromCache(object);
@@ -104,6 +109,7 @@ function RecordDetailPage() {
     (section) => section.type === "relatedList"
   );
   const supportsClientSummary = object === "sales" || object === "quote";
+  const supportsQuoteConversion = object === "quote";
 
   const handleOpenSummary = async () => {
     try {
@@ -145,6 +151,34 @@ function RecordDetailPage() {
     }
   };
 
+  const handleConvertQuote = async () => {
+    if (!record?._id) return;
+
+    if (record.status === "Convertida") {
+      addToast("Esta cotizacion ya fue convertida", "warning");
+      return;
+    }
+
+    if (!window.confirm("¿Convertir esta cotizacion en una venta borrador?")) {
+      return;
+    }
+
+    try {
+      setConverting(true);
+      const result = await convertQuoteToSale(record._id);
+      addToast("Cotizacion convertida en venta", "success");
+      navigate(`/admin/sales/${result.saleId}/view?tab=sales`);
+    } catch (error) {
+      console.error(error);
+      addToast(
+        error?.response?.data?.error || "No se pudo convertir la cotizacion",
+        "error"
+      );
+    } finally {
+      setConverting(false);
+    }
+  };
+
   return (
     <div className="p-10 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -169,6 +203,20 @@ function RecordDetailPage() {
               className="bg-emerald-600 px-4 py-2 rounded text-white"
             >
               Resumen cliente
+            </button>
+          ) : null}
+          {supportsQuoteConversion ? (
+            <button
+              type="button"
+              onClick={handleConvertQuote}
+              disabled={converting || record.status === "Convertida"}
+              className="bg-violet-600 px-4 py-2 rounded text-white disabled:opacity-60"
+            >
+              {record.status === "Convertida"
+                ? "Cotizacion convertida"
+                : converting
+                  ? "Convirtiendo..."
+                  : "Convertir a venta"}
             </button>
           ) : null}
 
