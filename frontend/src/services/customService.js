@@ -55,6 +55,61 @@ export const updateStorefrontSettings = async (payload) => {
   return res.data;
 };
 
+export const getReports = async () => {
+  const res = await apiClient.get("/api/reports");
+  return res.data;
+};
+
+export const getReportById = async (id) => {
+  const res = await apiClient.get(`/api/reports/${id}`);
+  return res.data;
+};
+
+export const createReport = async (payload) => {
+  const res = await apiClient.post("/api/reports", payload);
+  return res.data;
+};
+
+export const updateReport = async (id, payload) => {
+  const res = await apiClient.put(`/api/reports/${id}`, payload);
+  return res.data;
+};
+
+export const deleteReport = async (id) => {
+  const res = await apiClient.delete(`/api/reports/${id}`);
+  return res.data;
+};
+
+export const runReport = async (id) => {
+  const res = await apiClient.get(`/api/reports/${id}/run`);
+  return res.data;
+};
+
+export const getDashboards = async () => {
+  const res = await apiClient.get("/api/dashboards");
+  return res.data;
+};
+
+export const getDashboardById = async (id) => {
+  const res = await apiClient.get(`/api/dashboards/${id}`);
+  return res.data;
+};
+
+export const createDashboard = async (payload) => {
+  const res = await apiClient.post("/api/dashboards", payload);
+  return res.data;
+};
+
+export const updateDashboard = async (id, payload) => {
+  const res = await apiClient.put(`/api/dashboards/${id}`, payload);
+  return res.data;
+};
+
+export const deleteDashboard = async (id) => {
+  const res = await apiClient.delete(`/api/dashboards/${id}`);
+  return res.data;
+};
+
 export const getCustomObjects = getObjects;
 export const getCustomObjectByApiName = getObjectByApiName;
 export const createCustomObject = createObject;
