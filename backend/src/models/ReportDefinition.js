@@ -59,6 +59,11 @@ const reportDefinitionSchema = new mongoose.Schema(
     apiName: { type: String, required: true, trim: true, unique: true },
     description: { type: String, default: "" },
     isActive: { type: Boolean, default: true },
+    engine: {
+      type: String,
+      enum: ["standard", "financial_summary"],
+      default: "standard",
+    },
     sourceObject: { type: String, required: true, trim: true },
     filters: { type: [reportFilterSchema], default: [] },
     groupBy: { type: [reportGroupBySchema], default: [] },

@@ -14,6 +14,15 @@ function slugify(value = "") {
 
 const reports = [
   {
+    name: "Reporte financiero",
+    apiName: "financial_summary",
+    description: "Resumen financiero especial con la logica historica del negocio.",
+    engine: "financial_summary",
+    sourceObject: "sales",
+    filters: [],
+    metrics: [],
+  },
+  {
     name: "Resumen financiero",
     apiName: "sales_summary",
     description: "Vista general de lo vendido, cobrado y lo que sigue en calle.",

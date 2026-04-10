@@ -1,6 +1,42 @@
 import { useEffect, useState } from "react";
 import { getReports, runReport } from "../../services/customService";
 
+function FinancialSummaryTable({ preview }) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border bg-white">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-gray-50 text-left">
+              <th className="border-b p-3 font-semibold text-gray-700">Metrica</th>
+              <th className="border-b p-3 font-semibold text-gray-700">Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(preview.rows || []).map((row) => (
+              <tr key={row.metric_id} className="hover:bg-gray-50">
+                <td className="border-b p-3 text-gray-700">{row.metric}</td>
+                <td className="border-b p-3 font-semibold text-gray-900">{row.value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {preview.notes?.length ? (
+        <div className="rounded-2xl border bg-amber-50/70 p-4 text-sm text-gray-700">
+          <p className="font-semibold text-gray-900">Como se esta calculando</p>
+          <ul className="mt-2 space-y-1">
+            {preview.notes.map((note, index) => (
+              <li key={`financial-note-${index}`}>{note}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ReportResultsTable({ preview }) {
   if (!preview) {
     return (
@@ -8,6 +44,10 @@ function ReportResultsTable({ preview }) {
         Selecciona un reporte para visualizar sus resultados.
       </p>
     );
+  }
+
+  if (preview.viewType === "financial_summary") {
+    return <FinancialSummaryTable preview={preview} />;
   }
 
   return (

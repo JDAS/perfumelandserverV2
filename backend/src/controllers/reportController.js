@@ -1,5 +1,6 @@
 const ReportDefinition = require("../models/ReportDefinition");
 const { executeReportDefinition } = require("../services/reportEngine");
+const { executeFinancialSummaryReport } = require("../services/financialSummaryService");
 
 function normalizeApiName(value = "") {
   return String(value)
@@ -78,7 +79,10 @@ exports.runReport = async (req, res) => {
       return res.status(404).json({ error: "Reporte no encontrado" });
     }
 
-    const data = await executeReportDefinition(report);
+    const data =
+      report.engine === "financial_summary"
+        ? await executeFinancialSummaryReport(report)
+        : await executeReportDefinition(report);
     return res.json(data);
   } catch (error) {
     console.error("runReport error:", error);
