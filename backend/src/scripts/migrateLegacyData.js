@@ -62,6 +62,36 @@ function mapLegacySeller(legacySeller) {
   };
 }
 
+function inferExpenseCategory(description) {
+  const normalized = normalizeString(description).toLowerCase();
+  if (!normalized) return "Otros";
+  if (normalized.includes("bolsa") || normalized.includes("empaque")) return "Empaque";
+  if (normalized.includes("parqueo") || normalized.includes("uber") || normalized.includes("taxi")) {
+    return "Transporte";
+  }
+  if (normalized.includes("papel") || normalized.includes("etiqueta") || normalized.includes("cinta")) {
+    return "Papeleria";
+  }
+  if (normalized.includes("internet") || normalized.includes("luz") || normalized.includes("agua")) {
+    return "Servicios";
+  }
+  if (normalized.includes("material")) return "Operacion";
+  return "Otros";
+}
+
+function mapLegacyExpense(legacyExpense) {
+  const description = normalizeString(legacyExpense.description);
+  return {
+    name: description || "Gasto migrado",
+    date: normalizeString(legacyExpense.date),
+    amount: Number(legacyExpense.amount) || 0,
+    category: inferExpenseCategory(description),
+    description,
+    status: "Pagado",
+    legacyId: String(legacyExpense._id),
+  };
+}
+
 function normalizeNameKey(value) {
   return slugify(value);
 }
@@ -103,6 +133,27 @@ function inferPaymentPlanStatus(payment) {
   }
 
   return "Pending";
+}
+
+function allocateLegacyInstallments(legacySale) {
+  const payments = Array.isArray(legacySale?.payments) ? legacySale.payments : [];
+  let remainingPaid = Number(legacySale?.totalPaid) || 0;
+
+  return payments.map((payment, index) => {
+    const expectedAmount = Number(payment?.expectedAmount) || 0;
+    const paidAmount = Math.min(expectedAmount, Math.max(remainingPaid, 0));
+
+    remainingPaid = Math.max(remainingPaid - paidAmount, 0);
+
+    return {
+      payment,
+      index,
+      paymentIndex: index,
+      installmentNumber: Number(payment?.number) || index + 1,
+      expectedAmount,
+      paidAmount,
+    };
+  });
 }
 
 function inferSalePaymentStatus({ saleStatus, total, totalPaid }) {
@@ -650,21 +701,24 @@ async function migrateLegacySalesPhase({
       }
     }
 
-    const salePayments = Array.isArray(legacySale.payments) ? legacySale.payments : [];
+    const salePayments = allocateLegacyInstallments(legacySale);
     for (let index = 0; index < salePayments.length; index += 1) {
-      const payment = salePayments[index];
-      const installmentNumber = Number(payment?.number) || index + 1;
-      const paidAmount = Number(payment?.amountPaid) || 0;
+      const { payment, paymentIndex, installmentNumber, paidAmount, expectedAmount } = salePayments[index];
       const paymentPlanPayload = {
         sale_id: saleId,
         due_date: normalizeString(payment?.fecha) || "",
-        planned_amount: Number(payment?.expectedAmount) || 0,
+        planned_amount: expectedAmount,
         installment_number: installmentNumber,
         paid_amount: paidAmount,
-        status: inferPaymentPlanStatus(payment),
+        status: inferPaymentPlanStatus({
+          ...payment,
+          amountPaid: paidAmount,
+          paid: expectedAmount > 0 ? paidAmount >= expectedAmount : toBoolean(payment?.paid, false),
+        }),
         version: 1,
         legacySaleId: String(legacySale._id),
         legacyInstallmentNumber: installmentNumber,
+        legacyPaymentIndex: paymentIndex,
       };
 
       if (paidAmount > 0) {
@@ -673,11 +727,11 @@ async function migrateLegacySalesPhase({
 
       let targetPlan = null;
 
-      if (!dryRun) {
-        targetPlan = await PaymentPlanModel.findOne({
-          legacySaleId: String(legacySale._id),
-          legacyInstallmentNumber: installmentNumber,
-        });
+        if (!dryRun) {
+          targetPlan = await PaymentPlanModel.findOne({
+            legacySaleId: String(legacySale._id),
+            legacyPaymentIndex: paymentIndex,
+          });
 
         if (targetPlan) {
           targetPlan.set({ ...targetPlan.toObject(), ...paymentPlanPayload });
@@ -690,20 +744,21 @@ async function migrateLegacySalesPhase({
         }
       }
 
-      if (paidAmount > 0 && !dryRun) {
-        const paymentPayload = {
-          sale_id: saleId,
-          payment_plan_id: String(targetPlan._id),
-          amount: paidAmount,
-          date: normalizeString(payment?.fecha) || "",
-          legacySaleId: String(legacySale._id),
-          legacyInstallmentNumber: installmentNumber,
-        };
+        if (paidAmount > 0 && !dryRun) {
+          const paymentPayload = {
+            sale_id: saleId,
+            payment_plan_id: String(targetPlan._id),
+            amount: paidAmount,
+            date: normalizeString(payment?.fecha) || "",
+            legacySaleId: String(legacySale._id),
+            legacyInstallmentNumber: installmentNumber,
+            legacyPaymentIndex: paymentIndex,
+          };
 
-        const existingPayment = await PaymentModel.findOne({
-          legacySaleId: String(legacySale._id),
-          legacyInstallmentNumber: installmentNumber,
-        });
+          const existingPayment = await PaymentModel.findOne({
+            legacySaleId: String(legacySale._id),
+            legacyPaymentIndex: paymentIndex,
+          });
 
         if (existingPayment) {
           existingPayment.set({ ...existingPayment.toObject(), ...paymentPayload });
@@ -713,10 +768,43 @@ async function migrateLegacySalesPhase({
         } else {
           await PaymentModel.create(paymentPayload);
           summary.paymentsInserted += 1;
+          }
+        }
+      }
+
+      const allocatedPaid = salePayments.reduce(
+        (sum, item) => sum + (Number(item.paidAmount) || 0),
+        0
+      );
+      const extraPaidAmount = Math.max((Number(legacySale.totalPaid) || 0) - allocatedPaid, 0);
+
+      if (!dryRun && extraPaidAmount > 0) {
+        const extraPaymentPayload = {
+          sale_id: saleId,
+          amount: extraPaidAmount,
+          date: normalizeString(legacySale.salesDate) || "",
+          legacySaleId: String(legacySale._id),
+          legacyInstallmentNumber: 0,
+          legacyPaymentIndex: "extra",
+          legacySyntheticType: "carryover",
+        };
+
+        const existingExtraPayment = await PaymentModel.findOne({
+          legacySaleId: String(legacySale._id),
+          legacyPaymentIndex: "extra",
+        });
+
+        if (existingExtraPayment) {
+          existingExtraPayment.set({ ...existingExtraPayment.toObject(), ...extraPaymentPayload });
+          Object.keys(extraPaymentPayload).forEach((key) => existingExtraPayment.markModified(key));
+          await existingExtraPayment.save();
+          summary.paymentsUpdated += 1;
+        } else {
+          await PaymentModel.create(extraPaymentPayload);
+          summary.paymentsInserted += 1;
         }
       }
     }
-  }
 
   const completedSaleItemTotals = await SaleItemModel.aggregate([
     {
@@ -800,6 +888,29 @@ async function main() {
     dryRun,
   });
 
+  const expenseTarget =
+    (await getTargetCustomObject(targetConnection, "expenses"))
+      ? "expenses"
+      : (await getTargetCustomObject(targetConnection, "expense"))
+      ? "expense"
+      : null;
+
+  if (!expenseTarget && !dryRun) {
+    throw new Error(
+      `No existe el CustomObject destino "expenses" o "expense" en ${targetConnection.name}.`
+    );
+  }
+
+  const expenseResult = await migrateCollection({
+    sourceConnection,
+    targetConnection,
+    sourceCollectionName: "expenses",
+    targetObjectApiName: expenseTarget || "expenses",
+    mapper: mapLegacyExpense,
+    uniqueKey: "legacyId",
+    dryRun,
+  });
+
   const salesMigrationResult = await migrateLegacySalesPhase({
     sourceConnection,
     targetConnection,
@@ -817,6 +928,7 @@ async function main() {
         productResult,
         sellerResult,
         attachmentResult,
+        expenseResult,
         salesMigrationResult,
         salesShape,
         nextStep:
