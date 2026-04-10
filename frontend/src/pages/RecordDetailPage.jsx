@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
-import { getRecordById } from "../services/customService";
+import { getClientSummary, getRecordById } from "../services/customService";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 import {
   formatFieldValue,
@@ -9,6 +9,8 @@ import {
   splitFieldsIntoColumns,
 } from "../engine/metadataEngine";
 import RelatedListSection from "../components/RelatedListSection";
+import ClientSummaryModal from "../components/ClientSummaryModal";
+import { useToast } from "../components/ui/ToastContext";
 
 function RecordDetailPage() {
   const { object, id } = useParams();
@@ -18,6 +20,10 @@ function RecordDetailPage() {
 
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const { addToast } = useToast();
 
   const objectDef = getObjectByApiNameFromCache(object);
   const backToListQuery = getBackToListSearch(searchParams, object);
@@ -96,6 +102,32 @@ function RecordDetailPage() {
   const relatedSections = (activeLayout?.sections || []).filter(
     (section) => section.type === "relatedList"
   );
+  const supportsClientSummary = object === "sales" || object === "quote";
+
+  const handleOpenSummary = async () => {
+    try {
+      const data = await getClientSummary(object, id);
+      setSummary(data);
+      setSummaryOpen(true);
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudo generar el resumen", "error");
+    }
+  };
+
+  const handleCopySummary = async () => {
+    if (!summary?.whatsappText) return;
+    try {
+      setCopying(true);
+      await navigator.clipboard.writeText(summary.whatsappText);
+      addToast("Resumen copiado al portapapeles", "success");
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudo copiar el resumen", "error");
+    } finally {
+      setCopying(false);
+    }
+  };
 
   return (
     <div className="p-10 max-w-5xl mx-auto space-y-6">
@@ -114,6 +146,15 @@ function RecordDetailPage() {
           >
             Volver
           </button>
+          {supportsClientSummary ? (
+            <button
+              type="button"
+              onClick={handleOpenSummary}
+              className="bg-emerald-600 px-4 py-2 rounded text-white"
+            >
+              Resumen cliente
+            </button>
+          ) : null}
 
           <Link
             to={`/admin/${objectDef.apiName}/${record._id}?${backToListQuery}&returnTo=detail`}
@@ -199,6 +240,14 @@ function RecordDetailPage() {
           section={section}
         />
       ))}
+
+      <ClientSummaryModal
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        summary={summary}
+        onCopy={handleCopySummary}
+        copying={copying}
+      />
     </div>
   );
 }

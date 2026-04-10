@@ -11,6 +11,7 @@ import DynamicForm from "./pages/DynamicForm";
 import Builder from "./pages/Builder";
 import ObjectMetadataPage from "./pages/ObjectMetadataPage";
 import SettingsPage from "./pages/SettingsPage";
+import QuoteBuilderPage from "./pages/QuoteBuilderPage";
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import AdminRoute from "./components/AdminRoute";
@@ -45,6 +46,14 @@ function App() {
               <Route
                 path="/admin/:object/new"
                 element={<AdminRoute><AdminLayout><DynamicForm /></AdminLayout></AdminRoute>}
+              />
+              <Route
+                path="/admin/quote-builder"
+                element={<AdminRoute><AdminLayout><QuoteBuilderPage /></AdminLayout></AdminRoute>}
+              />
+              <Route
+                path="/admin/quote-builder/:id"
+                element={<AdminRoute><AdminLayout><QuoteBuilderPage /></AdminLayout></AdminRoute>}
               />
               <Route
                 path="/admin/builder"

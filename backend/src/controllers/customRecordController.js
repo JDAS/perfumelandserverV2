@@ -7,6 +7,7 @@ const {
   saveRecord,
   deleteRecordWithTriggers,
 } = require("../services/customRecordService");
+const { buildClientSummary } = require("../services/clientSummaryService");
 
 exports.createRecord = async (req, res) => {
   try {
@@ -83,6 +84,19 @@ exports.getRecordById = async (req, res) => {
     res.json(record);
   } catch (error) {
     console.error("getRecordById error:", error);
+    res.status(error.statusCode || 500).json({
+      error: error.message,
+    });
+  }
+};
+
+exports.getClientSummary = async (req, res) => {
+  try {
+    const { object, id } = req.params;
+    const summary = await buildClientSummary(object, id);
+    res.json(summary);
+  } catch (error) {
+    console.error("getClientSummary error:", error);
     res.status(error.statusCode || 500).json({
       error: error.message,
     });

@@ -130,6 +130,11 @@ export const getRecordById = async (object, id) => {
   return res.data;
 };
 
+export const getClientSummary = async (object, id) => {
+  const res = await apiClient.get(`/api/custom-records/${object}/${id}/client-summary`);
+  return res.data;
+};
+
 export const createRecord = async (object, payload) => {
   const res = await apiClient.post(`/api/custom-records/${object}`, payload);
   return res.data;

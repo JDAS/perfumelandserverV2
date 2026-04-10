@@ -7,6 +7,7 @@ const {
   getRecords,
   getRelatedRecords,
   getRecordById,
+  getClientSummary,
   updateRecord,
   deleteRecord,
 } = require('../controllers/customRecordController');
@@ -15,6 +16,7 @@ router.use(protect);
 
 router.post('/:object', createRecord);
 router.get('/:object', getRecords);
+router.get('/:object/:id/client-summary', getClientSummary);
 router.get('/:object/:id/related/:relatedObject/:relatedField', getRelatedRecords);
 router.get('/:object/:id', getRecordById);
 router.put('/:object/:id', updateRecord);

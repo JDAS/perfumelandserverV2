@@ -108,10 +108,14 @@ function ObjectListView({ objectDef }) {
 
         <div className="flex flex-wrap gap-2">
           <Link
-            to={`/admin/${objectDef.apiName}/new?${backToListQuery}`}
+            to={
+              objectDef.apiName === "quote"
+                ? "/admin/quote-builder"
+                : `/admin/${objectDef.apiName}/new?${backToListQuery}`
+            }
             className="rounded bg-black px-4 py-2 text-white"
           >
-            Nuevo
+            {objectDef.apiName === "quote" ? "Nueva cotizacion" : "Nuevo"}
           </Link>
 
           <Link
@@ -227,7 +231,11 @@ function ObjectListView({ objectDef }) {
                         </Link>
 
                         <Link
-                          to={`/admin/${objectDef.apiName}/${record._id}?${backToListQuery}`}
+                          to={
+                            objectDef.apiName === "quote"
+                              ? `/admin/quote-builder/${record._id}`
+                              : `/admin/${objectDef.apiName}/${record._id}?${backToListQuery}`
+                          }
                           className="rounded bg-yellow-500 px-3 py-1 text-white"
                         >
                           Editar
