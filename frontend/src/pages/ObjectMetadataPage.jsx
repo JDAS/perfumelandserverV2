@@ -489,6 +489,41 @@ function ObjectMetadataPage() {
                 />
               </div>
 
+              <div className="rounded-lg border p-4 space-y-3">
+                <label className="flex items-center gap-3 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    checked={objectData.active !== false}
+                    onChange={(e) =>
+                      setObjectData({
+                        ...objectData,
+                        active: e.target.checked,
+                      })
+                    }
+                  />
+                  Objeto activo
+                </label>
+
+                <label className="flex items-center gap-3 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    checked={objectData.tabsEnabled !== false}
+                    onChange={(e) =>
+                      setObjectData({
+                        ...objectData,
+                        tabsEnabled: e.target.checked,
+                      })
+                    }
+                  />
+                  Mostrar como tab en Admin
+                </label>
+
+                <p className="text-xs text-gray-500">
+                  Si desactivas este tab, el objeto sigue existiendo pero deja de salir en la
+                  navegación principal del admin.
+                </p>
+              </div>
+
               <button
                 className="bg-black text-white px-4 py-2 rounded"
                 onClick={async () => {
