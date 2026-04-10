@@ -23,25 +23,104 @@ async function syncProductObject() {
   const objectDefinition = await CustomObject.findOne({ apiName: "product" });
   if (!objectDefinition) return;
 
-  objectDefinition.fields = (objectDefinition.fields || []).map((field) => {
-    if (field.apiName !== "sold") {
-      return field;
+  let nextFields = (objectDefinition.fields || []).map((field) => field.toObject?.() || field);
+
+  nextFields = ensureField(nextFields, {
+    label: "Controlar inventario",
+    apiName: "track_inventory",
+    type: "boolean",
+    required: false,
+    options: [],
+    defaultValue: false,
+    referenceTo: "",
+    lookupFilters: [],
+    visibleInList: true,
+    visibleInDetail: true,
+    visibleInForm: true,
+    formula: { expression: "", returnType: "boolean" },
+    rollup: {
+      relatedObject: "",
+      relatedField: "",
+      operation: "count",
+      fieldToAggregate: "",
+      filterField: "",
+      filterOperator: "eq",
+      filterValue: null,
+    },
+  });
+
+  nextFields = nextFields.map((field) => {
+    if (field.apiName === "sold") {
+      return {
+        ...field,
+        rollup: {
+          ...(field.rollup || {}),
+          relatedObject: "sale_item",
+          relatedField: "product",
+          operation: "sum",
+          fieldToAggregate: "quantity",
+          filterField: "sale_status",
+          filterOperator: "eq",
+          filterValue: "Completada",
+        },
+      };
     }
 
-    return {
-      ...field.toObject?.() || field,
-      rollup: {
-        ...(field.rollup || {}),
-        relatedObject: "sale_item",
-        relatedField: "product",
-        operation: "sum",
-        fieldToAggregate: "quantity",
-        filterField: "sale_status",
-        filterOperator: "eq",
-        filterValue: "Completada",
-      },
-    };
+    if (field.apiName === "available") {
+      return {
+        ...field,
+        formula: {
+          expression: "IF(track_inventory, purchaseditems - sold, 0)",
+          returnType: "number",
+        },
+      };
+    }
+
+    return field;
   });
+
+  objectDefinition.fields = nextFields;
+
+  if (Array.isArray(objectDefinition.listViews)) {
+    objectDefinition.listViews = objectDefinition.listViews.map((view) => {
+      const nextView = view.toObject?.() || view;
+      if (!Array.isArray(nextView.columns)) return nextView;
+
+      if (!nextView.columns.includes("track_inventory")) {
+        const insertAt = nextView.columns.includes("featured")
+          ? nextView.columns.indexOf("featured") + 1
+          : nextView.columns.length;
+        nextView.columns.splice(insertAt, 0, "track_inventory");
+      }
+
+      return nextView;
+    });
+  }
+
+  if (Array.isArray(objectDefinition.layout)) {
+    objectDefinition.layout = objectDefinition.layout.map((layout) => {
+      const nextLayout = layout.toObject?.() || layout;
+      if (!Array.isArray(nextLayout.sections)) return nextLayout;
+
+      nextLayout.sections = nextLayout.sections.map((section) => {
+        const nextSection = section.toObject?.() || section;
+        if (nextSection.type !== "fields" || !Array.isArray(nextSection.fields)) {
+          return nextSection;
+        }
+
+        if (!nextSection.fields.includes("track_inventory")) {
+          const insertAt = nextSection.fields.includes("sort_order")
+            ? nextSection.fields.indexOf("sort_order") + 1
+            : nextSection.fields.length;
+          nextSection.fields.splice(insertAt, 0, "track_inventory");
+        }
+
+        return nextSection;
+      });
+
+      return nextLayout;
+    });
+  }
 
   await objectDefinition.save();
 }
@@ -126,6 +205,15 @@ async function syncSaleItemObject() {
       },
     }
   );
+
+  objectDefinition.fields = objectDefinition.fields.map((field) => {
+    const nextField = field.toObject?.() || field;
+    if (nextField.apiName !== "product") return nextField;
+    return {
+      ...nextField,
+      lookupFilters: [],
+    };
+  });
 
   if (Array.isArray(objectDefinition.listViews)) {
     objectDefinition.listViews = objectDefinition.listViews.map((view) => {
