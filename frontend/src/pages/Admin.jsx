@@ -1,8 +1,8 @@
 import { useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import DashboardsAdmin from "../components/admin/DashboardsAdmin";
-import ReportsAdmin from "../components/admin/ReportsAdmin";
+import DashboardsViewer from "../components/admin/DashboardsViewer";
 import ObjectListView from "../components/ObjectListView";
+import ReportsViewer from "../components/admin/ReportsViewer";
 import SuiteSetupPanel from "../components/SuiteSetupPanel";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 
@@ -63,11 +63,11 @@ function Admin() {
     }
 
     if (currentTab.id === "reportes") {
-      return <ReportsAdmin objects={objects} />;
+      return <ReportsViewer />;
     }
 
     if (currentTab.id === "dashboards") {
-      return <DashboardsAdmin />;
+      return <DashboardsViewer />;
     }
 
     return (
@@ -82,7 +82,7 @@ function Admin() {
       <div>
         <h1 className="text-3xl font-bold">Admin Panel</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Accesos por objeto, reportes y dashboards configurables.
+          Accesos por objeto y visualizadores internos del sistema.
         </p>
       </div>
 

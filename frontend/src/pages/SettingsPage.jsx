@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import DashboardsAdmin from "../components/admin/DashboardsAdmin";
+import ReportsAdmin from "../components/admin/ReportsAdmin";
 import {
   deleteObject,
   getStorefrontSettings,
@@ -125,6 +127,22 @@ function SettingsPage() {
               onClick={() => setActiveSection("storefront")}
             >
               Storefront
+            </button>
+            <button
+              className={`block w-full text-left px-3 py-2 rounded ${
+                activeSection === "reportes" ? "bg-black text-white" : "bg-gray-100"
+              }`}
+              onClick={() => setActiveSection("reportes")}
+            >
+              Reportes
+            </button>
+            <button
+              className={`block w-full text-left px-3 py-2 rounded ${
+                activeSection === "dashboards" ? "bg-black text-white" : "bg-gray-100"
+              }`}
+              onClick={() => setActiveSection("dashboards")}
+            >
+              Dashboards
             </button>
             <button
               className={`block w-full text-left px-3 py-2 rounded ${
@@ -582,6 +600,30 @@ function SettingsPage() {
                 </div>
               </form>
             )}
+          </div>
+        )}
+
+        {activeSection === "reportes" && (
+          <div className="bg-white rounded-xl shadow p-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold">Configuración de reportes</h2>
+              <p className="text-sm text-gray-500">
+                Diseña reportes reutilizables para métricas, tablas y dashboards.
+              </p>
+            </div>
+            <ReportsAdmin objects={objects} />
+          </div>
+        )}
+
+        {activeSection === "dashboards" && (
+          <div className="bg-white rounded-xl shadow p-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold">Configuración de dashboards</h2>
+              <p className="text-sm text-gray-500">
+                Arma dashboards internos a partir de los reportes ya configurados.
+              </p>
+            </div>
+            <DashboardsAdmin />
           </div>
         )}
 
