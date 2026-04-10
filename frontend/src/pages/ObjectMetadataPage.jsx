@@ -9,10 +9,12 @@ import FieldModal from "../components/FieldModal";
 import ListViewsEditor from "../components/ListViewsEditor";
 import TriggerModal from "../components/TriggerModal";
 import { useToast } from "../components/ui/ToastContext";
+import { useObjectMetadata } from "../context/ObjectMetadataContext";
 
 function ObjectMetadataPage() {
   const { apiName } = useParams();
   const { addToast } = useToast();
+  const { refreshObjects } = useObjectMetadata();
 
   const [objectData, setObjectData] = useState(null);
   const [activeSection, setActiveSection] = useState("details");
@@ -532,6 +534,7 @@ function ObjectMetadataPage() {
                     apiName: objectData.apiName,
                   });
                   setObjectData(normalizeObjectData(saved));
+                  await refreshObjects();
                   addToast("Objeto actualizado", "success");
                 }}
               >

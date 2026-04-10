@@ -144,8 +144,11 @@ const automationTriggerSchema = new mongoose.Schema(
 const customObjectSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
+    pluralLabel: { type: String, default: "" },
     apiName: { type: String, required: true, unique: true },
     description: { type: String, default: "" },
+    active: { type: Boolean, default: true },
+    tabsEnabled: { type: Boolean, default: true },
     fields: { type: [fieldSchema], default: [] },
     layout: { type: [layoutSchema], default: [] },
     listViews: { type: [listViewSchema], default: [] },
