@@ -23,6 +23,15 @@ const reports = [
     metrics: [],
   },
   {
+    name: "Perfumes vendidos por vendedor (anio en curso)",
+    apiName: "seller_year_performance",
+    description: "Resumen anual por vendedor con perfumes vendidos y ganancias generadas.",
+    engine: "seller_year_performance",
+    sourceObject: "sales",
+    filters: [],
+    metrics: [],
+  },
+  {
     name: "Resumen financiero",
     apiName: "sales_summary",
     description: "Vista general de lo vendido, cobrado y lo que sigue en calle.",

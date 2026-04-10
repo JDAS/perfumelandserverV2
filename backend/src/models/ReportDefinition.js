@@ -61,7 +61,7 @@ const reportDefinitionSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     engine: {
       type: String,
-      enum: ["standard", "financial_summary"],
+      enum: ["standard", "financial_summary", "seller_year_performance"],
       default: "standard",
     },
     sourceObject: { type: String, required: true, trim: true },

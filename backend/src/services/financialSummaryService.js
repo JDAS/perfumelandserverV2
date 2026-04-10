@@ -177,6 +177,20 @@ async function executeFinancialSummaryReport(reportDefinition) {
     },
   ]);
 
+  const sellerBonusTotals = await aggregateSingle(targetDb.collection("seller_bonus"), [
+    {
+      $match: {
+        status: "Pagado",
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: { $ifNull: ["$amount", 0] } },
+      },
+    },
+  ]).catch(() => ({}));
+
   const firstPaymentPendingTotals = await aggregateSingle(targetDb.collection("payment_plan"), [
     {
       $match: {
@@ -223,7 +237,9 @@ async function executeFinancialSummaryReport(reportDefinition) {
   const pagoInventario = await getInventoryPurchaseTotal(targetDb, sourceDb);
   const pagosComisiones = toNumber(salesTotals.pagosComisiones);
   const gastosAdicionales = toNumber(expensesTotals.gastosAdicionales);
-  const totalPagos = pagosPerfumes + pagosComisiones + gastosAdicionales + pagoInventario;
+  const bonosVendedores = toNumber(sellerBonusTotals.total);
+  const totalPagos =
+    pagosPerfumes + pagosComisiones + gastosAdicionales + pagoInventario + bonosVendedores;
   const totalRecibido = toNumber(salesTotals.totalRecibido);
   const enCalle = toNumber(salesTotals.enCalle);
   const outstandingLoans = await getOutstandingLoans(targetDb, sourceDb);
@@ -267,6 +283,13 @@ async function executeFinancialSummaryReport(reportDefinition) {
       label: "Gastos adicionales",
       value: gastosAdicionales,
       formatted: formatCurrency(gastosAdicionales),
+      format: "currency",
+    },
+    {
+      id: "bonos_vendedores",
+      label: "Bonos vendedores",
+      value: bonosVendedores,
+      formatted: formatCurrency(bonosVendedores),
       format: "currency",
     },
     {
