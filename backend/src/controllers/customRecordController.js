@@ -8,6 +8,7 @@ const {
   deleteRecordWithTriggers,
 } = require("../services/customRecordService");
 const { buildClientSummary } = require("../services/clientSummaryService");
+const { convertQuoteToSale } = require("../services/quoteConversionService");
 
 exports.createRecord = async (req, res) => {
   try {
@@ -97,6 +98,30 @@ exports.getClientSummary = async (req, res) => {
     res.json(summary);
   } catch (error) {
     console.error("getClientSummary error:", error);
+    res.status(error.statusCode || 500).json({
+      error: error.message,
+    });
+  }
+};
+
+exports.convertQuoteToSale = async (req, res) => {
+  try {
+    const { object, id } = req.params;
+
+    if (object !== "quote") {
+      return res.status(400).json({
+        error: "Esta accion solo aplica a cotizaciones",
+      });
+    }
+
+    const result = await convertQuoteToSale({
+      quoteId: id,
+      user: req.user || null,
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("convertQuoteToSale error:", error);
     res.status(error.statusCode || 500).json({
       error: error.message,
     });

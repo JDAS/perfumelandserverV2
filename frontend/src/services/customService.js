@@ -135,6 +135,11 @@ export const getClientSummary = async (object, id) => {
   return res.data;
 };
 
+export const convertQuoteToSale = async (id) => {
+  const res = await apiClient.post(`/api/custom-records/quote/${id}/convert-to-sale`);
+  return res.data;
+};
+
 export const createRecord = async (object, payload) => {
   const res = await apiClient.post(`/api/custom-records/${object}`, payload);
   return res.data;

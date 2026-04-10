@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ClientSummaryModal from "../components/ClientSummaryModal";
 import {
+  convertQuoteToSale,
   createRecord,
   deleteRecord,
   getClientSummary,
@@ -48,6 +49,7 @@ export default function QuoteBuilderPage() {
   const [summary, setSummary] = useState(null);
   const [copying, setCopying] = useState(false);
   const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
+  const [converting, setConverting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -283,6 +285,37 @@ export default function QuoteBuilderPage() {
     }
   };
 
+  const handleConvertToSale = async () => {
+    if (!id) {
+      addToast("Guarda la cotizacion antes de convertirla", "warning");
+      return;
+    }
+
+    if (quote.status === "Convertida") {
+      addToast("Esta cotizacion ya fue convertida", "warning");
+      return;
+    }
+
+    if (!window.confirm("¿Convertir esta cotizacion en una venta borrador?")) {
+      return;
+    }
+
+    try {
+      setConverting(true);
+      const result = await convertQuoteToSale(id);
+      addToast("Cotizacion convertida en venta", "success");
+      navigate(`/admin/sales/${result.saleId}/view?tab=sales`);
+    } catch (error) {
+      console.error(error);
+      addToast(
+        error?.response?.data?.error || "No se pudo convertir la cotizacion",
+        "error"
+      );
+    } finally {
+      setConverting(false);
+    }
+  };
+
   if (loading) return <div className="p-10">Cargando cotizacion...</div>;
 
   return (
@@ -297,6 +330,20 @@ export default function QuoteBuilderPage() {
           <Link to="/admin?tab=quote" className="rounded bg-gray-200 px-4 py-2">
             Volver
           </Link>
+          {isEditMode ? (
+            <button
+              type="button"
+              onClick={handleConvertToSale}
+              disabled={converting || quote.status === "Convertida"}
+              className="rounded bg-violet-600 px-4 py-2 text-white disabled:opacity-60"
+            >
+              {quote.status === "Convertida"
+                ? "Ya convertida"
+                : converting
+                  ? "Convirtiendo..."
+                  : "Convertir a venta"}
+            </button>
+          ) : null}
           {isEditMode ? (
             <button type="button" onClick={handleOpenSummary} className="rounded bg-emerald-600 px-4 py-2 text-white">
               Resumen cliente
@@ -453,6 +500,20 @@ export default function QuoteBuilderPage() {
             <button type="button" onClick={handleSave} disabled={saving} className="rounded-lg bg-black px-4 py-3 text-white disabled:opacity-60">
               {saving ? "Guardando..." : "Guardar cotizacion"}
             </button>
+            {isEditMode ? (
+              <button
+                type="button"
+                onClick={handleConvertToSale}
+                disabled={converting || quote.status === "Convertida"}
+                className="rounded-lg bg-violet-600 px-4 py-3 text-white disabled:opacity-60"
+              >
+                {quote.status === "Convertida"
+                  ? "Cotizacion ya convertida"
+                  : converting
+                    ? "Convirtiendo a venta..."
+                    : "Convertir a venta"}
+              </button>
+            ) : null}
             {isEditMode ? (
               <button type="button" onClick={handleOpenSummary} className="rounded-lg bg-emerald-600 px-4 py-3 text-white">
                 Generar resumen para cliente
