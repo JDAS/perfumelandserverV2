@@ -161,6 +161,7 @@ async function buildSalesClientSummary(recordId) {
 async function buildQuoteClientSummary(recordId) {
   const QuoteModel = getCustomRecordModel("quote");
   const QuoteItemModel = getCustomRecordModel("quote_item");
+  const ProductModel = getCustomRecordModel("product");
 
   const quote = await QuoteModel.findById(recordId).lean();
   if (!quote) {
@@ -170,24 +171,34 @@ async function buildQuoteClientSummary(recordId) {
   }
 
   const items = await QuoteItemModel.find({ quote: String(recordId) }).lean();
-  const lookups = await loadLookupNames({
-    product: items.map((item) => item.product),
-  });
-  const productNames = lookups.product || new Map();
+  const productIds = [...new Set(items.map((item) => String(item.product || "")).filter(Boolean))];
+  const productDocs = productIds.length
+    ? await ProductModel.find({ _id: { $in: productIds } }, { name: 1, price: 1 }).lean()
+    : [];
+  const productMap = new Map(
+    productDocs.map((doc) => [String(doc._id), { name: doc.name || "Perfume", price: toNumber(doc.price) }])
+  );
 
   const products = items.map((item) => {
     const quantity = toNumber(item.quantity) || 1;
     const lineTotal = toNumber(item.total);
-    const originalPrice = toNumber(item.list_price) * quantity || lineTotal + toNumber(item.discount);
+    const productMeta = productMap.get(String(item.product)) || { name: "Perfume", price: 0 };
+    const cashUnitPrice = productMeta.price || toNumber(item.list_price) || toNumber(item.price);
+    const cashLineSubtotal = cashUnitPrice * quantity;
+    const originalPrice = cashLineSubtotal || lineTotal + toNumber(item.discount);
     const discountAmount = Math.max(originalPrice - lineTotal, 0);
 
     return {
       id: String(item._id),
-      name: productNames.get(String(item.product)) || "Perfume",
+      name: productMeta.name,
       quantity,
+      cashUnitPrice,
+      cashUnitPriceFormatted: formatCRC(cashUnitPrice),
+      cashLineTotal: Math.max(cashLineSubtotal - toNumber(item.discount), 0),
       originalPrice,
       originalPriceFormatted: formatCRC(originalPrice),
       salePrice: lineTotal,
+      salePriceFormatted: formatCRC(lineTotal),
       discountAmount,
       discountAmountFormatted: formatCRC(discountAmount),
     };
@@ -195,10 +206,10 @@ async function buildQuoteClientSummary(recordId) {
 
   const totalOriginal = products.reduce((sum, product) => sum + product.originalPrice, 0);
   const totalDiscounts = products.reduce((sum, product) => sum + product.discountAmount, 0);
-  const cashTotal = products.reduce((sum, product) => sum + product.salePrice, 0);
+  const cashTotal = products.reduce((sum, product) => sum + product.cashLineTotal, 0);
   const normalizedType = normalizePaymentKeyword(quote.type);
   const payments = calculatePayments({
-    total: cashTotal,
+    total: products.reduce((sum, product) => sum + product.salePrice, 0),
     type: normalizedType === "credito" ? "credito" : "contado",
     creditType: normalizePaymentKeyword(quote.credittype),
     quotes: quote.quotes,
@@ -217,7 +228,11 @@ async function buildQuoteClientSummary(recordId) {
     totalDiscounts,
     totalDiscountsFormatted: formatCRC(totalDiscounts),
     cashTotal,
-    totalSaleFormatted: formatCRC(cashTotal),
+    cashTotalFormatted: formatCRC(cashTotal),
+    totalSale: payments.reduce((sum, payment) => sum + toNumber(payment.expectedAmount), 0),
+    totalSaleFormatted: formatCRC(
+      payments.reduce((sum, payment) => sum + toNumber(payment.expectedAmount), 0)
+    ),
     creditPreviewTotal: payments.reduce((sum, payment) => sum + toNumber(payment.expectedAmount), 0),
     creditPreviewTotalFormatted: formatCRC(
       payments.reduce((sum, payment) => sum + toNumber(payment.expectedAmount), 0)
@@ -238,6 +253,7 @@ async function buildQuoteClientSummary(recordId) {
     {
       products,
       cashTotal,
+      creditTotal: summary.creditPreviewTotal,
       type: quote.type,
     },
     payments

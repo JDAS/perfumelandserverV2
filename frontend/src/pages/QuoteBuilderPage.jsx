@@ -47,6 +47,7 @@ export default function QuoteBuilderPage() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summary, setSummary] = useState(null);
   const [copying, setCopying] = useState(false);
+  const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,6 +128,16 @@ export default function QuoteBuilderPage() {
   );
 
   const cashTotal = useMemo(
+    () =>
+      computedItems.reduce((sum, item) => {
+        const product = productMap.get(String(item.product));
+        const basePrice = Number(product?.price) || 0;
+        return sum + Math.max(basePrice * item.quantity - item.discount, 0);
+      }, 0),
+    [computedItems, productMap]
+  );
+
+  const creditTotal = useMemo(
     () => computedItems.reduce((sum, item) => sum + (Number(item.total) || 0), 0),
     [computedItems]
   );
@@ -134,13 +145,13 @@ export default function QuoteBuilderPage() {
   const paymentPreview = useMemo(
     () =>
       calculatePayments({
-        total: cashTotal,
+        total: creditTotal,
         type: quote.type,
         creditType: quote.credittype,
         quotes: quote.quotes,
         salesDate: quote.quote_date,
       }),
-    [cashTotal, quote]
+    [creditTotal, quote]
   );
 
   const updateItem = (index, changes) => {
@@ -156,7 +167,7 @@ export default function QuoteBuilderPage() {
 
     updateItem(index, {
       product: productId,
-      list_price: adjustedPrice,
+      list_price: basePrice,
       price: adjustedPrice,
     });
   };
@@ -254,6 +265,21 @@ export default function QuoteBuilderPage() {
       addToast("No se pudo copiar el resumen", "error");
     } finally {
       setCopying(false);
+    }
+  };
+
+  const handleOpenWhatsApp = async () => {
+    if (!summary?.whatsappText) return;
+
+    try {
+      setOpeningWhatsApp(true);
+      const encoded = encodeURIComponent(summary.whatsappText);
+      window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudo abrir WhatsApp", "error");
+    } finally {
+      setOpeningWhatsApp(false);
     }
   };
 
@@ -366,11 +392,13 @@ export default function QuoteBuilderPage() {
 
                 <div className="mt-3 grid gap-3 md:grid-cols-3">
                   <div className="rounded-lg bg-gray-50 p-3 text-sm">
-                    <p className="text-gray-500">Lista</p>
+                    <p className="text-gray-500">Contado</p>
                     <p className="mt-1 font-semibold">{formatCRC(item.list_price || item.price)}</p>
                   </div>
                   <div className="rounded-lg bg-gray-50 p-3 text-sm">
-                    <p className="text-gray-500">Subtotal</p>
+                    <p className="text-gray-500">
+                      {quote.type === "Credito" ? "Credito" : "Subtotal"}
+                    </p>
                     <p className="mt-1 font-semibold">{formatCRC(item.subtotal)}</p>
                   </div>
                   <div className="rounded-lg bg-gray-50 p-3 text-sm">
@@ -386,8 +414,23 @@ export default function QuoteBuilderPage() {
         <aside className="space-y-4 rounded-2xl bg-white p-6 shadow">
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Resumen</p>
-            <p className="mt-2 text-3xl font-bold text-gray-900">{formatCRC(cashTotal)}</p>
-            <p className="mt-2 text-sm text-gray-500">Total al contado de la cotizacion actual.</p>
+            <div className="mt-3 grid gap-3">
+              <div className="rounded-xl border bg-gray-50 p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Contado</p>
+                <p className="mt-2 text-2xl font-bold text-gray-900">{formatCRC(cashTotal)}</p>
+              </div>
+              {quote.type === "Credito" ? (
+                <div className="rounded-xl border bg-amber-50 p-4">
+                  <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Credito</p>
+                  <p className="mt-2 text-2xl font-bold text-gray-900">{formatCRC(creditTotal)}</p>
+                </div>
+              ) : null}
+            </div>
+            <p className="mt-3 text-sm text-gray-500">
+              {quote.type === "Credito"
+                ? "La cotizacion muestra ambos montos: contado y credito."
+                : "Total al contado de la cotizacion actual."}
+            </p>
           </div>
 
           {quote.type === "Credito" ? (
@@ -419,7 +462,15 @@ export default function QuoteBuilderPage() {
         </aside>
       </div>
 
-      <ClientSummaryModal open={summaryOpen} onClose={() => setSummaryOpen(false)} summary={summary} onCopy={handleCopySummary} copying={copying} />
+      <ClientSummaryModal
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        summary={summary}
+        onCopy={handleCopySummary}
+        onOpenWhatsApp={handleOpenWhatsApp}
+        copying={copying}
+        openingWhatsApp={openingWhatsApp}
+      />
     </div>
   );
 }

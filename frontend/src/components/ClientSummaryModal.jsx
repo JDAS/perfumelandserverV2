@@ -3,7 +3,9 @@ export default function ClientSummaryModal({
   onClose,
   summary,
   onCopy,
+  onOpenWhatsApp,
   copying = false,
+  openingWhatsApp = false,
 }) {
   if (!open || !summary) return null;
 
@@ -65,6 +67,12 @@ export default function ClientSummaryModal({
                 <p className="mt-2 text-lg font-semibold text-gray-900">{summary.totalSaleFormatted}</p>
               </div>
             ) : null}
+            {summary.cashTotalFormatted ? (
+              <div className="rounded-xl border p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Contado</p>
+                <p className="mt-2 text-lg font-semibold text-gray-900">{summary.cashTotalFormatted}</p>
+              </div>
+            ) : null}
             {summary.totalPaidFormatted ? (
               <div className="rounded-xl border p-4">
                 <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Pagado</p>
@@ -123,6 +131,16 @@ export default function ClientSummaryModal({
           <button type="button" onClick={onClose} className="rounded-lg bg-gray-200 px-4 py-2">
             Cerrar
           </button>
+          {onOpenWhatsApp ? (
+            <button
+              type="button"
+              onClick={onOpenWhatsApp}
+              disabled={openingWhatsApp}
+              className="rounded-lg bg-green-700 px-4 py-2 text-white disabled:opacity-60"
+            >
+              {openingWhatsApp ? "Abriendo..." : "Abrir WhatsApp"}
+            </button>
+          ) : null}
           <button type="button" onClick={onCopy} disabled={copying} className="rounded-lg bg-green-600 px-4 py-2 text-white disabled:opacity-60">
             {copying ? "Copiando..." : "Copiar para WhatsApp"}
           </button>

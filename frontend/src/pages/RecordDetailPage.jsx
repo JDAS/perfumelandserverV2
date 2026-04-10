@@ -23,6 +23,7 @@ function RecordDetailPage() {
   const [summary, setSummary] = useState(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
   const { addToast } = useToast();
 
   const objectDef = getObjectByApiNameFromCache(object);
@@ -126,6 +127,21 @@ function RecordDetailPage() {
       addToast("No se pudo copiar el resumen", "error");
     } finally {
       setCopying(false);
+    }
+  };
+
+  const handleOpenWhatsApp = async () => {
+    if (!summary?.whatsappText) return;
+
+    try {
+      setOpeningWhatsApp(true);
+      const encoded = encodeURIComponent(summary.whatsappText);
+      window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudo abrir WhatsApp", "error");
+    } finally {
+      setOpeningWhatsApp(false);
     }
   };
 
@@ -246,7 +262,9 @@ function RecordDetailPage() {
         onClose={() => setSummaryOpen(false)}
         summary={summary}
         onCopy={handleCopySummary}
+        onOpenWhatsApp={handleOpenWhatsApp}
         copying={copying}
+        openingWhatsApp={openingWhatsApp}
       />
     </div>
   );
