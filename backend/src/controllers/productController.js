@@ -41,6 +41,7 @@ function normalizeDynamicProduct(product) {
     gender: product.gender || "",
     aliases: product.aliases || "",
     isactive: product.isactive !== false,
+    catalog_status: product.catalog_status || "Listo para catalogo",
     source: "dynamic",
   };
 }
@@ -62,7 +63,15 @@ async function loadDynamicProductContext() {
   const ProductRecord = getCustomRecordModel("product");
   const AttachmentRecord = getCustomRecordModel("attachments");
 
-  const rawProducts = await ProductRecord.find({ isactive: { $ne: false } })
+  const rawProducts = await ProductRecord.find({
+    isactive: { $ne: false },
+    $or: [
+      { catalog_status: "Listo para catalogo" },
+      { catalog_status: { $exists: false } },
+      { catalog_status: null },
+      { catalog_status: "" },
+    ],
+  })
     .sort({ sort_order: 1, featured: -1, createdAt: -1, _id: -1 })
     .lean();
 
