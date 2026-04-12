@@ -25,9 +25,13 @@ function AdminLayout({ children }) {
               alt="Vitra"
               className="h-10 w-auto"
             />
+            <div className="leading-tight">
+              <p className="text-xl font-semibold tracking-tight text-white">Vitra</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-white/55">
+                Panel administrativo
+              </p>
+            </div>
           </Link>
-
-          <span className="text-sm text-white/75">Panel administrativo</span>
         </div>
 
         <UserMenu />
