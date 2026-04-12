@@ -80,6 +80,19 @@ function ProductDetailPage() {
     return source.slice(0, 3);
   }, [catalogProducts, product]);
 
+  const shareProductUrl = useMemo(() => {
+    if (!product) return "";
+
+    const apiBase = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+    const relativeSharePath = `/api/products/share/${product._id}`;
+
+    if (apiBase) {
+      return `${apiBase}${relativeSharePath}`;
+    }
+
+    return `${window.location.origin}${relativeSharePath}`;
+  }, [product]);
+
   const handleAddToCart = () => {
     if (!product) return;
     addToCart(product);
@@ -267,7 +280,7 @@ function ProductDetailPage() {
 
               {whatsappEnabled && (
                 <a
-                  href={`https://wa.me/${storefront.whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola, quiero cotizar ${product.name}.`)}`}
+                  href={`https://wa.me/${storefront.whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola, quiero cotizar ${product.name}.\n${shareProductUrl}`)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center justify-center rounded-full border border-[#d7def1] px-6 py-4 text-sm font-semibold text-[#102750] transition hover:bg-[#f6f8ff]"

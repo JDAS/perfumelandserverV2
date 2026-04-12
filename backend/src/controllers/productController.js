@@ -50,6 +50,115 @@ function isCloudinaryUrl(value) {
   return /^https:\/\/res\.cloudinary\.com\//i.test(String(value || ""));
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getFrontendBaseUrl(req) {
+  const configured =
+    process.env.FRONTEND_APP_URL ||
+    process.env.PUBLIC_APP_URL ||
+    process.env.CORS_ORIGIN ||
+    "";
+
+  const normalizedConfigured = configured
+    .split(",")
+    .map((item) => item.trim())
+    .find(Boolean);
+
+  if (normalizedConfigured) {
+    return normalizedConfigured.replace(/\/+$/, "");
+  }
+
+  return `${req.protocol}://${req.get("host")}`.replace(/\/+$/, "");
+}
+
+function buildSharePage(product, req) {
+  const frontendBaseUrl = getFrontendBaseUrl(req);
+  const appUrl = `${frontendBaseUrl}/products/${product._id}`;
+  const shareUrl = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+  const imageUrl = product.image || "/logoName.png";
+  const absoluteImage = /^https?:\/\//i.test(imageUrl)
+    ? imageUrl
+    : `${frontendBaseUrl}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
+  const title = `${product.name} | Perfumeland`;
+  const description =
+    product.short_description ||
+    product.description ||
+    `${product.name} de ${product.brand || "Perfumeland"} disponible para cotizar en Perfumeland.`;
+
+  return `<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeHtml(description)}" />
+    <meta property="og:type" content="product" />
+    <meta property="og:title" content="${escapeHtml(title)}" />
+    <meta property="og:description" content="${escapeHtml(description)}" />
+    <meta property="og:image" content="${escapeHtml(absoluteImage)}" />
+    <meta property="og:url" content="${escapeHtml(shareUrl)}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${escapeHtml(title)}" />
+    <meta name="twitter:description" content="${escapeHtml(description)}" />
+    <meta name="twitter:image" content="${escapeHtml(absoluteImage)}" />
+    <meta http-equiv="refresh" content="1; url=${escapeHtml(appUrl)}" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #f6f8ff;
+        color: #102750;
+      }
+      .card {
+        width: min(92vw, 560px);
+        background: #fff;
+        border-radius: 24px;
+        padding: 24px;
+        box-shadow: 0 20px 60px rgba(13, 47, 107, 0.12);
+        text-align: center;
+      }
+      img {
+        max-width: 220px;
+        max-height: 220px;
+        object-fit: contain;
+        margin-bottom: 18px;
+      }
+      a {
+        color: #0d2f6b;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      p {
+        color: #5e6682;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <img src="${escapeHtml(absoluteImage)}" alt="${escapeHtml(product.name)}" />
+      <h1>${escapeHtml(product.name)}</h1>
+      <p>${escapeHtml(description)}</p>
+      <p>Abriendo el producto...</p>
+      <a href="${escapeHtml(appUrl)}">Abrir en Perfumeland</a>
+    </main>
+    <script>
+      window.location.replace(${JSON.stringify(appUrl)});
+    </script>
+  </body>
+</html>`;
+}
+
 async function loadDynamicProductContext() {
   const objectDefinition = await CustomObject.findOne({ apiName: "product" }).lean();
   if (!objectDefinition) {
@@ -198,5 +307,30 @@ exports.getProductById = async (req, res) => {
   } catch (error) {
     console.error("getProductById error:", error);
     return res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getProductSharePage = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const dynamicProducts = await loadDynamicProducts();
+    const dynamicMatch = dynamicProducts.find((product) => String(product._id) === String(id));
+
+    if (dynamicMatch) {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.send(buildSharePage(dynamicMatch, req));
+    }
+
+    const legacyProduct = await Product.findById(id).lean();
+    if (legacyProduct) {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.send(buildSharePage(normalizeLegacyProduct(legacyProduct), req));
+    }
+
+    return res.status(404).send("Producto no encontrado");
+  } catch (error) {
+    console.error("getProductSharePage error:", error);
+    return res.status(500).send("No se pudo generar la vista para compartir");
   }
 };
