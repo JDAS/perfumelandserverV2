@@ -31,7 +31,7 @@ function resolveFilterValue(rawValue, formData = {}) {
   });
 }
 
-function LookupField({ field, value, onChange, formData = {} }) {
+function LookupField({ field, value, onChange, formData = {}, onSelect = null }) {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -165,6 +165,9 @@ function LookupField({ field, value, onChange, formData = {} }) {
     setSelectedRecord(record);
     setSearch(getOptionLabel(record));
     onChange(record._id);
+    if (typeof onSelect === "function") {
+      onSelect(record);
+    }
     setOpen(false);
   };
 
@@ -173,6 +176,9 @@ function LookupField({ field, value, onChange, formData = {} }) {
     setSearch("");
     setResults([]);
     onChange("");
+    if (typeof onSelect === "function") {
+      onSelect(null);
+    }
     setOpen(false);
   };
 
