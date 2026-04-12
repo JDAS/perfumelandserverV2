@@ -21,16 +21,10 @@ function AdminLayout({ children }) {
         <div className="flex items-center gap-6">
           <Link to="/admin" className="flex items-center gap-4">
             <img
-              src="/branding/vitra-admin-logo.svg"
+              src="/branding/vitra-admin-logo-dark.svg"
               alt="Vitra"
-              className="h-10 w-auto"
+              className="h-12 w-auto"
             />
-            <div className="leading-tight">
-              <p className="text-xl font-semibold tracking-tight text-white">Vitra</p>
-              <p className="text-xs uppercase tracking-[0.24em] text-white/55">
-                Panel administrativo
-              </p>
-            </div>
           </Link>
         </div>
 

@@ -1,0 +1,30 @@
+<svg width="720" height="190" viewBox="20 18 700 190" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="vitraOrangeDark" x1="18" y1="18" x2="170" y2="170" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF7A45"></stop>
+      <stop offset="1" stop-color="#E5532D"></stop>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(32,28)">
+    <rect x="0" y="0" width="176" height="176" rx="34" fill="#121826"></rect>
+    <rect x="18" y="18" width="140" height="140" rx="22" stroke="#2A3347" stroke-width="4"></rect>
+    <rect x="34" y="36" width="34" height="104" rx="10" fill="#1D2638"></rect>
+    <rect x="108" y="36" width="34" height="104" rx="10" fill="#1D2638"></rect>
+    <line x1="88" y1="28" x2="88" y2="148" stroke="#2A3347" stroke-width="3"></line>
+    <line x1="28" y1="88" x2="148" y2="88" stroke="#2A3347" stroke-width="3"></line>
+    <path d="M52 48L88 126L124 48" stroke="url(#vitraOrangeDark)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"></path>
+    <rect x="44" y="132" width="88" height="10" rx="5" fill="#2A3347"></rect>
+    <circle cx="88" cy="126" r="6" fill="#FF7A45"></circle>
+  </g>
+
+  <g transform="translate(252,70)">
+    <text x="0" y="62" fill="#F8FAFC" font-family="Sora, Inter, Manrope, Arial, sans-serif" font-size="70" font-weight="700" letter-spacing="-2.2">
+      Vitra
+    </text>
+    <rect x="2" y="82" width="124" height="6" rx="3" fill="url(#vitraOrangeDark)"></rect>
+    <text x="0" y="130" fill="#B6C0D1" font-family="Inter, Manrope, Arial, sans-serif" font-size="26" font-weight="500" letter-spacing="0.4">
+      Ordena • Vende • Crece
+    </text>
+  </g>
+</svg>
