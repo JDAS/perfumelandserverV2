@@ -18,6 +18,7 @@ function defaultItem() {
   return {
     _id: "",
     product: "",
+    product_name: "",
     quantity: 1,
     price: 0,
     list_price: 0,
@@ -33,8 +34,9 @@ export default function QuoteBuilderPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [products, setProducts] = useState([]);
   const [sellers, setSellers] = useState([]);
+  const [productOptions, setProductOptions] = useState([]);
+  const [productSearch, setProductSearch] = useState({});
   const [quote, setQuote] = useState({
     name: "",
     quote_date: new Date().toISOString().slice(0, 10),
@@ -57,14 +59,14 @@ export default function QuoteBuilderPage() {
     async function loadData() {
       try {
         setLoading(true);
-        const [productData, sellerData] = await Promise.all([
-          getRecords("product", { limit: 500, sortBy: "name", sortOrder: "asc" }),
-          getRecords("seller", { limit: 200, sortBy: "name", sortOrder: "asc" }),
-        ]);
+        const sellerData = await getRecords("seller", {
+          limit: 200,
+          sortBy: "name",
+          sortOrder: "asc",
+        });
 
         if (cancelled) return;
 
-        setProducts(productData.records || []);
         setSellers(sellerData.records || []);
 
         if (isEditMode) {
@@ -89,6 +91,8 @@ export default function QuoteBuilderPage() {
           const nextItems = (relatedItems.records || []).map((item) => ({
             _id: item._id,
             product: item.product || "",
+            product_name:
+              item._lookup?.product?.label || item.product_name || "",
             quantity: Number(item.quantity) || 1,
             price: Number(item.price) || 0,
             list_price: Number(item.list_price) || 0,
@@ -112,8 +116,8 @@ export default function QuoteBuilderPage() {
   }, [id, isEditMode, addToast]);
 
   const productMap = useMemo(
-    () => new Map(products.map((product) => [String(product._id), product])),
-    [products]
+    () => new Map(productOptions.map((product) => [String(product._id), product])),
+    [productOptions]
   );
 
   const computedItems = useMemo(
@@ -132,11 +136,10 @@ export default function QuoteBuilderPage() {
   const cashTotal = useMemo(
     () =>
       computedItems.reduce((sum, item) => {
-        const product = productMap.get(String(item.product));
-        const basePrice = Number(product?.price) || 0;
+        const basePrice = Number(item.list_price) || Number(item.price) || 0;
         return sum + Math.max(basePrice * item.quantity - item.discount, 0);
       }, 0),
-    [computedItems, productMap]
+    [computedItems]
   );
 
   const creditTotal = useMemo(
@@ -162,16 +165,45 @@ export default function QuoteBuilderPage() {
     );
   };
 
-  const handleProductChange = (index, productId) => {
-    const selectedProduct = productMap.get(String(productId));
+  const searchProducts = async (index, term) => {
+    setProductSearch((prev) => ({ ...prev, [index]: term }));
+
+    try {
+      const response = await getRecords("product", {
+        limit: 20,
+        sortBy: "name",
+        sortOrder: "asc",
+        view: "active",
+        search: term || "",
+      });
+
+      const records = response.records || [];
+      setProductOptions((prev) => {
+        const nextMap = new Map(prev.map((product) => [String(product._id), product]));
+        records.forEach((product) => nextMap.set(String(product._id), product));
+        return [...nextMap.values()];
+      });
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudo buscar productos", "error");
+    }
+  };
+
+  const handleProductChange = (index, selectedProduct) => {
     const basePrice = Number(selectedProduct?.price) || 0;
     const adjustedPrice = quote.type === "Credito" && selectedProduct ? basePrice + 5000 : basePrice;
 
     updateItem(index, {
-      product: productId,
+      product: selectedProduct?._id || "",
+      product_name: selectedProduct?.name || "",
       list_price: basePrice,
       price: adjustedPrice,
     });
+
+    setProductSearch((prev) => ({
+      ...prev,
+      [index]: selectedProduct?.name || "",
+    }));
   };
 
   const handleAddItem = () => setItems((prev) => [...prev, defaultItem()]);
@@ -411,12 +443,48 @@ export default function QuoteBuilderPage() {
                 <div className="grid gap-3 md:grid-cols-[1.7fr_0.8fr_0.8fr_0.8fr_auto]">
                   <div>
                     <label className="mb-1 block text-sm font-medium">Producto</label>
-                    <select className="w-full rounded-lg border p-3" value={item.product} onChange={(e) => handleProductChange(index, e.target.value)}>
-                      <option value="">Selecciona un perfume</option>
-                      {products.map((product) => (
-                        <option key={product._id} value={product._id}>{product.name}</option>
-                      ))}
-                    </select>
+                    <div className="space-y-2">
+                      <input
+                        list={`product-options-${index}`}
+                        className="w-full rounded-lg border p-3"
+                        placeholder="Busca un perfume por nombre o marca"
+                        value={productSearch[index] ?? item.product_name ?? ""}
+                        onChange={(e) => searchProducts(index, e.target.value)}
+                      />
+                      <datalist id={`product-options-${index}`}>
+                        {productOptions.map((product) => (
+                          <option
+                            key={product._id}
+                            value={product.name}
+                          >
+                            {product.brand ? `${product.name} - ${product.brand}` : product.name}
+                          </option>
+                        ))}
+                      </datalist>
+                      <div className="max-h-40 overflow-auto rounded-lg border bg-white">
+                        {productOptions.length > 0 ? (
+                          productOptions.map((product) => (
+                            <button
+                              key={product._id}
+                              type="button"
+                              onClick={() => handleProductChange(index, product)}
+                              className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                                String(item.product) === String(product._id) ? "bg-gray-50" : ""
+                              }`}
+                            >
+                              <span className="font-medium text-gray-900">{product.name}</span>
+                              <span className="text-xs text-gray-500">
+                                {product.brand || "Sin marca"}
+                              </span>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-3 py-2 text-sm text-gray-500">
+                            Escribe para buscar productos.
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium">Cantidad</label>
