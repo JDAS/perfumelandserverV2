@@ -97,6 +97,8 @@ const VARIANTS = [
 const DEFAULT_STOREFRONT_SETTINGS = {
   themeId: "boutique-classic",
   variantId: "boutique",
+  logoUrl: "/logoName.png",
+  logoAlt: "Perfumeland",
   showCart: false,
   showWhatsapp: false,
   whatsappNumber: "",

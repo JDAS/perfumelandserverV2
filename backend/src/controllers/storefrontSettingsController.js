@@ -72,6 +72,8 @@ exports.updateStorefrontSettings = async (req, res) => {
     const nextSettings = {
       themeId: sanitizeString(payload.themeId, DEFAULT_STOREFRONT_SETTINGS.themeId),
       variantId: sanitizeString(payload.variantId, DEFAULT_STOREFRONT_SETTINGS.variantId),
+      logoUrl: sanitizeString(payload.logoUrl, DEFAULT_STOREFRONT_SETTINGS.logoUrl),
+      logoAlt: sanitizeString(payload.logoAlt, DEFAULT_STOREFRONT_SETTINGS.logoAlt),
       showCart: Boolean(payload.showCart),
       showWhatsapp: Boolean(payload.showWhatsapp),
       whatsappNumber: sanitizeString(payload.whatsappNumber),

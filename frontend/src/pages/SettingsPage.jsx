@@ -15,6 +15,8 @@ import { useStorefront } from "../context/StorefrontContext";
 const defaultStorefrontForm = {
   themeId: "boutique-classic",
   variantId: "boutique",
+  logoUrl: "/logoName.png",
+  logoAlt: "Perfumeland",
   showCart: false,
   showWhatsapp: false,
   whatsappNumber: "",
@@ -232,6 +234,34 @@ function SettingsPage() {
                     </label>
                   </div>
 
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <label className="space-y-2">
+                      <span className="text-sm font-medium">Logo del storefront</span>
+                      <input
+                        type="text"
+                        className="w-full rounded-lg border p-3"
+                        placeholder="/logoName.png o https://..."
+                        value={storefrontForm.logoUrl}
+                        onChange={(event) =>
+                          handleStorefrontChange("logoUrl", event.target.value)
+                        }
+                      />
+                    </label>
+
+                    <label className="space-y-2">
+                      <span className="text-sm font-medium">Texto alternativo del logo</span>
+                      <input
+                        type="text"
+                        className="w-full rounded-lg border p-3"
+                        placeholder="Perfumeland"
+                        value={storefrontForm.logoAlt}
+                        onChange={(event) =>
+                          handleStorefrontChange("logoAlt", event.target.value)
+                        }
+                      />
+                    </label>
+                  </div>
+
                   {selectedTheme?.palette && (
                     <div className="rounded-2xl border p-4">
                       <p className="text-sm font-medium mb-3">Vista rápida de la paleta</p>
@@ -248,6 +278,20 @@ function SettingsPage() {
                       </div>
                     </div>
                   )}
+
+                  <div className="rounded-2xl border p-4">
+                    <p className="text-sm font-medium mb-3">Vista previa del logo</p>
+                    <div
+                      className="inline-flex rounded-[22px] px-4 py-3 shadow-[0_10px_30px_rgba(13,47,107,0.18)]"
+                      style={{ backgroundColor: previewPalette.primary || "#0d2f6b" }}
+                    >
+                      <img
+                        src={storefrontForm.logoUrl || "/logoName.png"}
+                        alt={storefrontForm.logoAlt || "Storefront logo"}
+                        className="h-10 w-auto"
+                      />
+                    </div>
+                  </div>
                 </section>
 
                 <section className="space-y-4">

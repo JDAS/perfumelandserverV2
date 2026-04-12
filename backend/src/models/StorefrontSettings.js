@@ -11,6 +11,8 @@ const storefrontSettingsSchema = new mongoose.Schema(
     storefront: {
       themeId: { type: String, default: "boutique-classic" },
       variantId: { type: String, default: "boutique" },
+      logoUrl: { type: String, default: "/logoName.png" },
+      logoAlt: { type: String, default: "Perfumeland" },
       showCart: { type: Boolean, default: false },
       showWhatsapp: { type: Boolean, default: false },
       whatsappNumber: { type: String, default: "" },

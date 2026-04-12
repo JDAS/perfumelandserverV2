@@ -9,6 +9,8 @@ function MainLayout({ children }) {
   const palette = storefront.theme?.palette || {};
   const whatsappEnabled = storefront.showWhatsapp && storefront.whatsappNumber;
   const cartEnabled = storefront.showCart;
+  const storefrontLogoUrl = storefront.logoUrl || "/logoName.png";
+  const storefrontLogoAlt = storefront.logoAlt || "Perfumeland";
 
   const whatsappLink = whatsappEnabled
     ? `https://wa.me/${storefront.whatsappNumber.replace(/\D/g, "")}`
@@ -30,8 +32,8 @@ function MainLayout({ children }) {
               style={{ backgroundColor: palette.primary || "#0d2f6b" }}
             >
               <img
-                src="/logoName.png"
-                alt="Perfumeland"
+                src={storefrontLogoUrl}
+                alt={storefrontLogoAlt}
                 className="h-9 w-auto sm:h-10"
               />
             </div>
@@ -76,8 +78,8 @@ function MainLayout({ children }) {
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-sm text-[#5e6682] sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <div className="flex items-center gap-3">
             <img
-              src="/logoName.png"
-              alt="Perfumeland"
+              src={storefrontLogoUrl}
+              alt={storefrontLogoAlt}
               className="h-8 w-auto rounded px-2 py-1"
               style={{ backgroundColor: palette.primary || "#0d2f6b" }}
             />

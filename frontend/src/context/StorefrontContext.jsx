@@ -20,6 +20,8 @@ const defaultTheme = {
 const defaultStorefront = {
   themeId: "boutique-classic",
   variantId: "boutique",
+  logoUrl: "/logoName.png",
+  logoAlt: "Perfumeland",
   showCart: false,
   showWhatsapp: false,
   whatsappNumber: "",

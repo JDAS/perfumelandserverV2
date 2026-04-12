@@ -6,8 +6,12 @@ function AdminLayout({ children }) {
     <div className="min-h-screen bg-gray-100">
       <header className="bg-black text-white p-4 flex justify-between items-center">
         <div className="flex items-center gap-6">
-          <Link to="/admin">
-            <h1 className="text-2xl font-bold">Perfumeland</h1>
+          <Link to="/admin" className="flex items-center gap-4">
+            <img
+              src="/branding/vitra-logo-clean.svg"
+              alt="Vitra"
+              className="h-10 w-auto"
+            />
           </Link>
 
           <span className="text-sm text-gray-300">Admin</span>
