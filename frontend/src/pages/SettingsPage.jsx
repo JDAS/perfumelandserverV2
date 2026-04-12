@@ -11,6 +11,7 @@ import ObjectModal from "../components/ObjectModal";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 import { useToast } from "../components/ui/ToastContext";
 import { useStorefront } from "../context/StorefrontContext";
+import { adminGradient, adminTheme } from "../theme/adminTheme";
 
 const defaultStorefrontForm = {
   themeId: "boutique-classic",
@@ -113,8 +114,14 @@ function SettingsPage() {
   const previewPalette = selectedTheme?.palette || {};
 
   return (
-    <div className="min-h-screen flex bg-gray-100">
-      <aside className="w-80 bg-white border-r p-6 space-y-8">
+    <div
+      className="min-h-screen flex"
+      style={{ background: `linear-gradient(180deg, ${adminTheme.bg} 0%, #eef2f7 100%)` }}
+    >
+      <aside
+        className="w-80 border-r p-6 space-y-8"
+        style={{ backgroundColor: adminTheme.surface, borderColor: adminTheme.border }}
+      >
         <div>
           <h1 className="text-2xl font-bold">Configuración</h1>
           <p className="text-sm text-gray-500 mt-1">Administración general del sistema</p>
@@ -123,41 +130,56 @@ function SettingsPage() {
           <h2 className="text-lg font-bold mb-3">Navegación</h2>
           <div className="space-y-2">
             <button
-              className={`block w-full text-left px-3 py-2 rounded ${
-                activeSection === "storefront" ? "bg-black text-white" : "bg-gray-100"
-              }`}
+              className="block w-full text-left px-3 py-2 rounded-xl"
+              style={
+                activeSection === "storefront"
+                  ? { background: adminGradient(), color: "#fff" }
+                  : { backgroundColor: adminTheme.surfaceAlt, color: adminTheme.text }
+              }
               onClick={() => setActiveSection("storefront")}
             >
               Storefront
             </button>
             <button
-              className={`block w-full text-left px-3 py-2 rounded ${
-                activeSection === "reportes" ? "bg-black text-white" : "bg-gray-100"
-              }`}
+              className="block w-full text-left px-3 py-2 rounded-xl"
+              style={
+                activeSection === "reportes"
+                  ? { background: adminGradient(), color: "#fff" }
+                  : { backgroundColor: adminTheme.surfaceAlt, color: adminTheme.text }
+              }
               onClick={() => setActiveSection("reportes")}
             >
               Reportes
             </button>
             <button
-              className={`block w-full text-left px-3 py-2 rounded ${
-                activeSection === "dashboards" ? "bg-black text-white" : "bg-gray-100"
-              }`}
+              className="block w-full text-left px-3 py-2 rounded-xl"
+              style={
+                activeSection === "dashboards"
+                  ? { background: adminGradient(), color: "#fff" }
+                  : { backgroundColor: adminTheme.surfaceAlt, color: adminTheme.text }
+              }
               onClick={() => setActiveSection("dashboards")}
             >
               Dashboards
             </button>
             <button
-              className={`block w-full text-left px-3 py-2 rounded ${
-                activeSection === "objects" ? "bg-black text-white" : "bg-gray-100"
-              }`}
+              className="block w-full text-left px-3 py-2 rounded-xl"
+              style={
+                activeSection === "objects"
+                  ? { background: adminGradient(), color: "#fff" }
+                  : { backgroundColor: adminTheme.surfaceAlt, color: adminTheme.text }
+              }
               onClick={() => setActiveSection("objects")}
             >
               Objetos
             </button>
             <button
-              className={`block w-full text-left px-3 py-2 rounded ${
-                activeSection === "profiles" ? "bg-black text-white" : "bg-gray-100"
-              }`}
+              className="block w-full text-left px-3 py-2 rounded-xl"
+              style={
+                activeSection === "profiles"
+                  ? { background: adminGradient(), color: "#fff" }
+                  : { backgroundColor: adminTheme.surfaceAlt, color: adminTheme.text }
+              }
               onClick={() => setActiveSection("profiles")}
             >
               Perfiles
@@ -168,7 +190,10 @@ function SettingsPage() {
 
       <main className="flex-1 p-8">
         {activeSection === "storefront" && (
-          <div className="bg-white rounded-xl shadow p-6">
+          <div
+            className="rounded-2xl p-6 shadow-[0_18px_48px_rgba(17,24,39,0.08)]"
+            style={{ backgroundColor: adminTheme.surface }}
+          >
             <div className="flex items-center justify-between gap-4 mb-6">
               <div>
                 <h2 className="text-2xl font-bold">Storefront</h2>
@@ -180,7 +205,8 @@ function SettingsPage() {
                 href="/"
                 target="_blank"
                 rel="noreferrer"
-                className="px-4 py-2 rounded bg-black text-white"
+                className="px-4 py-2 rounded-xl text-white"
+                style={{ background: adminGradient() }}
               >
                 Ver storefront
               </a>
@@ -637,7 +663,8 @@ function SettingsPage() {
                   <button
                     type="submit"
                     disabled={storefrontSaving}
-                    className="bg-black text-white px-5 py-3 rounded-lg disabled:opacity-60"
+                    className="px-5 py-3 rounded-xl text-white disabled:opacity-60"
+                    style={{ background: adminGradient() }}
                   >
                     {storefrontSaving ? "Guardando..." : "Guardar storefront"}
                   </button>
@@ -683,7 +710,8 @@ function SettingsPage() {
                   setEditingObject(null);
                   setIsObjectModalOpen(true);
                 }}
-                className="bg-black text-white px-4 py-2 rounded"
+                className="px-4 py-2 rounded-xl text-white"
+                style={{ background: adminGradient() }}
               >
                 Nuevo objeto
               </button>

@@ -1,10 +1,23 @@
 import { Link } from "react-router-dom";
 import UserMenu from "../components/UserMenu";
+import { adminGradient, adminTheme } from "../theme/adminTheme";
 
 function AdminLayout({ children }) {
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-black text-white p-4 flex justify-between items-center">
+    <div
+      className="min-h-screen"
+      style={{
+        background: `linear-gradient(180deg, ${adminTheme.bg} 0%, #eef2f7 100%)`,
+        color: adminTheme.text,
+      }}
+    >
+      <header
+        className="flex justify-between items-center p-4 text-white border-b shadow-[0_16px_40px_rgba(17,24,39,0.24)]"
+        style={{
+          background: adminGradient(),
+          borderColor: "rgba(255,255,255,0.08)",
+        }}
+      >
         <div className="flex items-center gap-6">
           <Link to="/admin" className="flex items-center gap-4">
             <img
@@ -14,7 +27,7 @@ function AdminLayout({ children }) {
             />
           </Link>
 
-          <span className="text-sm text-gray-300">Admin</span>
+          <span className="text-sm text-white/75">Panel administrativo</span>
         </div>
 
         <UserMenu />
