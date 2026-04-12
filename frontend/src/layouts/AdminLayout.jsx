@@ -8,7 +8,7 @@ function AdminLayout({ children }) {
         <div className="flex items-center gap-6">
           <Link to="/admin" className="flex items-center gap-4">
             <img
-              src="/branding/vitra-logo-clean.svg"
+              src="/branding/vitra-admin-logo.svg"
               alt="Vitra"
               className="h-10 w-auto"
             />
