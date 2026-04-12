@@ -99,6 +99,35 @@ function ProductDetailPage() {
     addToast(`${product.name} agregado al carrito`, "success");
   };
 
+  const handleShareProduct = async () => {
+    if (!product || !shareProductUrl) return;
+
+    const sharePayload = {
+      title: product.name,
+      text: `Mira este perfume: ${product.name}`,
+      url: shareProductUrl,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(sharePayload);
+        return;
+      }
+
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareProductUrl);
+        addToast("Link del producto copiado", "success");
+        return;
+      }
+
+      window.prompt("Copia este link del producto", shareProductUrl);
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        addToast("No se pudo compartir el producto", "error");
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -267,6 +296,14 @@ function ProductDetailPage() {
             </p>
 
             <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={handleShareProduct}
+                className="inline-flex items-center justify-center rounded-full border border-[#d7def1] px-6 py-4 text-sm font-semibold text-[#102750] transition hover:bg-[#f6f8ff]"
+              >
+                Compartir producto
+              </button>
+
               {cartEnabled && (
                 <button
                   type="button"
