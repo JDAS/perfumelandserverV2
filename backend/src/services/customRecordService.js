@@ -166,6 +166,17 @@ function buildMongoQuery({ objectDefinition, search, filters, viewFilters }) {
   return query;
 }
 
+function buildLookupLabel(doc = {}, referenceTo = "") {
+  const baseLabel =
+    doc.name || doc.label || doc.title || doc.fullName || String(doc._id || "");
+
+  if (referenceTo === "product" && doc.volume !== undefined && doc.volume !== null && doc.volume !== "") {
+    return `${baseLabel} - ${doc.volume} ml`;
+  }
+
+  return baseLabel;
+}
+
 async function resolveLookupData(records, objectDefinition) {
   const plainRecords = records.map((record) =>
     typeof record?.toObject === "function" ? record.toObject() : { ...record }
@@ -212,12 +223,7 @@ async function resolveLookupData(records, objectDefinition) {
               String(doc._id),
               {
                 _id: doc._id,
-                label:
-                  doc.name ||
-                  doc.label ||
-                  doc.title ||
-                  doc.fullName ||
-                  String(doc._id),
+                label: buildLookupLabel(doc, referenceTo),
                 record: doc,
               },
             ])

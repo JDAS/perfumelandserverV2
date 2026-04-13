@@ -53,6 +53,15 @@ function LookupField({ field, value, onChange, formData = {}, onSelect = null })
   const getCacheKey = (referenceTo, id) => `${referenceTo}:${id}`;
 
   const getOptionLabel = (record) => {
+    if (field?.referenceTo === "product" && record?.name) {
+      const volumeSuffix =
+        record?.volume !== undefined && record?.volume !== null && record?.volume !== ""
+          ? ` - ${record.volume} ml`
+          : "";
+
+      return `${record.name}${volumeSuffix}`;
+    }
+
     return (
       record?.name ||
       record?.label ||
