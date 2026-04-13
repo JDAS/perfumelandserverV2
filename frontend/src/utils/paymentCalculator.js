@@ -6,6 +6,36 @@ function normalizeKeyword(value = "") {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function parseCalendarDate(value) {
+  if (value instanceof Date) {
+    return new Date(
+      value.getUTCFullYear(),
+      value.getUTCMonth(),
+      value.getUTCDate()
+    );
+  }
+
+  const raw = String(value || "").trim();
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (isoMatch) {
+    return new Date(
+      Number(isoMatch[1]),
+      Number(isoMatch[2]) - 1,
+      Number(isoMatch[3])
+    );
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  return new Date(
+    parsed.getUTCFullYear(),
+    parsed.getUTCMonth(),
+    parsed.getUTCDate()
+  );
+}
+
 export function formatCRC(value) {
   return new Intl.NumberFormat("es-CR", {
     style: "currency",
@@ -68,8 +98,8 @@ export function calculatePayments({ total, type, creditType, quotes, salesDate }
     }
   }
 
-  const parsedSalesDate = salesDate instanceof Date ? new Date(salesDate) : new Date(salesDate);
-  if (Number.isNaN(parsedSalesDate.getTime())) return [];
+  const parsedSalesDate = parseCalendarDate(salesDate);
+  if (!parsedSalesDate || Number.isNaN(parsedSalesDate.getTime())) return [];
 
   const formatDate = (date) => {
     const year = date.getFullYear();
@@ -79,11 +109,7 @@ export function calculatePayments({ total, type, creditType, quotes, salesDate }
   };
 
   const dates = [];
-  const startDate = new Date(
-    parsedSalesDate.getFullYear(),
-    parsedSalesDate.getMonth(),
-    parsedSalesDate.getDate()
-  );
+  const startDate = new Date(parsedSalesDate);
   let lastDate = startDate;
 
   for (let i = 0; i < nQuotes; i += 1) {

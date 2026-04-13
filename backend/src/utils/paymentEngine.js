@@ -1,3 +1,43 @@
+function normalizePaymentKeyword(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function parseCalendarDate(value) {
+  if (value instanceof Date) {
+    return new Date(
+      value.getUTCFullYear(),
+      value.getUTCMonth(),
+      value.getUTCDate()
+    );
+  }
+
+  const raw = String(value || "").trim();
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (isoMatch) {
+    return new Date(
+      Number(isoMatch[1]),
+      Number(isoMatch[2]) - 1,
+      Number(isoMatch[3])
+    );
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return new Date(
+    parsed.getUTCFullYear(),
+    parsed.getUTCMonth(),
+    parsed.getUTCDate()
+  );
+}
+
 function calculatePayments({ total, type, creditType, quotes, salesDate }) {
   /*const total = (products || []).reduce((sum, p) => {
     let price = Number(p.unitprice || 0);
@@ -16,16 +56,22 @@ function calculatePayments({ total, type, creditType, quotes, salesDate }) {
     return [];
   }
 
+  const normalizedType = normalizePaymentKeyword(type);
+  const normalizedCreditType = normalizePaymentKeyword(creditType);
+
   let nQuotes = 1;
-  if (type === "contado") nQuotes = 1;
-  else if (creditType === "normal") {
+  if (normalizedType === "contado") nQuotes = 1;
+  else if (normalizedCreditType === "normal") {
     nQuotes = numericTotal >= 30000 ? 4 : 3;
   } else if (
-    creditType === "extendido" ||
-    creditType === "extendido especial"
+    normalizedCreditType === "extendido" ||
+    normalizedCreditType === "extendido especial"
   ) {
     nQuotes = Number(quotes || 1);
-  } else if (creditType === "2 pagos") {
+  } else if (
+    normalizedCreditType === "2 pagos" ||
+    normalizedCreditType === "dos pagos"
+  ) {
     nQuotes = 2;
   }
 
@@ -36,14 +82,17 @@ function calculatePayments({ total, type, creditType, quotes, salesDate }) {
   let amounts = [];
   let remaining = numericTotal;
 
-  if (creditType === "extendido especial") {
+  if (normalizedCreditType === "extendido especial") {
     const base = Math.floor(numericTotal / nQuotes / 1000) * 1000;
     for (let i = 0; i < nQuotes - 1; i++) {
       amounts.push(base);
       remaining -= base;
     }
     amounts.unshift(remaining);
-  } else if (creditType === "2 pagos") {
+  } else if (
+    normalizedCreditType === "2 pagos" ||
+    normalizedCreditType === "dos pagos"
+  ) {
     const base = Math.floor(numericTotal / 2 / 1000) * 1000;
     amounts = [base, base];
     const diff = numericTotal - base * 2;
@@ -59,7 +108,8 @@ function calculatePayments({ total, type, creditType, quotes, salesDate }) {
 
     if (
       numericTotal > 50000 &&
-      (creditType === "normal" || creditType === "extendido") &&
+      (normalizedCreditType === "normal" ||
+        normalizedCreditType === "extendido") &&
       nQuotes > 1
     ) {
       const first = Math.floor(numericTotal * 0.4 / 1000) * 1000;
@@ -79,18 +129,12 @@ function calculatePayments({ total, type, creditType, quotes, salesDate }) {
   }
 
   const dates = [];
-  const parsedSalesDate =
-    salesDate instanceof Date ? new Date(salesDate) : new Date(salesDate);
+  const parsedSalesDate = parseCalendarDate(salesDate);
 
-  if (Number.isNaN(parsedSalesDate.getTime())) {
+  if (!parsedSalesDate || Number.isNaN(parsedSalesDate.getTime())) {
     return [];
   }
-
-  const sd = new Date(
-    parsedSalesDate.getFullYear(),
-    parsedSalesDate.getMonth(),
-    parsedSalesDate.getDate()
-  );
+  const sd = new Date(parsedSalesDate);
   let lastDate = sd;
 
   for (let i = 0; i < nQuotes; i++) {
