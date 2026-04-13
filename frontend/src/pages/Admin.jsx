@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  DragDropContext,
+  Draggable,
+  Droppable,
+} from "@hello-pangea/dnd";
 import { useSearchParams } from "react-router-dom";
 import DashboardsViewer from "../components/admin/DashboardsViewer";
 import ObjectListView from "../components/ObjectListView";
@@ -44,9 +49,7 @@ function Admin() {
     }
 
     const byId = new Map(availableTabs.map((tab) => [tab.id, tab]));
-    const ordered = preferredOrder
-      .map((id) => byId.get(id))
-      .filter(Boolean);
+    const ordered = preferredOrder.map((id) => byId.get(id)).filter(Boolean);
     const remaining = availableTabs.filter((tab) => !preferredOrder.includes(tab.id));
 
     return [...ordered, ...remaining];
@@ -88,20 +91,15 @@ function Admin() {
     }
   };
 
-  const moveTab = async (tabId, direction) => {
-    if (savingOrder) return;
+  const handleDragEnd = async (result) => {
+    const { source, destination } = result;
 
-    const currentIndex = tabs.findIndex((tab) => tab.id === tabId);
-    if (currentIndex === -1) return;
-
-    const nextIndex = direction === "left" ? currentIndex - 1 : currentIndex + 1;
-    if (nextIndex < 0 || nextIndex >= tabs.length) return;
+    if (!destination || savingOrder) return;
+    if (source.index === destination.index) return;
 
     const nextTabs = [...tabs];
-    [nextTabs[currentIndex], nextTabs[nextIndex]] = [
-      nextTabs[nextIndex],
-      nextTabs[currentIndex],
-    ];
+    const [movedTab] = nextTabs.splice(source.index, 1);
+    nextTabs.splice(destination.index, 0, movedTab);
 
     await persistTabOrder(nextTabs);
   };
@@ -151,7 +149,7 @@ function Admin() {
           Accesos por objeto y visualizadores internos del sistema.
         </p>
         <p className="mt-3 text-xs uppercase tracking-[0.28em] text-white/55">
-          Puedes ordenar los tabs a tu gusto. El orden queda guardado en tu usuario.
+          Arrastra los tabs a tu gusto. El orden queda guardado en tu usuario.
         </p>
       </div>
 
@@ -181,69 +179,59 @@ function Admin() {
         />
       ) : (
         <>
-          <div
-            className="flex flex-wrap gap-2 rounded-2xl p-2 shadow-[0_18px_48px_rgba(17,24,39,0.08)]"
-            style={{ backgroundColor: adminTheme.surface }}
-          >
-            {tabs.map((tab) => (
-              <div
-                key={tab.id}
-                className="flex items-center gap-1 rounded-xl p-1"
-                style={
-                  activeTab === tab.id
-                    ? {
-                        background: adminGradient(),
-                        color: "#fff",
-                        boxShadow: "0 10px 24px rgba(17,24,39,0.18)",
-                      }
-                    : {
-                        backgroundColor: adminTheme.surfaceAlt,
-                        color: adminTheme.text,
-                      }
-                }
-              >
-                <button
-                  onClick={() => handleTabChange(tab.id)}
-                  className="rounded-lg px-3 py-2 text-sm font-medium transition"
-                  style={{ color: "inherit" }}
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="admin-tabs" direction="horizontal">
+              {(providedDroppable) => (
+                <div
+                  ref={providedDroppable.innerRef}
+                  {...providedDroppable.droppableProps}
+                  className="flex gap-2 overflow-x-auto rounded-2xl p-2 shadow-[0_18px_48px_rgba(17,24,39,0.08)]"
+                  style={{ backgroundColor: adminTheme.surface }}
                 >
-                  {tab.label}
-                </button>
-                <div className="flex items-center gap-1 pr-1">
-                  <button
-                    type="button"
-                    onClick={() => moveTab(tab.id, "left")}
-                    disabled={savingOrder || tabs[0]?.id === tab.id}
-                    className="rounded-md px-2 py-1 text-xs transition disabled:cursor-not-allowed disabled:opacity-40"
-                    style={{
-                      backgroundColor:
-                        activeTab === tab.id ? "rgba(255,255,255,0.14)" : "#fff",
-                      color: activeTab === tab.id ? "#fff" : adminTheme.text,
-                    }}
-                    aria-label={`Mover ${tab.label} a la izquierda`}
-                    title="Mover a la izquierda"
-                  >
-                    ←
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveTab(tab.id, "right")}
-                    disabled={savingOrder || tabs[tabs.length - 1]?.id === tab.id}
-                    className="rounded-md px-2 py-1 text-xs transition disabled:cursor-not-allowed disabled:opacity-40"
-                    style={{
-                      backgroundColor:
-                        activeTab === tab.id ? "rgba(255,255,255,0.14)" : "#fff",
-                      color: activeTab === tab.id ? "#fff" : adminTheme.text,
-                    }}
-                    aria-label={`Mover ${tab.label} a la derecha`}
-                    title="Mover a la derecha"
-                  >
-                    →
-                  </button>
+                  {tabs.map((tab, index) => (
+                    <Draggable key={tab.id} draggableId={tab.id} index={index}>
+                      {(providedDraggable, snapshot) => (
+                        <div
+                          ref={providedDraggable.innerRef}
+                          {...providedDraggable.draggableProps}
+                          {...providedDraggable.dragHandleProps}
+                          className="min-w-fit rounded-xl p-1"
+                          style={{
+                            ...(activeTab === tab.id
+                              ? {
+                                  background: adminGradient(),
+                                  color: "#fff",
+                                  boxShadow: "0 10px 24px rgba(17,24,39,0.18)",
+                                }
+                              : {
+                                  backgroundColor: adminTheme.surfaceAlt,
+                                  color: adminTheme.text,
+                                }),
+                            opacity: savingOrder ? 0.7 : 1,
+                            ...(snapshot.isDragging
+                              ? {
+                                  boxShadow: "0 16px 38px rgba(17,24,39,0.22)",
+                                }
+                              : {}),
+                            ...providedDraggable.draggableProps.style,
+                          }}
+                        >
+                          <button
+                            onClick={() => handleTabChange(tab.id)}
+                            className="rounded-lg px-4 py-2 text-sm font-medium transition"
+                            style={{ color: "inherit", cursor: "pointer" }}
+                          >
+                            {tab.label}
+                          </button>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {providedDroppable.placeholder}
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </Droppable>
+          </DragDropContext>
 
           {renderContent()}
         </>
