@@ -11,3 +11,8 @@ export const register = async (data) => {
   const res = await apiClient.post(`${API_URL}/register`, data);
   return res.data;
 };
+
+export const updatePreferences = async (payload) => {
+  const res = await apiClient.put(`${API_URL}/preferences`, payload);
+  return res.data;
+};

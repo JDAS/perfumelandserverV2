@@ -8,6 +8,7 @@ const buildSafeUser = (user) => ({
   name: user.name,
   email: user.email,
   isAdmin: user.isAdmin,
+  adminTabOrder: Array.isArray(user.adminTabOrder) ? user.adminTabOrder : [],
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });
@@ -67,6 +68,30 @@ exports.login = async (req, res) => {
     const token = buildToken(user);
 
     return res.json({ token, user: buildSafeUser(user) });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updatePreferences = async (req, res) => {
+  try {
+    const { adminTabOrder } = req.body || {};
+
+    if (adminTabOrder !== undefined && !Array.isArray(adminTabOrder)) {
+      return res
+        .status(400)
+        .json({ message: "adminTabOrder debe ser un arreglo de tabs" });
+    }
+
+    if (Array.isArray(adminTabOrder)) {
+      req.user.adminTabOrder = adminTabOrder
+        .map((value) => String(value || "").trim())
+        .filter(Boolean);
+    }
+
+    await req.user.save();
+
+    return res.json({ user: buildSafeUser(req.user) });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }

@@ -19,6 +19,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    adminTabOrder: {
+      type: [String],
+      default: [],
+    },
   },
   { timestamps: true }
 );

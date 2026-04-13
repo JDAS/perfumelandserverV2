@@ -9,6 +9,14 @@ export const useAuthStore = create(
 
       setAuth: ({ user, token }) => set({ user, token }),
 
+      updateUser: (nextUser) =>
+        set((state) => ({
+          user:
+            typeof nextUser === "function"
+              ? nextUser(state.user)
+              : { ...(state.user || {}), ...(nextUser || {}) },
+        })),
+
       logout: () => set({ user: null, token: null }),
     }),
     {
