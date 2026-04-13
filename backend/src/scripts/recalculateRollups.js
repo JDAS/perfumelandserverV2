@@ -119,7 +119,8 @@ async function recalculateProducts(db) {
     const productId = String(product._id);
     const sold = soldByProduct.get(productId) || 0;
     const purchaseditems = purchasedByProduct.get(productId) || 0;
-    const trackInventory = toBoolean(product.track_inventory, false);
+    const trackInventory =
+      toBoolean(product.track_inventory, false) || purchaseditems > 0;
     const available = trackInventory ? purchaseditems - sold : 0;
 
     const nextValues = {

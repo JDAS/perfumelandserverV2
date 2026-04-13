@@ -29,6 +29,62 @@ async function getRecordOrThrow(objectApiName, recordId) {
   return record;
 }
 
+async function syncProductInventoryTrackingFromStock({
+  childRecord = null,
+  previousChildRecord = null,
+}) {
+  const productIds = [
+    String(childRecord?.product || ""),
+    String(previousChildRecord?.product || ""),
+  ].filter(Boolean);
+
+  const uniqueProductIds = [...new Set(productIds)];
+  if (!uniqueProductIds.length) return;
+
+  const ProductModel = getCustomRecordModel("product");
+  const StockModel = getCustomRecordModel("stock");
+
+  for (const productId of uniqueProductIds) {
+    const [product, stockRows] = await Promise.all([
+      ProductModel.findById(productId),
+      StockModel.find({ product: productId }).lean(),
+    ]);
+
+    if (!product) continue;
+
+    const hasRealStock = stockRows.some(
+      (row) => Number(row?.purchased || 0) > 0
+    );
+
+    if (!hasRealStock && product.track_inventory !== true) {
+      continue;
+    }
+
+    if (!hasRealStock && product.track_inventory === true) {
+      const nextAvailable =
+        Number(product.purchaseditems || 0) - Number(product.sold || 0);
+      product.set("available", nextAvailable);
+      product.markModified("available");
+      await product.save();
+      continue;
+    }
+
+    const nextAvailable =
+      Number(product.purchaseditems || 0) - Number(product.sold || 0);
+
+    if (
+      product.track_inventory !== true ||
+      Number(product.available || 0) !== nextAvailable
+    ) {
+      product.set("track_inventory", true);
+      product.set("available", nextAvailable);
+      product.markModified("track_inventory");
+      product.markModified("available");
+      await product.save();
+    }
+  }
+}
+
 function parseFilters(filtersInput) {
   if (!filtersInput) return [];
 
@@ -427,6 +483,13 @@ async function saveRecord({ objectApiName, recordId = null, payload = {}, user =
     previousChildRecord: previousRecord,
   });
 
+  if (objectApiName === "stock") {
+    await syncProductInventoryTrackingFromStock({
+      childRecord: plainRecord,
+      previousChildRecord: previousRecord,
+    });
+  }
+
   return {
     mode: isUpdate ? "update" : "create",
     objectDefinition,
@@ -474,6 +537,13 @@ async function deleteRecordWithTriggers({ objectApiName, recordId }) {
     childRecord: null,
     previousChildRecord: previousRecord,
   });
+
+  if (objectApiName === "stock") {
+    await syncProductInventoryTrackingFromStock({
+      childRecord: null,
+      previousChildRecord: previousRecord,
+    });
+  }
 
   return { success: true };
 }
