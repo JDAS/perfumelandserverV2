@@ -16,6 +16,17 @@ function toBoolean(value, fallback = false) {
   return Boolean(value);
 }
 
+function getCalendarDate(value) {
+  if (!value) return null;
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Date(
+    parsed.getUTCFullYear(),
+    parsed.getUTCMonth(),
+    parsed.getUTCDate()
+  );
+}
+
 function inferSalePaymentStatus({ saleStatus, total, totalPaid }) {
   if (saleStatus === "Cancelada") return "Cancelada";
   if (saleStatus === "Borrador") return "Borrador";
@@ -107,20 +118,63 @@ async function recalculateProducts(db) {
   const saleItemsCollection = db.collection("sale_item");
   const stockCollection = db.collection("stock");
 
-  const soldByProduct = await aggregateMap(saleItemsCollection, "product", "quantity", {
-    sale_status: "Completada",
-  });
-  const purchasedByProduct = await aggregateMap(stockCollection, "product", "purchased");
-
   const products = await productsCollection.find({}).toArray();
   let updated = 0;
 
   for (const product of products) {
     const productId = String(product._id);
-    const sold = soldByProduct.get(productId) || 0;
-    const purchaseditems = purchasedByProduct.get(productId) || 0;
+    const [stockRows, saleItems] = await Promise.all([
+      stockCollection
+        .find({ product: productId })
+        .sort({ createdAt: 1, _id: 1 })
+        .toArray(),
+      saleItemsCollection.find({
+        product: productId,
+        sale_status: "Completada",
+      }).toArray(),
+    ]);
+
+    const purchaseditems = stockRows.reduce(
+      (sum, row) => sum + toNumber(row?.purchased),
+      0
+    );
+
+    const firstStockAt = stockRows.length
+      ? getCalendarDate(stockRows[0]?.createdAt)
+      : null;
+    const trackingStart =
+      getCalendarDate(product.inventory_tracking_started_at) || firstStockAt;
+
+    let sold = 0;
+    if (saleItems.length > 0) {
+      const saleIds = [
+        ...new Set(saleItems.map((item) => String(item?.sale || "")).filter(Boolean)),
+      ];
+
+      const sales = await db
+        .collection("sales")
+        .find({ _id: { $in: saleIds.map((id) => new mongoose.Types.ObjectId(id)) } })
+        .project({ saledate: 1, createdAt: 1 })
+        .toArray();
+
+      const salesMap = new Map(sales.map((sale) => [String(sale._id), sale]));
+
+      sold = saleItems.reduce((sum, item) => {
+        const sale = salesMap.get(String(item?.sale || ""));
+        const saleDate =
+          getCalendarDate(sale?.saledate) || getCalendarDate(sale?.createdAt);
+
+        if (trackingStart && saleDate && saleDate < trackingStart) {
+          return sum;
+        }
+
+        return sum + toNumber(item?.quantity);
+      }, 0);
+    }
+
     const trackInventory =
-      toBoolean(product.track_inventory, false) || purchaseditems > 0;
+      (toBoolean(product.track_inventory, false) || purchaseditems > 0) &&
+      Boolean(firstStockAt);
     const available = trackInventory ? purchaseditems - sold : 0;
 
     const nextValues = {
@@ -128,6 +182,7 @@ async function recalculateProducts(db) {
       sold,
       purchaseditems,
       available,
+      inventory_tracking_started_at: firstStockAt || null,
     };
 
     const hasChanges =
@@ -135,6 +190,8 @@ async function recalculateProducts(db) {
       toNumber(product.sold) !== sold ||
       toNumber(product.purchaseditems) !== purchaseditems ||
       toNumber(product.available) !== available ||
+      String(product.inventory_tracking_started_at || "") !==
+        String(firstStockAt || "") ||
       product.track_inventory === undefined ||
       product.track_inventory === null ||
       product.available === undefined ||

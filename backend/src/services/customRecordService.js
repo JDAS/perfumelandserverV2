@@ -29,59 +29,112 @@ async function getRecordOrThrow(objectApiName, recordId) {
   return record;
 }
 
-async function syncProductInventoryTrackingFromStock({
-  childRecord = null,
-  previousChildRecord = null,
-}) {
-  const productIds = [
-    String(childRecord?.product || ""),
-    String(previousChildRecord?.product || ""),
-  ].filter(Boolean);
+function toNumber(value) {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : 0;
+}
 
-  const uniqueProductIds = [...new Set(productIds)];
+function getCalendarDate(value) {
+  if (!value) return null;
+
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  return new Date(
+    parsed.getUTCFullYear(),
+    parsed.getUTCMonth(),
+    parsed.getUTCDate()
+  );
+}
+
+async function syncInventoryForProducts(productIds = []) {
+  const uniqueProductIds = [...new Set(productIds.filter(Boolean).map(String))];
   if (!uniqueProductIds.length) return;
 
   const ProductModel = getCustomRecordModel("product");
   const StockModel = getCustomRecordModel("stock");
+  const SaleItemModel = getCustomRecordModel("sale_item");
+  const SaleModel = getCustomRecordModel("sales");
 
   for (const productId of uniqueProductIds) {
-    const [product, stockRows] = await Promise.all([
+    const [product, stockRows, saleItems] = await Promise.all([
       ProductModel.findById(productId),
-      StockModel.find({ product: productId }).lean(),
+      StockModel.find({ product: productId }).sort({ createdAt: 1, _id: 1 }).lean(),
+      SaleItemModel.find({
+        product: productId,
+        sale_status: "Completada",
+      }).lean(),
     ]);
 
     if (!product) continue;
 
-    const hasRealStock = stockRows.some(
-      (row) => Number(row?.purchased || 0) > 0
+    const purchaseditems = stockRows.reduce(
+      (sum, row) => sum + toNumber(row?.purchased),
+      0
     );
+    const hasRealStock = purchaseditems > 0;
 
-    if (!hasRealStock && product.track_inventory !== true) {
-      continue;
+    const firstStockAt = stockRows.length
+      ? getCalendarDate(stockRows[0]?.createdAt)
+      : null;
+
+    const trackingStart =
+      getCalendarDate(product.inventory_tracking_started_at) || firstStockAt;
+
+    let sold = 0;
+
+    if (saleItems.length > 0) {
+      const saleIds = [
+        ...new Set(saleItems.map((item) => String(item?.sale || "")).filter(Boolean)),
+      ];
+
+      const sales = await SaleModel.find({ _id: { $in: saleIds } })
+        .select("saledate createdAt")
+        .lean();
+
+      const salesMap = new Map(sales.map((sale) => [String(sale._id), sale]));
+
+      sold = saleItems.reduce((sum, item) => {
+        const relatedSale = salesMap.get(String(item?.sale || ""));
+        const saleDate =
+          getCalendarDate(relatedSale?.saledate) ||
+          getCalendarDate(relatedSale?.createdAt);
+
+        if (trackingStart && saleDate && saleDate < trackingStart) {
+          return sum;
+        }
+
+        return sum + toNumber(item?.quantity);
+      }, 0);
     }
 
-    if (!hasRealStock && product.track_inventory === true) {
-      const nextAvailable =
-        Number(product.purchaseditems || 0) - Number(product.sold || 0);
-      product.set("available", nextAvailable);
-      product.markModified("available");
-      await product.save();
-      continue;
+    const trackInventory = hasRealStock || Boolean(product.track_inventory);
+    const available = trackInventory ? purchaseditems - sold : 0;
+
+    const nextValues = {
+      purchaseditems,
+      sold,
+      available,
+      track_inventory: trackInventory,
+    };
+
+    if (firstStockAt) {
+      nextValues.inventory_tracking_started_at = firstStockAt;
     }
 
-    const nextAvailable =
-      Number(product.purchaseditems || 0) - Number(product.sold || 0);
+    const hasChanges =
+      toNumber(product.purchaseditems) !== purchaseditems ||
+      toNumber(product.sold) !== sold ||
+      toNumber(product.available) !== available ||
+      Boolean(product.track_inventory) !== trackInventory ||
+      String(product.inventory_tracking_started_at || "") !==
+        String(firstStockAt || product.inventory_tracking_started_at || "");
 
-    if (
-      product.track_inventory !== true ||
-      Number(product.available || 0) !== nextAvailable
-    ) {
-      product.set("track_inventory", true);
-      product.set("available", nextAvailable);
-      product.markModified("track_inventory");
-      product.markModified("available");
-      await product.save();
-    }
+    if (!hasChanges) continue;
+
+    product.set(nextValues);
+    Object.keys(nextValues).forEach((key) => product.markModified(key));
+    await product.save();
   }
 }
 
@@ -489,11 +542,12 @@ async function saveRecord({ objectApiName, recordId = null, payload = {}, user =
     previousChildRecord: previousRecord,
   });
 
-  if (objectApiName === "stock") {
-    await syncProductInventoryTrackingFromStock({
-      childRecord: plainRecord,
-      previousChildRecord: previousRecord,
-    });
+  if (objectApiName === "stock" || objectApiName === "sale_item") {
+    await syncInventoryForProducts([
+      childRecord?.product,
+      previousRecord?.product,
+      plainRecord?.product,
+    ]);
   }
 
   return {
@@ -544,11 +598,8 @@ async function deleteRecordWithTriggers({ objectApiName, recordId }) {
     previousChildRecord: previousRecord,
   });
 
-  if (objectApiName === "stock") {
-    await syncProductInventoryTrackingFromStock({
-      childRecord: null,
-      previousChildRecord: previousRecord,
-    });
+  if (objectApiName === "stock" || objectApiName === "sale_item") {
+    await syncInventoryForProducts([previousRecord?.product]);
   }
 
   return { success: true };
