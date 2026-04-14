@@ -17,7 +17,8 @@
     "cleanup:legacy-assets": "node src/scripts/cleanupLegacyAssetAttachments.js",
     "seed:analytics": "node src/scripts/seedAnalytics.js",
     "backfill:product-catalog-status": "node src/scripts/backfillProductCatalogStatus.js",
-    "sync:promotion-metadata": "node src/scripts/syncPromotionMetadata.js"
+    "sync:promotion-metadata": "node src/scripts/syncPromotionMetadata.js",
+    "sync:sales-commission-metadata": "node src/scripts/syncSalesCommissionMetadata.js"
   },
   "keywords": [],
   "author": "",
