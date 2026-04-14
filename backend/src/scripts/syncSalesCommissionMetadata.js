@@ -88,8 +88,12 @@ function patchSalesObject(existing, source) {
   next.listViews = nextViews;
   const incomingTriggers = (source.automationTriggers || []).filter((trigger) =>
     [
+      "Colocar fecha si nace completada",
+      "Colocar fecha al completar",
       "Colocar fecha al pagar comision al crear",
       "Colocar fecha al pagar comision",
+      "Generar plan de pago al crear venta a credito",
+      "Regenerar plan de pago al editar venta a credito",
     ].includes(trigger.name)
   );
 

@@ -310,7 +310,7 @@ async function generatePaymentPlanRecords(config = {}, record) {
     const total = Number(record?.[totalField]);
 
     if (
-        normalizedType !== "credito" ||
+        !["credito", "contado"].includes(normalizedType) ||
         !Number.isFinite(total) ||
         total <= 0 ||
         !salesDate

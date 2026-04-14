@@ -1,16 +1,59 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { getRelatedRecords } from "../services/customService";
+import { deleteRecord, getRelatedRecords } from "../services/customService";
 import { formatFieldValue } from "../engine/metadataEngine";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 import AttachmentRelatedListSection from "./AttachmentRelatedListSection";
+import { useToast } from "./ui/ToastContext";
+
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2">
+      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2">
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="m6 6 1 14h10l1-14" />
+      <path d="M10 10v6M14 10v6" />
+    </svg>
+  );
+}
+
+function IconButton({
+  as: Component = "button",
+  label,
+  className = "",
+  children,
+  ...props
+}) {
+  return (
+    <Component
+      title={label}
+      aria-label={label}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      {...props}
+    >
+      <span className="sr-only">{label}</span>
+      {children}
+    </Component>
+  );
+}
 
 function RelatedListSection({ parentObject, parentId, section }) {
   const { getObjectByApiNameFromCache } = useObjectMetadata();
   const [searchParams] = useSearchParams();
+  const { addToast } = useToast();
 
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
 
   const relatedObjectDef = getObjectByApiNameFromCache(section.relatedObject);
 
@@ -24,31 +67,25 @@ function RelatedListSection({ parentObject, parentId, section }) {
     );
   }
 
-  useEffect(() => {
-    async function load() {
-      try {
-        setLoading(true);
-        const data = await getRelatedRecords(
-          parentObject,
-          parentId,
-          section.relatedObject,
-          section.relatedField,
-          {
-            sortField: section.sortField || "",
-            sortOrder: section.sortOrder || "desc",
-          }
-        );
-        setRecords(data.records || []);
-      } catch (error) {
-        console.error("Error cargando related list:", error);
-        setRecords([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    if (section.relatedObject && section.relatedField) {
-      load();
+  const loadRecords = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await getRelatedRecords(
+        parentObject,
+        parentId,
+        section.relatedObject,
+        section.relatedField,
+        {
+          sortField: section.sortField || "",
+          sortOrder: section.sortOrder || "desc",
+        }
+      );
+      setRecords(data.records || []);
+    } catch (error) {
+      console.error("Error cargando related list:", error);
+      setRecords([]);
+    } finally {
+      setLoading(false);
     }
   }, [
     parentObject,
@@ -57,6 +94,14 @@ function RelatedListSection({ parentObject, parentId, section }) {
     section.relatedField,
     section.sortField,
     section.sortOrder,
+  ]);
+
+  useEffect(() => {
+    if (section.relatedObject && section.relatedField) {
+      loadRecords();
+    }
+  }, [
+    loadRecords,
   ]);
 
   const columns = useMemo(() => {
@@ -78,6 +123,26 @@ function RelatedListSection({ parentObject, parentId, section }) {
   createQuery.set("returnTo", "detail");
   createQuery.set("returnObject", parentObject);
   createQuery.set("returnId", parentId);
+
+  const handleDelete = async (recordId) => {
+    if (!recordId) return;
+    if (!window.confirm("¿Eliminar este registro relacionado?")) return;
+
+    try {
+      setDeletingId(recordId);
+      await deleteRecord(section.relatedObject, recordId);
+      addToast("Registro relacionado eliminado", "success");
+      await loadRecords();
+    } catch (error) {
+      console.error("Error eliminando related record:", error);
+      addToast(
+        error?.response?.data?.error || "No se pudo eliminar el registro relacionado",
+        "error"
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl shadow p-6">
@@ -126,12 +191,29 @@ function RelatedListSection({ parentObject, parentId, section }) {
                   </td>
 
                   <td className="p-3 border-b">
-                    <Link
-                      to={`/admin/${section.relatedObject}/${record._id}/view?${detailQuery.toString()}`}
-                      className="px-3 py-1 bg-blue-600 text-white rounded"
-                    >
-                      Ver
-                    </Link>
+                    <div className="flex flex-wrap gap-2">
+                      <IconButton
+                        as={Link}
+                        to={`/admin/${section.relatedObject}/${record._id}/view?${detailQuery.toString()}`}
+                        label="Ver"
+                        className="bg-blue-600"
+                      >
+                        <EyeIcon />
+                      </IconButton>
+                      <IconButton
+                        type="button"
+                        onClick={() => handleDelete(record._id)}
+                        disabled={deletingId === record._id}
+                        label={
+                          deletingId === record._id
+                            ? "Eliminando..."
+                            : "Eliminar"
+                        }
+                        className="bg-red-600"
+                      >
+                        <TrashIcon />
+                      </IconButton>
+                    </div>
                   </td>
                 </tr>
               ))}

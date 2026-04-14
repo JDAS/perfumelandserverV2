@@ -544,7 +544,6 @@ async function saveRecord({ objectApiName, recordId = null, payload = {}, user =
 
   if (objectApiName === "stock" || objectApiName === "sale_item") {
     await syncInventoryForProducts([
-      childRecord?.product,
       previousRecord?.product,
       plainRecord?.product,
     ]);

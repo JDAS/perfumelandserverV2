@@ -1632,10 +1632,22 @@ const commerceSuiteObjects = [
         runOrder: 10,
         stopOnError: true,
         conditions: {
-          operator: "AND",
+          operator: "OR",
           conditions: [
-            { field: "status", operator: "eq", value: "Completada" },
-            { field: "type", operator: "eq", value: "Credito" },
+            {
+              operator: "AND",
+              conditions: [
+                { field: "status", operator: "eq", value: "Completada" },
+                { field: "type", operator: "eq", value: "Credito" },
+              ],
+            },
+            {
+              operator: "AND",
+              conditions: [
+                { field: "status", operator: "eq", value: "Completada" },
+                { field: "type", operator: "eq", value: "Contado" },
+              ],
+            },
           ],
         },
         actions: [
@@ -1659,10 +1671,22 @@ const commerceSuiteObjects = [
         runOrder: 10,
         stopOnError: true,
         conditions: {
-          operator: "AND",
+          operator: "OR",
           conditions: [
-            { field: "status", operator: "eq", value: "Completada" },
-            { field: "type", operator: "eq", value: "Credito" },
+            {
+              operator: "AND",
+              conditions: [
+                { field: "status", operator: "eq", value: "Completada" },
+                { field: "type", operator: "eq", value: "Credito" },
+              ],
+            },
+            {
+              operator: "AND",
+              conditions: [
+                { field: "status", operator: "eq", value: "Completada" },
+                { field: "type", operator: "eq", value: "Contado" },
+              ],
+            },
           ],
         },
         actions: [

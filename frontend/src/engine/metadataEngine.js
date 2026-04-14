@@ -60,6 +60,16 @@ export function isBlankBlock(value) {
 
 export function getBackToListSearch(searchParams, objectApiName) {
   const next = new URLSearchParams(searchParams);
+  [...next.keys()].forEach((key) => {
+    if (
+      key.startsWith("prefill_") ||
+      key === "returnTo" ||
+      key === "returnObject" ||
+      key === "returnId"
+    ) {
+      next.delete(key);
+    }
+  });
   if (!next.get("tab")) {
     next.set("tab", objectApiName);
   }
