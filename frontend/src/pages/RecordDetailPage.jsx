@@ -5,6 +5,7 @@ import {
   getClientSummary,
   getRecordById,
   syncSaleCampaigns,
+  updateRecord,
 } from "../services/customService";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 import {
@@ -31,6 +32,7 @@ function RecordDetailPage() {
   const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
   const [converting, setConverting] = useState(false);
   const [syncingCampaigns, setSyncingCampaigns] = useState(false);
+  const [markingCommissionPaid, setMarkingCommissionPaid] = useState(false);
   const { addToast } = useToast();
 
   const objectDef = getObjectByApiNameFromCache(object);
@@ -113,6 +115,10 @@ function RecordDetailPage() {
   const supportsClientSummary = object === "sales" || object === "quote";
   const supportsQuoteConversion = object === "quote";
   const supportsCampaignSync = object === "sales";
+  const supportsCommissionQuickAction =
+    object === "sales" &&
+    !record?.commission_paid &&
+    Number(record?.commission_amount || 0) > 0;
 
   const handleOpenSummary = async () => {
     try {
@@ -212,6 +218,26 @@ function RecordDetailPage() {
     }
   };
 
+  const handleMarkCommissionPaid = async () => {
+    if (!record?._id) return;
+
+    try {
+      setMarkingCommissionPaid(true);
+      await updateRecord(object, record._id, { commission_paid: true });
+      addToast("Comision marcada como pagada", "success");
+      const refreshedRecord = await getRecordById(object, id);
+      setRecord(refreshedRecord);
+    } catch (error) {
+      console.error(error);
+      addToast(
+        error?.response?.data?.error || "No se pudo marcar la comision como pagada",
+        "error"
+      );
+    } finally {
+      setMarkingCommissionPaid(false);
+    }
+  };
+
   return (
     <div className="p-10 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -246,6 +272,18 @@ function RecordDetailPage() {
               className="bg-amber-600 px-4 py-2 rounded text-white disabled:opacity-60"
             >
               {syncingCampaigns ? "Evaluando promo..." : "Evaluar promo"}
+            </button>
+          ) : null}
+          {supportsCommissionQuickAction ? (
+            <button
+              type="button"
+              onClick={handleMarkCommissionPaid}
+              disabled={markingCommissionPaid}
+              className="bg-cyan-600 px-4 py-2 rounded text-white disabled:opacity-60"
+            >
+              {markingCommissionPaid
+                ? "Marcando comision..."
+                : "Marcar comision pagada"}
             </button>
           ) : null}
           {supportsQuoteConversion ? (

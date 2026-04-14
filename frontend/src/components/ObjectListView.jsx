@@ -6,6 +6,7 @@ import {
   getClientSummary,
   getRecords,
   syncSaleCampaigns,
+  updateRecord,
 } from "../services/customService";
 import { buildListQuery, buildRecordListRequest } from "../engine/listEngine";
 import { formatFieldValue, getBackToListSearch } from "../engine/metadataEngine";
@@ -99,6 +100,14 @@ function RefreshIcon() {
   );
 }
 
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2">
+      <path d="m5 12 4.2 4.2L19 6.5" />
+    </svg>
+  );
+}
+
 function ObjectListView({ objectDef }) {
   const { addToast } = useToast();
   const [records, setRecords] = useState([]);
@@ -113,6 +122,7 @@ function ObjectListView({ objectDef }) {
   const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
   const [convertingQuoteId, setConvertingQuoteId] = useState(null);
   const [syncingCampaignId, setSyncingCampaignId] = useState(null);
+  const [markingCommissionId, setMarkingCommissionId] = useState(null);
 
   const listState = useMemo(
     () => buildListQuery({ searchParams, objectDef }),
@@ -299,6 +309,27 @@ function ObjectListView({ objectDef }) {
     }
   };
 
+  const handleMarkCommissionPaid = async (record) => {
+    if (!record?._id) return;
+
+    try {
+      setMarkingCommissionId(record._id);
+      await updateRecord(objectDef.apiName, record._id, {
+        commission_paid: true,
+      });
+      addToast("Comision marcada como pagada", "success");
+      await loadRecords();
+    } catch (error) {
+      console.error(error);
+      addToast(
+        error?.response?.data?.error || "No se pudo marcar la comision como pagada",
+        "error"
+      );
+    } finally {
+      setMarkingCommissionId(null);
+    }
+  };
+
   const columns = listState.columns || [];
 
   return (
@@ -475,6 +506,26 @@ function ObjectListView({ objectDef }) {
                                 <SparkIcon />
                               )}
                             </IconButton>
+                            {!record.commission_paid &&
+                            Number(record.commission_amount || 0) > 0 ? (
+                              <IconButton
+                                type="button"
+                                onClick={() => handleMarkCommissionPaid(record)}
+                                disabled={markingCommissionId === record._id}
+                                label={
+                                  markingCommissionId === record._id
+                                    ? "Marcando comision..."
+                                    : "Marcar comision pagada"
+                                }
+                                className="bg-cyan-600"
+                              >
+                                {markingCommissionId === record._id ? (
+                                  <RefreshIcon />
+                                ) : (
+                                  <CheckIcon />
+                                )}
+                              </IconButton>
+                            ) : null}
                           </>
                         ) : null}
 
