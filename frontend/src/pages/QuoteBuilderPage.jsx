@@ -27,6 +27,12 @@ function defaultItem() {
   };
 }
 
+function getCreditAdjustedPrice(basePrice, type) {
+  const numericBasePrice = Number(basePrice) || 0;
+  if (type !== "Credito") return numericBasePrice;
+  return numericBasePrice + (numericBasePrice <= 25000 ? 3000 : 5000);
+}
+
 export default function QuoteBuilderPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -161,7 +167,9 @@ export default function QuoteBuilderPage() {
 
   const handleProductChange = (index, selectedProduct) => {
     const basePrice = Number(selectedProduct?.price) || 0;
-    const adjustedPrice = quote.type === "Credito" && selectedProduct ? basePrice + 5000 : basePrice;
+    const adjustedPrice = selectedProduct
+      ? getCreditAdjustedPrice(basePrice, quote.type)
+      : basePrice;
 
     updateItem(index, {
       product: selectedProduct?._id || "",
@@ -170,6 +178,18 @@ export default function QuoteBuilderPage() {
       price: adjustedPrice,
     });
   };
+
+  useEffect(() => {
+    setItems((prev) =>
+      prev.map((item) => {
+        const basePrice = Number(item.list_price) || Number(item.price) || 0;
+        return {
+          ...item,
+          price: getCreditAdjustedPrice(basePrice, quote.type),
+        };
+      })
+    );
+  }, [quote.type]);
 
   const handleAddItem = () => setItems((prev) => [...prev, defaultItem()]);
   const handleRemoveItem = (index) =>

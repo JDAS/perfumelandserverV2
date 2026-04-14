@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { getReports, runReport } from "../../services/customService";
 
+function getTodayDateInput() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+    now.getDate()
+  ).padStart(2, "0")}`;
+}
+
 function FinancialSummaryTable({ preview }) {
   return (
     <div className="space-y-4">
@@ -37,6 +44,58 @@ function FinancialSummaryTable({ preview }) {
   );
 }
 
+function PaymentsByDayTable({ preview }) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border bg-white p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Fecha</p>
+          <p className="mt-2 text-lg font-semibold text-gray-900">
+            {preview.filterDate || "-"}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-white p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Pagos</p>
+          <p className="mt-2 text-lg font-semibold text-gray-900">
+            {preview.summary?.payments_count || 0}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-white p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Total recibido</p>
+          <p className="mt-2 text-lg font-semibold text-gray-900">
+            {preview.summary?.payments_total_formatted || "-"}
+          </p>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border bg-white">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-gray-50 text-left">
+              {(preview.columns || []).map((column) => (
+                <th key={column.id} className="border-b p-3 font-semibold text-gray-700">
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {(preview.rows || []).map((row) => (
+              <tr key={row.payment_id} className="hover:bg-gray-50">
+                {(preview.columns || []).map((column) => (
+                  <td key={column.id} className="border-b p-3 text-gray-700">
+                    {row[column.id] || "-"}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function ReportResultsTable({ preview }) {
   if (!preview) {
     return (
@@ -48,6 +107,10 @@ function ReportResultsTable({ preview }) {
 
   if (preview.viewType === "financial_summary") {
     return <FinancialSummaryTable preview={preview} />;
+  }
+
+  if (preview.viewType === "payments_by_day") {
+    return <PaymentsByDayTable preview={preview} />;
   }
 
   return (
@@ -111,6 +174,7 @@ export default function ReportsViewer() {
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [filterDate, setFilterDate] = useState(getTodayDateInput());
 
   useEffect(() => {
     let cancelled = false;
@@ -152,7 +216,12 @@ export default function ReportsViewer() {
     async function executeSelectedReport() {
       try {
         setRunning(true);
-        const data = await runReport(selectedId);
+        const selectedReport = (reports || []).find(
+          (report) => String(report._id) === String(selectedId)
+        );
+        const params =
+          selectedReport?.engine === "payments_by_day" ? { date: filterDate } : {};
+        const data = await runReport(selectedId, params);
         if (!cancelled) {
           setPreview(data);
         }
@@ -172,7 +241,11 @@ export default function ReportsViewer() {
     return () => {
       cancelled = true;
     };
-  }, [selectedId]);
+  }, [selectedId, reports, filterDate]);
+
+  const selectedReport = (reports || []).find(
+    (report) => String(report._id) === String(selectedId)
+  );
 
   return (
     <div className="space-y-6">
@@ -217,6 +290,22 @@ export default function ReportsViewer() {
         </aside>
 
         <section className="rounded-xl bg-white p-6 shadow">
+          {selectedReport?.engine === "payments_by_day" ? (
+            <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border bg-slate-50 p-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Dia</label>
+                <input
+                  type="date"
+                  className="rounded-lg border p-2"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                />
+              </div>
+              <p className="text-sm text-gray-500">
+                El reporte se recalcula segun la fecha seleccionada.
+              </p>
+            </div>
+          ) : null}
           {running ? (
             <p className="text-sm text-gray-500">Ejecutando reporte...</p>
           ) : (

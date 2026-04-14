@@ -16,6 +16,8 @@ const pricingAction = {
     targetField: "price",
     saleTypeField: "type",
     creditSurcharge: 5000,
+    creditSurchargeLower: 3000,
+    creditSurchargeThreshold: 25000,
   },
 };
 

@@ -80,8 +80,8 @@ export const deleteReport = async (id) => {
   return res.data;
 };
 
-export const runReport = async (id) => {
-  const res = await apiClient.get(`/api/reports/${id}/run`);
+export const runReport = async (id, params = {}) => {
+  const res = await apiClient.get(`/api/reports/${id}/run`, { params });
   return res.data;
 };
 

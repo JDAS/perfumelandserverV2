@@ -271,6 +271,8 @@ async function syncSaleItemObject() {
     costTargetField: "cost_snapshot",
     saleTypeField: "type",
     creditSurcharge: 5000,
+    creditSurchargeLower: 3000,
+    creditSurchargeThreshold: 25000,
   };
 
   const statusCopyAction = {

@@ -659,6 +659,30 @@ function TriggerModal({
                                                 }
                                             />
                                         </div>
+
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Recargo credito bajo</label>
+                                            <input
+                                                type="number"
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.creditSurchargeLower ?? 3000}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "creditSurchargeLower", Number(e.target.value))
+                                                }
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1 block text-xs font-medium">Umbral precio contado</label>
+                                            <input
+                                                type="number"
+                                                className="w-full rounded border p-2"
+                                                value={action.config?.creditSurchargeThreshold ?? 25000}
+                                                onChange={(e) =>
+                                                    updateActionConfig(index, "creditSurchargeThreshold", Number(e.target.value))
+                                                }
+                                            />
+                                        </div>
                                     </div>
                                 )}
                                 {action.type === "setSalePaymentStatus" && (

@@ -194,6 +194,19 @@ function formatDateOnly(value) {
     return `${year}-${month}-${day}`;
 }
 
+function resolveCreditSurcharge(cashPrice, config = {}) {
+    const upperSurcharge = Number(config.creditSurcharge);
+    const lowerSurcharge = Number(config.creditSurchargeLower);
+    const threshold = Number(config.creditSurchargeThreshold);
+
+    const safeUpper = Number.isFinite(upperSurcharge) ? upperSurcharge : 5000;
+    const safeLower = Number.isFinite(lowerSurcharge) ? lowerSurcharge : 3000;
+    const safeThreshold = Number.isFinite(threshold) ? threshold : 25000;
+    const numericPrice = Number(cashPrice || 0);
+
+    return numericPrice <= safeThreshold ? safeLower : safeUpper;
+}
+
 function buildPaymentPlanStatus(plan, todayString) {
     const plannedAmount = Number(plan.planned_amount || 0);
     const paidAmount = Number(plan.paid_amount || 0);
@@ -421,6 +434,8 @@ async function setSaleItemPrice(config = {}, context) {
         saleTypeField = "type",
         creditKeyword = "credito",
         creditSurcharge = 5000,
+        creditSurchargeLower = 3000,
+        creditSurchargeThreshold = 25000,
         stockObject = "stock",
         stockProductField = "product",
         stockCostField = "wholesaleprice",
@@ -476,7 +491,14 @@ async function setSaleItemPrice(config = {}, context) {
     }
 
     const normalizedSaleType = normalizePaymentKeyword(saleRecord?.[saleTypeField]);
-    const surcharge = Number(creditSurcharge) || 0;
+    const surcharge =
+        normalizedSaleType === normalizePaymentKeyword(creditKeyword)
+            ? resolveCreditSurcharge(cashPrice, {
+                creditSurcharge,
+                creditSurchargeLower,
+                creditSurchargeThreshold,
+            })
+            : 0;
     const nextPrice =
         normalizedSaleType === normalizePaymentKeyword(creditKeyword)
             ? cashPrice + surcharge

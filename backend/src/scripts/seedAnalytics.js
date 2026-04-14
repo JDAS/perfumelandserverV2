@@ -32,6 +32,15 @@ const reports = [
     metrics: [],
   },
   {
+    name: "Pagos por dia",
+    apiName: "payments_by_day",
+    description: "Detalle de pagos recibidos en una fecha especifica.",
+    engine: "payments_by_day",
+    sourceObject: "payment",
+    filters: [],
+    metrics: [],
+  },
+  {
     name: "Resumen financiero",
     apiName: "sales_summary",
     description: "Vista general de lo vendido, cobrado y lo que sigue en calle.",
