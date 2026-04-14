@@ -13,6 +13,92 @@ import ClientSummaryModal from "./ClientSummaryModal";
 import Pagination from "./ui/Pagination";
 import { useToast } from "./ui/ToastContext";
 
+function IconButton({
+  as: Component = "button",
+  label,
+  className = "",
+  children,
+  ...props
+}) {
+  return (
+    <Component
+      title={label}
+      aria-label={label}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      {...props}
+    >
+      <span className="sr-only">{label}</span>
+      {children}
+    </Component>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2">
+      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2">
+      <path d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Z" />
+      <path d="m13.5 6.5 4 4" />
+    </svg>
+  );
+}
+
+function MoneyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2">
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M7 9h.01M17 15h.01" />
+    </svg>
+  );
+}
+
+function SparkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2">
+      <path d="m12 3 1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3Z" />
+    </svg>
+  );
+}
+
+function DocumentIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2">
+      <path d="M7 3h7l5 5v13H7z" />
+      <path d="M14 3v5h5" />
+      <path d="M10 13h6M10 17h6" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2">
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="m6 6 1 14h10l1-14" />
+      <path d="M10 10v6M14 10v6" />
+    </svg>
+  );
+}
+
+function RefreshIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-none stroke-current" strokeWidth="2">
+      <path d="M20 11a8 8 0 1 0 2 5.3" />
+      <path d="M20 4v7h-7" />
+    </svg>
+  );
+}
+
 function ObjectListView({ objectDef }) {
   const { addToast } = useToast();
   const [records, setRecords] = useState([]);
@@ -340,82 +426,102 @@ function ObjectListView({ objectDef }) {
 
                     <td className="border-b p-3">
                       <div className="flex flex-wrap gap-2">
-                        <Link
+                        <IconButton
+                          as={Link}
                           to={`/admin/${objectDef.apiName}/${record._id}/view?${backToListQuery}`}
-                          className="rounded bg-blue-600 px-3 py-1 text-white"
+                          label="Ver"
+                          className="bg-blue-600"
                         >
-                          Ver
-                        </Link>
+                          <EyeIcon />
+                        </IconButton>
 
-                        <Link
+                        <IconButton
+                          as={Link}
                           to={
                             objectDef.apiName === "quote"
                               ? `/admin/quote-builder/${record._id}`
                               : `/admin/${objectDef.apiName}/${record._id}?${backToListQuery}`
                           }
-                          className="rounded bg-yellow-500 px-3 py-1 text-white"
+                          label="Editar"
+                          className="bg-yellow-500"
                         >
-                          Editar
-                        </Link>
+                          <PencilIcon />
+                        </IconButton>
 
                         {objectDef.apiName === "sales" ? (
                           <>
-                            <Link
+                            <IconButton
+                              as={Link}
                               to={`/admin/payment/new?${backToListQuery}&prefill_sale_id=${record._id}`}
-                              className="rounded bg-violet-600 px-3 py-1 text-white"
+                              label="Registrar pago"
+                              className="bg-violet-600"
                             >
-                              Registrar pago
-                            </Link>
-                            <button
+                              <MoneyIcon />
+                            </IconButton>
+                            <IconButton
                               type="button"
                               onClick={() => handleSyncCampaigns(record._id)}
                               disabled={syncingCampaignId === record._id}
-                              className="rounded bg-amber-600 px-3 py-1 text-white disabled:opacity-60"
+                              label={
+                                syncingCampaignId === record._id
+                                  ? "Evaluando promo..."
+                                  : "Evaluar promo"
+                              }
+                              className="bg-amber-600"
                             >
-                              {syncingCampaignId === record._id
-                                ? "Evaluando..."
-                                : "Evaluar promo"}
-                            </button>
+                              {syncingCampaignId === record._id ? (
+                                <RefreshIcon />
+                              ) : (
+                                <SparkIcon />
+                              )}
+                            </IconButton>
                           </>
                         ) : null}
 
                         {objectDef.apiName === "quote" ? (
-                          <button
+                          <IconButton
                             type="button"
                             onClick={() => handleConvertQuote(record)}
                             disabled={
                               convertingQuoteId === record._id ||
                               record.status === "Convertida"
                             }
-                            className="rounded bg-violet-600 px-3 py-1 text-white disabled:opacity-60"
+                            label={
+                              record.status === "Convertida"
+                                ? "Convertida"
+                                : convertingQuoteId === record._id
+                                  ? "Convirtiendo..."
+                                  : "Convertir"
+                            }
+                            className="bg-violet-600"
                           >
-                            {record.status === "Convertida"
-                              ? "Convertida"
-                              : convertingQuoteId === record._id
-                                ? "Convirtiendo..."
-                                : "Convertir"}
-                          </button>
+                            <RefreshIcon />
+                          </IconButton>
                         ) : null}
 
                         {supportsClientSummary ? (
-                          <button
+                          <IconButton
                             type="button"
                             onClick={() => handleOpenSummary(record._id)}
                             disabled={summaryLoadingId === record._id}
-                            className="rounded bg-emerald-600 px-3 py-1 text-white disabled:opacity-60"
+                            label={
+                              summaryLoadingId === record._id
+                                ? "Cargando resumen..."
+                                : "Resumen"
+                            }
+                            className="bg-emerald-600"
                           >
-                            {summaryLoadingId === record._id
-                              ? "Cargando..."
-                              : "Resumen"}
-                          </button>
+                            <DocumentIcon />
+                          </IconButton>
                         ) : null}
 
-                        <button
+                        <IconButton
                           onClick={() => handleDelete(record._id)}
-                          className="rounded bg-red-600 px-3 py-1 text-white"
+                          label="Eliminar"
+                          className="bg-red-600"
                         >
-                          Eliminar
-                        </button>
+                          <TrashIcon />
+                        </IconButton>
                       </div>
                     </td>
                   </tr>

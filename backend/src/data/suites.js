@@ -1527,6 +1527,53 @@ const commerceSuiteObjects = [
         ],
       },
       {
+        name: "Colocar fecha al pagar comision al crear",
+        isActive: true,
+        when: "beforeInsert",
+        runOrder: 1,
+        stopOnError: true,
+        conditions: {
+          operator: "AND",
+          conditions: [
+            { field: "commission_paid", operator: "eq", value: true },
+            { field: "commission_paid_date", operator: "isEmpty", value: "" },
+          ],
+        },
+        actions: [
+          {
+            type: "updateField",
+            config: {
+              field: "commission_paid_date",
+              value: "today",
+            },
+          },
+        ],
+      },
+      {
+        name: "Colocar fecha al pagar comision",
+        isActive: true,
+        when: "beforeUpdate",
+        runOrder: 1,
+        stopOnError: true,
+        conditions: {
+          operator: "AND",
+          conditions: [
+            { field: "commission_paid", operator: "changed", value: "" },
+            { field: "commission_paid", operator: "eq", value: true },
+            { field: "commission_paid_date", operator: "isEmpty", value: "" },
+          ],
+        },
+        actions: [
+          {
+            type: "updateField",
+            config: {
+              field: "commission_paid_date",
+              value: "today",
+            },
+          },
+        ],
+      },
+      {
         name: "Sincronizar estado de lineas de venta",
         isActive: true,
         when: "afterUpdate",

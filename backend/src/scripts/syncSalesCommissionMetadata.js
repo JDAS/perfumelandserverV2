@@ -86,6 +86,25 @@ function patchSalesObject(existing, source) {
     });
 
   next.listViews = nextViews;
+  const incomingTriggers = (source.automationTriggers || []).filter((trigger) =>
+    [
+      "Colocar fecha al pagar comision al crear",
+      "Colocar fecha al pagar comision",
+    ].includes(trigger.name)
+  );
+
+  const triggerMap = new Map(
+    (existing.automationTriggers || []).map((trigger) => [trigger.name, trigger])
+  );
+
+  incomingTriggers.forEach((trigger) => {
+    triggerMap.set(trigger.name, trigger);
+  });
+
+  next.automationTriggers = Array.from(triggerMap.values()).sort(
+    (left, right) => Number(left.runOrder || 0) - Number(right.runOrder || 0)
+  );
+
   return next;
 }
 
