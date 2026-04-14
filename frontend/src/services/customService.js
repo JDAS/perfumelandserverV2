@@ -140,6 +140,11 @@ export const convertQuoteToSale = async (id) => {
   return res.data;
 };
 
+export const syncSaleCampaigns = async (id) => {
+  const res = await apiClient.post(`/api/custom-records/sales/${id}/sync-campaigns`);
+  return res.data;
+};
+
 export const createRecord = async (object, payload) => {
   const res = await apiClient.post(`/api/custom-records/${object}`, payload);
   return res.data;

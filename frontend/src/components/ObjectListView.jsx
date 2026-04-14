@@ -5,6 +5,7 @@ import {
   deleteRecord,
   getClientSummary,
   getRecords,
+  syncSaleCampaigns,
 } from "../services/customService";
 import { buildListQuery, buildRecordListRequest } from "../engine/listEngine";
 import { formatFieldValue, getBackToListSearch } from "../engine/metadataEngine";
@@ -25,6 +26,7 @@ function ObjectListView({ objectDef }) {
   const [copying, setCopying] = useState(false);
   const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
   const [convertingQuoteId, setConvertingQuoteId] = useState(null);
+  const [syncingCampaignId, setSyncingCampaignId] = useState(null);
 
   const listState = useMemo(
     () => buildListQuery({ searchParams, objectDef }),
@@ -182,6 +184,35 @@ function ObjectListView({ objectDef }) {
     }
   };
 
+  const handleSyncCampaigns = async (recordId) => {
+    if (!recordId) return;
+
+    try {
+      setSyncingCampaignId(recordId);
+      const result = await syncSaleCampaigns(recordId);
+      const addedEntries = Number(result?.addedEntries || 0);
+      const removedEntries = Number(result?.removedEntries || 0);
+      const processedCampaigns = Number(result?.processedCampaigns || 0);
+
+      addToast(
+        processedCampaigns > 0
+          ? `Promo evaluada: ${addedEntries} acciones agregadas, ${removedEntries} removidas`
+          : "No habia campanas aplicables para esta venta",
+        "success"
+      );
+
+      await loadRecords();
+    } catch (error) {
+      console.error(error);
+      addToast(
+        error?.response?.data?.error || "No se pudo evaluar la promo para esta venta",
+        "error"
+      );
+    } finally {
+      setSyncingCampaignId(null);
+    }
+  };
+
   const columns = listState.columns || [];
 
   return (
@@ -328,12 +359,24 @@ function ObjectListView({ objectDef }) {
                         </Link>
 
                         {objectDef.apiName === "sales" ? (
-                          <Link
-                            to={`/admin/payment/new?${backToListQuery}&prefill_sale_id=${record._id}`}
-                            className="rounded bg-violet-600 px-3 py-1 text-white"
-                          >
-                            Registrar pago
-                          </Link>
+                          <>
+                            <Link
+                              to={`/admin/payment/new?${backToListQuery}&prefill_sale_id=${record._id}`}
+                              className="rounded bg-violet-600 px-3 py-1 text-white"
+                            >
+                              Registrar pago
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => handleSyncCampaigns(record._id)}
+                              disabled={syncingCampaignId === record._id}
+                              className="rounded bg-amber-600 px-3 py-1 text-white disabled:opacity-60"
+                            >
+                              {syncingCampaignId === record._id
+                                ? "Evaluando..."
+                                : "Evaluar promo"}
+                            </button>
+                          </>
                         ) : null}
 
                         {objectDef.apiName === "quote" ? (

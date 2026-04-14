@@ -4,6 +4,7 @@ import {
   convertQuoteToSale,
   getClientSummary,
   getRecordById,
+  syncSaleCampaigns,
 } from "../services/customService";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 import {
@@ -29,6 +30,7 @@ function RecordDetailPage() {
   const [copying, setCopying] = useState(false);
   const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [syncingCampaigns, setSyncingCampaigns] = useState(false);
   const { addToast } = useToast();
 
   const objectDef = getObjectByApiNameFromCache(object);
@@ -110,6 +112,7 @@ function RecordDetailPage() {
   );
   const supportsClientSummary = object === "sales" || object === "quote";
   const supportsQuoteConversion = object === "quote";
+  const supportsCampaignSync = object === "sales";
 
   const handleOpenSummary = async () => {
     try {
@@ -179,6 +182,36 @@ function RecordDetailPage() {
     }
   };
 
+  const handleSyncCampaigns = async () => {
+    if (!record?._id) return;
+
+    try {
+      setSyncingCampaigns(true);
+      const result = await syncSaleCampaigns(record._id);
+      const addedEntries = Number(result?.addedEntries || 0);
+      const removedEntries = Number(result?.removedEntries || 0);
+      const processedCampaigns = Number(result?.processedCampaigns || 0);
+
+      addToast(
+        processedCampaigns > 0
+          ? `Promo evaluada: ${addedEntries} acciones agregadas, ${removedEntries} removidas`
+          : "No habia campanas aplicables para esta venta",
+        "success"
+      );
+
+      const refreshedRecord = await getRecordById(object, id);
+      setRecord(refreshedRecord);
+    } catch (error) {
+      console.error(error);
+      addToast(
+        error?.response?.data?.error || "No se pudo evaluar la promo para esta venta",
+        "error"
+      );
+    } finally {
+      setSyncingCampaigns(false);
+    }
+  };
+
   return (
     <div className="p-10 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -203,6 +236,16 @@ function RecordDetailPage() {
               className="bg-emerald-600 px-4 py-2 rounded text-white"
             >
               Resumen cliente
+            </button>
+          ) : null}
+          {supportsCampaignSync ? (
+            <button
+              type="button"
+              onClick={handleSyncCampaigns}
+              disabled={syncingCampaigns}
+              className="bg-amber-600 px-4 py-2 rounded text-white disabled:opacity-60"
+            >
+              {syncingCampaigns ? "Evaluando promo..." : "Evaluar promo"}
             </button>
           ) : null}
           {supportsQuoteConversion ? (
