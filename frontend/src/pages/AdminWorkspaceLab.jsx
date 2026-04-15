@@ -917,6 +917,19 @@ function AdminWorkspaceLab() {
     );
   }, [activeTab]);
 
+  const handleResetWorkspace = useCallback(() => {
+    const initialHomeTab = makeHomeTab();
+    writeState(storageKey, {
+      activeObjectApi: objectTabs[0]?.apiName || "",
+      activeTabId: initialHomeTab.id,
+      tabs: [initialHomeTab],
+    });
+    setSeededInitialWorkspace(true);
+    setActiveObjectApi(objectTabs[0]?.apiName || "");
+    setActiveTabId(initialHomeTab.id);
+    setWorkspaceTabs([initialHomeTab]);
+  }, [objectTabs, storageKey]);
+
   if (!restored || !loaded || loading) {
     return (
       <div
@@ -1036,12 +1049,21 @@ function AdminWorkspaceLab() {
             </p>
           </div>
 
-          <Link
-            to="/admin"
-            className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white"
-          >
-            Volver al admin actual
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleResetWorkspace}
+              className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Resetear workspace
+            </button>
+            <Link
+              to="/admin"
+              className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Volver al admin actual
+            </Link>
+          </div>
         </div>
       </div>
 
