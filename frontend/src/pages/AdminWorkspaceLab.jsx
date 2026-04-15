@@ -175,11 +175,22 @@ function ClassicTab({ active, label, onClick, onClose, closable = false }) {
         <button
           type="button"
           onClick={onClose}
-          className="text-xs opacity-80 hover:opacity-100"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold transition"
           title={`Cerrar ${label}`}
           aria-label={`Cerrar ${label}`}
+          style={
+            active
+              ? {
+                  backgroundColor: adminTheme.surfaceAlt,
+                  color: adminTheme.muted,
+                }
+              : {
+                  backgroundColor: "rgba(255,255,255,0.72)",
+                  color: adminTheme.muted,
+                }
+          }
         >
-          x
+          ×
         </button>
       ) : null}
     </div>
@@ -211,11 +222,22 @@ function BadgeChip({ active, label, onClick, onClose, closable = false }) {
         <button
           type="button"
           onClick={onClose}
-          className="text-[10px] opacity-80 hover:opacity-100"
+          className="inline-flex h-4.5 w-4.5 items-center justify-center rounded-full text-[10px] font-semibold transition"
           title={`Cerrar ${label}`}
           aria-label={`Cerrar ${label}`}
+          style={
+            active
+              ? {
+                  backgroundColor: "rgba(255,255,255,0.16)",
+                  color: "#FFFFFF",
+                }
+              : {
+                  backgroundColor: adminTheme.surface,
+                  color: adminTheme.muted,
+                }
+          }
         >
-          x
+          ×
         </button>
       ) : null}
     </div>
