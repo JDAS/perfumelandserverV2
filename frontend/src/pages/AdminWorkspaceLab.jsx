@@ -7,8 +7,9 @@ import {
   formatFieldValue,
   getLookupDisplayData,
   getDefaultListView,
-  getDetailFields,
   getListColumns,
+  isBlankBlock,
+  splitFieldsIntoColumns,
 } from "../engine/metadataEngine";
 import { getRecordById, getRecords, getRelatedRecords } from "../services/customService";
 import { useAuthStore } from "../store/authStore";
@@ -621,9 +622,7 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
   );
 }
 
-function FieldGrid({ objectDef, record, onOpenLookupRecord }) {
-  const fields = getDetailFields(objectDef).slice(0, 16);
-
+function DetailFieldValue({ field, record, onOpenLookupRecord }) {
   const renderFieldValue = (field) => {
     if (field?.type === "lookup") {
       const lookup = getLookupDisplayData(field, record?.[field.apiName], record);
@@ -644,27 +643,114 @@ function FieldGrid({ objectDef, record, onOpenLookupRecord }) {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {fields.map((field) => (
-        <div key={field.apiName}>
-          <p
-            className="mb-1 text-xs font-semibold uppercase tracking-[0.18em]"
-            style={{ color: adminTheme.muted }}
-          >
-            {field.label}
-          </p>
-          <div
-            className="min-h-[46px] rounded-xl border p-3 text-sm"
-            style={{
-              backgroundColor: adminTheme.surfaceAlt,
-              borderColor: adminTheme.border,
-              color: adminTheme.text,
-            }}
-          >
-            {renderFieldValue(field)}
+    <div>
+      <p
+        className="mb-1 text-xs font-semibold uppercase tracking-[0.18em]"
+        style={{ color: adminTheme.muted }}
+      >
+        {field.label}
+      </p>
+      <div
+        className="min-h-[46px] rounded-xl border p-3 text-sm"
+        style={{
+          backgroundColor: adminTheme.surfaceAlt,
+          borderColor: adminTheme.border,
+          color: adminTheme.text,
+        }}
+      >
+        {renderFieldValue(field)}
+      </div>
+    </div>
+  );
+}
+
+function LayoutDetailSections({ objectDef, record, onOpenLookupRecord }) {
+  const fieldMap = useMemo(
+    () => new Map((objectDef?.fields || []).map((field) => [field.apiName, field])),
+    [objectDef?.fields]
+  );
+
+  const activeLayout = objectDef?.layout?.[0];
+  const fieldSections = (activeLayout?.sections || []).filter(
+    (section) => section.type !== "relatedList"
+  );
+
+  if (!fieldSections.length) {
+    const fallbackFields = (objectDef?.fields || [])
+      .filter((field) => field.visibleInDetail !== false)
+      .slice(0, 16);
+
+    return (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {fallbackFields.map((field) => (
+          <DetailFieldValue
+            key={field.apiName}
+            field={field}
+            record={record}
+            onOpenLookupRecord={onOpenLookupRecord}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  const renderFieldOrBlank = (item, index) => {
+    if (isBlankBlock(item)) {
+      return (
+        <div
+          key={`${item}-${index}`}
+          className="h-[72px] rounded-xl border-2 border-dashed"
+          style={{ borderColor: adminTheme.border, backgroundColor: adminTheme.surfaceAlt }}
+        />
+      );
+    }
+
+    const field = fieldMap.get(item);
+    if (!field || field.visibleInDetail === false) return null;
+
+    return (
+      <DetailFieldValue
+        key={field.apiName}
+        field={field}
+        record={record}
+        onOpenLookupRecord={onOpenLookupRecord}
+      />
+    );
+  };
+
+  return (
+    <div className="space-y-5">
+      {fieldSections.map((section, sectionIndex) => {
+        const sectionFields = section.fields || [];
+        const twoColumn = section.columns === 2;
+        const { col1, col2 } = splitFieldsIntoColumns(sectionFields);
+
+        return (
+          <div key={`${section.label || "section"}-${sectionIndex}`}>
+            {section.label ? (
+              <div className="mb-4">
+                <p
+                  className="text-xs uppercase tracking-[0.22em]"
+                  style={{ color: adminTheme.muted }}
+                >
+                  {section.label}
+                </p>
+              </div>
+            ) : null}
+
+            {twoColumn ? (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>{col1.map((item, index) => renderFieldOrBlank(item, index))}</div>
+                <div>{col2.map((item, index) => renderFieldOrBlank(item, index + col1.length))}</div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {sectionFields.map((item, index) => renderFieldOrBlank(item, index))}
+              </div>
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -914,7 +1000,11 @@ function RecordDetailPanel({
           </span>
         </div>
 
-        <FieldGrid objectDef={objectDef} record={record} onOpenLookupRecord={onOpenLookupRecord} />
+        <LayoutDetailSections
+          objectDef={objectDef}
+          record={record}
+          onOpenLookupRecord={onOpenLookupRecord}
+        />
       </div>
 
       {allowChildren
