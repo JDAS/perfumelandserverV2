@@ -84,7 +84,7 @@ function makeListTab(objectDef) {
     type: "list",
     objectApi: objectDef.apiName,
     label: objectDef.name,
-    pinned: true,
+    pinned: false,
   };
 }
 
@@ -158,6 +158,79 @@ function TabChip({ active, label, onClick, onClose, closable = false, dark = fal
           type="button"
           onClick={onClose}
           className="text-xs opacity-80 hover:opacity-100"
+          title={`Cerrar ${label}`}
+          aria-label={`Cerrar ${label}`}
+        >
+          x
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function ClassicTab({ active, label, onClick, onClose, closable = false }) {
+  return (
+    <div
+      className="inline-flex items-center gap-2 rounded-t-xl border border-b-0 px-4 py-3 text-sm font-medium"
+      style={
+        active
+          ? {
+              backgroundColor: adminTheme.surface,
+              color: adminTheme.text,
+              borderColor: adminTheme.border,
+              transform: "translateY(1px)",
+            }
+          : {
+              backgroundColor: adminTheme.surfaceAlt,
+              color: adminTheme.muted,
+              borderColor: adminTheme.border,
+            }
+      }
+    >
+      <button type="button" onClick={onClick} className="text-left">
+        {label}
+      </button>
+      {closable ? (
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-xs opacity-80 hover:opacity-100"
+          title={`Cerrar ${label}`}
+          aria-label={`Cerrar ${label}`}
+        >
+          x
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function BadgeChip({ active, label, onClick, onClose, closable = false }) {
+  return (
+    <div
+      className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition"
+      style={
+        active
+          ? {
+              backgroundColor: adminTheme.text,
+              color: "#FFFFFF",
+              borderColor: adminTheme.text,
+            }
+          : {
+              backgroundColor: adminTheme.surfaceAlt,
+              color: adminTheme.muted,
+              borderColor: adminTheme.border,
+            }
+      }
+    >
+      <button type="button" onClick={onClick} className="text-left">
+        {label}
+      </button>
+      {closable ? (
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-[10px] opacity-80 hover:opacity-100"
           title={`Cerrar ${label}`}
           aria-label={`Cerrar ${label}`}
         >
@@ -610,7 +683,7 @@ function RecordWorkspace({ objectDef, tab, onActivateSubtab, onCloseSubtab, onOp
           </div>
           <div className="flex flex-wrap gap-2">
             {tab.subtabs.map((subtab) => (
-              <TabChip
+              <BadgeChip
                 key={subtab.id}
                 active={subtab.id === activeSubtab.id}
                 label={subtab.label}
@@ -648,6 +721,7 @@ function AdminWorkspaceLab() {
   const [activeTabId, setActiveTabId] = useState("");
   const [workspaceTabs, setWorkspaceTabs] = useState([]);
   const [restored, setRestored] = useState(false);
+  const [seededInitialWorkspace, setSeededInitialWorkspace] = useState(false);
 
   const objectTabs = useMemo(
     () => objects.filter((obj) => obj.active !== false && obj.tabsEnabled !== false),
@@ -664,6 +738,7 @@ function AdminWorkspaceLab() {
     setActiveObjectApi(persisted?.activeObjectApi || "");
     setActiveTabId(persisted?.activeTabId || "");
     setWorkspaceTabs(persisted?.tabs || []);
+    setSeededInitialWorkspace(Boolean(persisted));
     setRestored(true);
   }, [storageKey]);
 
@@ -701,7 +776,8 @@ function AdminWorkspaceLab() {
           };
         });
 
-      if (!nextTabs.length) {
+      if (!nextTabs.length && !seededInitialWorkspace) {
+        setSeededInitialWorkspace(true);
         return [makeListTab(objectTabs[0])];
       }
 
@@ -726,7 +802,7 @@ function AdminWorkspaceLab() {
       if (current && objectMap.has(current)) return current;
       return objectTabs[0].apiName;
     });
-  }, [objectMap, objectTabs, restored, workspaceTabs]);
+  }, [objectMap, objectTabs, restored, seededInitialWorkspace, workspaceTabs]);
 
   useEffect(() => {
     if (!restored) return;
@@ -851,7 +927,7 @@ function AdminWorkspaceLab() {
     );
   }
 
-  if (!objectTabs.length || !activeTab) {
+  if (!objectTabs.length) {
     return (
       <div
         className="rounded-[28px] p-6 shadow-[0_20px_56px_rgba(17,24,39,0.18)]"
@@ -860,6 +936,80 @@ function AdminWorkspaceLab() {
         <p style={{ color: adminTheme.muted }}>
           No hay objetos disponibles para probar el lab.
         </p>
+      </div>
+    );
+  }
+
+  if (!activeTab) {
+    return (
+      <div className="space-y-4">
+        <div
+          className="rounded-[28px] px-6 py-5 text-white shadow-[0_20px_56px_rgba(17,24,39,0.18)]"
+          style={{ background: adminGradient() }}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-white/60">
+                Workspace Lab
+              </p>
+              <h1 className="mt-2 text-3xl font-bold">Prueba de navegacion multinivel</h1>
+              <p className="mt-2 max-w-3xl text-sm text-white/75">
+                Nivel 1 lanza listas al nivel 2. En el nivel 2 conviven listas y registros
+                abiertos de distintos tipos. El nivel 3 vive dentro del registro activo.
+              </p>
+            </div>
+
+            <Link
+              to="/admin"
+              className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Volver al admin actual
+            </Link>
+          </div>
+        </div>
+
+        <section
+          className="rounded-2xl border p-4 text-white"
+          style={{ background: adminGradient(), borderColor: "rgba(255,255,255,0.08)" }}
+        >
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.22em] text-white/60">
+                Nivel 1 · Objetos
+              </p>
+              <p className="mt-1 text-sm text-white/75">
+                Presiona un objeto y su lista se abre o se enfoca en el nivel 2.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {objectTabs.map((objectDef) => (
+              <TabChip
+                key={objectDef.apiName}
+                active={objectDef.apiName === activeObjectApi}
+                label={objectDef.name}
+                onClick={() => handleObjectLaunch(objectDef)}
+                dark
+              />
+            ))}
+          </div>
+        </section>
+
+        <section
+          className="rounded-2xl border p-8 text-center"
+          style={{
+            background: "linear-gradient(180deg, #FFFFFF 0%, #F8FAFD 100%)",
+            borderColor: adminTheme.border,
+          }}
+        >
+          <p className="text-sm font-medium" style={{ color: adminTheme.text }}>
+            No hay tabs abiertos en el nivel 2.
+          </p>
+          <p className="mt-2 text-sm" style={{ color: adminTheme.muted }}>
+            Usa el nivel 1 para abrir una lista o volver a enfocarla.
+          </p>
+        </section>
       </div>
     );
   }
@@ -934,15 +1084,18 @@ function AdminWorkspaceLab() {
       >
         <WorkspaceHeader activeTab={activeTab} levelThreeAvailable={levelThreeAvailable} />
 
-        <div className="mb-4 flex flex-wrap gap-2">
+        <div
+          className="mb-4 flex flex-wrap gap-2 border-b"
+          style={{ borderColor: adminTheme.border }}
+        >
           {workspaceTabs.map((tab) => (
-            <TabChip
+            <ClassicTab
               key={tab.id}
               active={tab.id === activeTab.id}
               label={tab.label}
               onClick={() => handleFocusTab(tab)}
               onClose={() => handleCloseTab(tab.id)}
-              closable={!tab.pinned}
+              closable
             />
           ))}
         </div>
