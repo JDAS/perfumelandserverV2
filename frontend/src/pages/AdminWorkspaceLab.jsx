@@ -659,40 +659,29 @@ function RecordWorkspace({ objectDef, tab, onActivateSubtab, onCloseSubtab, onOp
 
   return (
     <div className="space-y-4">
-      <div
-        className="rounded-2xl border p-4"
-        style={{
-          background: "linear-gradient(180deg, #FFFFFF 0%, #F7FAFD 100%)",
-          borderColor: adminTheme.border,
-        }}
-      >
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p
-              className="text-xs font-semibold uppercase tracking-[0.18em]"
-              style={{ color: adminTheme.accentDeep }}
-            >
-              Nivel 3 local
-            </p>
-            <p className="mt-1 text-sm font-medium" style={{ color: adminTheme.text }}>
-              {objectDef.name} / {tab.label}
-            </p>
-            <p className="mt-1 text-xs" style={{ color: adminTheme.muted }}>
-              Los hijos viven dentro del registro activo, no como una card aparte.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {tab.subtabs.map((subtab) => (
-              <BadgeChip
-                key={subtab.id}
-                active={subtab.id === activeSubtab.id}
-                label={subtab.label}
-                onClick={() => onActivateSubtab(subtab.id)}
-                onClose={() => onCloseSubtab(subtab.id)}
-                closable={!subtab.pinned}
-              />
-            ))}
-          </div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p
+            className="text-xs font-semibold uppercase tracking-[0.18em]"
+            style={{ color: adminTheme.accentDeep }}
+          >
+            Nivel 3 local
+          </p>
+          <p className="mt-1 text-sm font-medium" style={{ color: adminTheme.text }}>
+            {objectDef.name} / {tab.label}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {tab.subtabs.map((subtab) => (
+            <BadgeChip
+              key={subtab.id}
+              active={subtab.id === activeSubtab.id}
+              label={subtab.label}
+              onClick={() => onActivateSubtab(subtab.id)}
+              onClose={() => onCloseSubtab(subtab.id)}
+              closable={!subtab.pinned}
+            />
+          ))}
         </div>
       </div>
 
