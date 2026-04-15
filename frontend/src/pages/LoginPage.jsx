@@ -17,7 +17,7 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   if (user) {
-    return <Navigate to={user.isAdmin ? '/admin/settings' : '/'} />;
+    return <Navigate to={user.isAdmin ? '/admin' : '/'} />;
   }
 
   const handleChange = (e) => {

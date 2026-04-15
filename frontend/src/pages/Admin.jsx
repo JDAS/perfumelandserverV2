@@ -15,7 +15,7 @@ import { useAuthStore } from "../store/authStore";
 import { adminGradient, adminTheme } from "../theme/adminTheme";
 
 function Admin() {
-  const { objects, loading, refreshObjects } = useObjectMetadata();
+  const { objects, loading, loaded, error, refreshObjects } = useObjectMetadata();
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
@@ -153,12 +153,32 @@ function Admin() {
         </p>
       </div>
 
-      {loading ? (
+      {!loaded || loading ? (
         <div
           className="rounded-2xl p-6 shadow-[0_18px_48px_rgba(17,24,39,0.08)]"
           style={{ backgroundColor: adminTheme.surface }}
         >
-          <p>Cargando tabs...</p>
+          <p>Cargando objetos del admin...</p>
+        </div>
+      ) : error ? (
+        <div
+          className="rounded-2xl p-6 shadow-[0_18px_48px_rgba(17,24,39,0.08)]"
+          style={{ backgroundColor: adminTheme.surface }}
+        >
+          <p className="font-medium" style={{ color: adminTheme.text }}>
+            No se pudieron cargar los objetos del admin.
+          </p>
+          <p className="mt-2 text-sm" style={{ color: adminTheme.muted }}>
+            Vamos bien: esto no significa que falte instalar la suite. Solo falló la carga de metadata.
+          </p>
+          <button
+            type="button"
+            onClick={() => refreshObjects().catch(() => {})}
+            className="mt-4 rounded-lg px-4 py-2 text-sm font-semibold text-white"
+            style={{ background: adminGradient() }}
+          >
+            Reintentar
+          </button>
         </div>
       ) : objects.length === 0 ? (
         <SuiteSetupPanel
