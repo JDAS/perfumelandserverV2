@@ -149,6 +149,23 @@ function LauncherChip({ active, label, onClick }) {
   );
 }
 
+function CloseIcon({ className = "h-3 w-3" }) {
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    >
+      <path d="M3 3L9 9" />
+      <path d="M9 3L3 9" />
+    </svg>
+  );
+}
+
 function ClassicTab({ active, label, onClick, onClose, closable = false }) {
   return (
     <div
@@ -187,10 +204,10 @@ function ClassicTab({ active, label, onClick, onClose, closable = false }) {
               : {
                   backgroundColor: "rgba(255,255,255,0.72)",
                   color: adminTheme.muted,
-                }
+              }
           }
         >
-          ×
+          <CloseIcon className="h-2.5 w-2.5" />
         </button>
       ) : null}
     </div>
@@ -234,10 +251,10 @@ function BadgeChip({ active, label, onClick, onClose, closable = false }) {
               : {
                   backgroundColor: adminTheme.surface,
                   color: adminTheme.muted,
-                }
+              }
           }
         >
-          ×
+          <CloseIcon className="h-2.5 w-2.5" />
         </button>
       ) : null}
     </div>
