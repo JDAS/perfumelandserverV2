@@ -4,7 +4,7 @@ import {
   Draggable,
   Droppable,
 } from "@hello-pangea/dnd";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import DashboardsViewer from "../components/admin/DashboardsViewer";
 import ObjectListView from "../components/ObjectListView";
 import ReportsViewer from "../components/admin/ReportsViewer";
@@ -151,6 +151,14 @@ function Admin() {
         <p className="mt-3 text-xs uppercase tracking-[0.28em] text-white/55">
           Arrastra los tabs a tu gusto. El orden queda guardado en tu usuario.
         </p>
+        <div className="mt-4">
+          <Link
+            to="/admin/workspace-lab"
+            className="inline-flex rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white"
+          >
+            Probar workspace lab
+          </Link>
+        </div>
       </div>
 
       {!loaded || loading ? (

@@ -7,6 +7,7 @@ import Cart from "./pages/Cart";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import LoginPage from "./pages/LoginPage";
 import Admin from "./pages/Admin";
+import AdminWorkspaceLab from "./pages/AdminWorkspaceLab";
 import DynamicForm from "./pages/DynamicForm";
 import Builder from "./pages/Builder";
 import ObjectMetadataPage from "./pages/ObjectMetadataPage";
@@ -38,6 +39,10 @@ function App() {
               <Route
                 path="/admin/settings"
                 element={<AdminRoute><AdminLayout><SettingsPage /></AdminLayout></AdminRoute>}
+              />
+              <Route
+                path="/admin/workspace-lab"
+                element={<AdminRoute><AdminLayout><AdminWorkspaceLab /></AdminLayout></AdminRoute>}
               />
               <Route
                 path="/admin/object/:apiName"
