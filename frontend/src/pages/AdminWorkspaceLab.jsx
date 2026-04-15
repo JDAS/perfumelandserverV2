@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import ReportsViewer from "../components/admin/ReportsViewer";
+import Pagination from "../components/ui/Pagination";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 import {
   formatFieldValue,
@@ -302,14 +303,58 @@ function WorkspaceHeader({ activeTab, levelThreeAvailable }) {
   );
 }
 
+function formatFilterLabel(filter, objectDef) {
+  if (!filter?.field) return "Filtro";
+
+  const field = (objectDef?.fields || []).find((item) => item.apiName === filter.field);
+  const fieldLabel = field?.label || filter.field;
+  const operatorMap = {
+    eq: "=",
+    ne: "!=",
+    gt: ">",
+    gte: ">=",
+    lt: "<",
+    lte: "<=",
+    contains: "contiene",
+    in: "incluye",
+  };
+
+  return `${fieldLabel} ${operatorMap[filter.operator] || filter.operator || "="} ${String(
+    filter.value ?? ""
+  )}`;
+}
+
 function ListPanel({ objectDef, onOpenRecord }) {
   const [records, setRecords] = useState([]);
+  const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState("");
+  const [sortOrder, setSortOrder] = useState("desc");
   const listView = useMemo(() => getDefaultListView(objectDef), [objectDef]);
-  const columns = useMemo(
-    () => getListColumns(objectDef, listView).slice(0, 6),
-    [objectDef, listView]
+  const [viewApiName, setViewApiName] = useState(listView?.apiName || "");
+  const currentView = useMemo(
+    () =>
+      (objectDef?.listViews || []).find((view) => view.apiName === viewApiName) || listView,
+    [listView, objectDef?.listViews, viewApiName]
   );
+  const columns = useMemo(
+    () => getListColumns(objectDef, currentView).slice(0, 6),
+    [currentView, objectDef]
+  );
+  const activeFilters = currentView?.filters || [];
+
+  useEffect(() => {
+    setViewApiName(listView?.apiName || "");
+  }, [listView?.apiName]);
+
+  useEffect(() => {
+    setSortBy(currentView?.sortBy || "createdAt");
+    setSortOrder(currentView?.sortOrder || "desc");
+    setPage(1);
+  }, [currentView?.apiName, currentView?.sortBy, currentView?.sortOrder]);
 
   useEffect(() => {
     let cancelled = false;
@@ -318,17 +363,28 @@ function ListPanel({ objectDef, onOpenRecord }) {
       try {
         setLoading(true);
         const data = await getRecords(objectDef.apiName, {
-          page: 1,
+          page,
           limit: 12,
-          sortBy: "createdAt",
-          sortOrder: "desc",
+          search: searchTerm,
+          sortBy: sortBy || "createdAt",
+          sortOrder: sortOrder || "desc",
+          filters: JSON.stringify(activeFilters),
         });
         if (!cancelled) {
           setRecords(data?.records || []);
+          setPagination(
+            data?.pagination || {
+              page: data?.page || page,
+              pages: data?.pages || 1,
+              total: data?.total || 0,
+              limit: data?.limit || 12,
+            }
+          );
         }
       } catch {
         if (!cancelled) {
           setRecords([]);
+          setPagination(null);
         }
       } finally {
         if (!cancelled) {
@@ -341,13 +397,127 @@ function ListPanel({ objectDef, onOpenRecord }) {
     return () => {
       cancelled = true;
     };
-  }, [objectDef.apiName]);
+  }, [activeFilters, objectDef.apiName, page, searchTerm, sortBy, sortOrder]);
+
+  const handleApplySearch = () => {
+    setPage(1);
+    setSearchTerm(searchInput.trim());
+  };
+
+  const handleSort = (fieldApiName) => {
+    const sameField = sortBy === fieldApiName;
+    setPage(1);
+    setSortBy(fieldApiName);
+    setSortOrder(sameField && sortOrder === "asc" ? "desc" : "asc");
+  };
+
+  const createHref =
+    objectDef.apiName === "quote"
+      ? "/admin/quote-builder"
+      : `/admin/${objectDef.apiName}/new?tab=${objectDef.apiName}`;
 
   return (
-    <div
-      className="overflow-hidden rounded-2xl border"
-      style={{ backgroundColor: adminTheme.surface, borderColor: adminTheme.border }}
-    >
+    <div className="space-y-4">
+      <div
+        className="rounded-2xl border p-4"
+        style={{ backgroundColor: adminTheme.surface, borderColor: adminTheme.border }}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold" style={{ color: adminTheme.text }}>
+              {objectDef.name}
+            </h3>
+            <p className="text-sm" style={{ color: adminTheme.muted }}>
+              {objectDef.apiName}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to={createHref}
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-white"
+              style={{ backgroundColor: adminTheme.text }}
+            >
+              {objectDef.apiName === "quote" ? "Nueva cotizacion" : "Nuevo registro"}
+            </Link>
+
+            <Link
+              to={`/admin/object/${objectDef.apiName}`}
+              className="rounded-xl border px-4 py-2 text-sm font-semibold"
+              style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+            >
+              Configurar
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_220px_auto]">
+          <div>
+            <label className="mb-1 block text-sm font-medium" style={{ color: adminTheme.text }}>
+              Buscar
+            </label>
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  handleApplySearch();
+                }
+              }}
+              placeholder="Buscar registros..."
+              className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+              style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium" style={{ color: adminTheme.text }}>
+              Vista
+            </label>
+            <select
+              value={viewApiName}
+              onChange={(event) => setViewApiName(event.target.value)}
+              className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+              style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+            >
+              {(objectDef.listViews || []).map((view) => (
+                <option key={view.apiName} value={view.apiName}>
+                  {view.label || view.name || view.apiName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleApplySearch}
+            className="rounded-xl border px-4 py-3 text-sm font-semibold"
+            style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+          >
+            Aplicar
+          </button>
+        </div>
+
+        {activeFilters.length ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {activeFilters.map((filter, index) => (
+              <span
+                key={`${filter.field || "filter"}-${index}`}
+                className="rounded-full px-3 py-1 text-xs font-medium"
+                style={{ backgroundColor: adminTheme.surfaceAlt, color: adminTheme.muted }}
+              >
+                {formatFilterLabel(filter, objectDef)}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      <div
+        className="overflow-hidden rounded-2xl border"
+        style={{ backgroundColor: adminTheme.surface, borderColor: adminTheme.border }}
+      >
       {loading ? (
         <div className="p-5 text-sm" style={{ color: adminTheme.muted }}>
           Cargando registros...
@@ -367,7 +537,10 @@ function ListPanel({ objectDef, onOpenRecord }) {
                     className="border-b p-3 text-left text-sm font-semibold"
                     style={{ borderColor: adminTheme.border }}
                   >
-                    {field.label}
+                    <button type="button" onClick={() => handleSort(field.apiName)}>
+                      {field.label}
+                      {sortBy === field.apiName ? (sortOrder === "asc" ? " ↑" : " ↓") : ""}
+                    </button>
                   </th>
                 ))}
                 <th
@@ -406,6 +579,11 @@ function ListPanel({ objectDef, onOpenRecord }) {
           </table>
         </div>
       )}
+      </div>
+
+      {pagination ? (
+        <Pagination pagination={pagination} onChangePage={(nextPage) => setPage(nextPage)} />
+      ) : null}
     </div>
   );
 }
