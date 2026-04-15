@@ -763,24 +763,22 @@ export default function AdminWorkspaceLab() {
           (tab, index, tabs) => tabs.findIndex((candidate) => candidate.id === tab.id) === index
         );
 
-      return nextTabs.length ? nextTabs : [homeTab];
-    });
+      const finalTabs = nextTabs.length ? nextTabs : [homeTab];
 
-    setActiveTabId((current) => {
-      const validIds = new Set(
-        [homeTab, ...workspaceTabs]
-          .filter((tab) => tab.type === "home" || objectMap.has(tab.objectApi))
-          .map((tab) => tab.id)
+      setActiveTabId((currentActiveTabId) =>
+        finalTabs.some((tab) => tab.id === currentActiveTabId) ? currentActiveTabId : HOME_TAB_ID
       );
 
-      return current && validIds.has(current) ? current : HOME_TAB_ID;
-    });
+      setActiveObjectApi((currentObjectApi) => {
+        if (currentObjectApi && objectMap.has(currentObjectApi)) {
+          return currentObjectApi;
+        }
+        return objectTabs[0]?.apiName || "";
+      });
 
-    setActiveObjectApi((current) => {
-      if (current && objectMap.has(current)) return current;
-      return objectTabs[0]?.apiName || "";
+      return finalTabs;
     });
-  }, [homeTab, objectMap, objectTabs, restored, workspaceTabs]);
+  }, [homeTab, objectMap, objectTabs, restored]);
 
   useEffect(() => {
     if (!restored) return;
