@@ -5,6 +5,7 @@ import Pagination from "../components/ui/Pagination";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 import {
   formatFieldValue,
+  getLookupDisplayData,
   getDefaultListView,
   getDetailFields,
   getListColumns,
@@ -416,6 +417,24 @@ function ListPanel({ objectDef, onOpenRecord }) {
       ? "/admin/quote-builder"
       : `/admin/${objectDef.apiName}/new?tab=${objectDef.apiName}`;
 
+  const renderCellValue = (field, record) => {
+    if (field?.type === "lookup") {
+      const lookup = getLookupDisplayData(field, record?.[field.apiName], record);
+      if (lookup.isLinkable) {
+        return (
+          <Link
+            to={`/admin/${lookup.objectApi}/${lookup.recordId}/view?tab=${lookup.objectApi}`}
+            className="font-medium text-blue-600 underline-offset-2 hover:underline"
+          >
+            {lookup.label}
+          </Link>
+        );
+      }
+    }
+
+    return formatFieldValue(field, record[field.apiName], record);
+  };
+
   return (
     <div className="space-y-4">
       <div
@@ -560,7 +579,7 @@ function ListPanel({ objectDef, onOpenRecord }) {
                       className="border-b p-3 text-sm"
                       style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                     >
-                      {formatFieldValue(field, record[field.apiName], record)}
+                      {renderCellValue(field, record)}
                     </td>
                   ))}
                   <td className="border-b p-3" style={{ borderColor: adminTheme.border }}>
@@ -591,6 +610,24 @@ function ListPanel({ objectDef, onOpenRecord }) {
 function FieldGrid({ objectDef, record }) {
   const fields = getDetailFields(objectDef).slice(0, 16);
 
+  const renderFieldValue = (field) => {
+    if (field?.type === "lookup") {
+      const lookup = getLookupDisplayData(field, record?.[field.apiName], record);
+      if (lookup.isLinkable) {
+        return (
+          <Link
+            to={`/admin/${lookup.objectApi}/${lookup.recordId}/view?tab=${lookup.objectApi}`}
+            className="font-medium text-blue-600 underline-offset-2 hover:underline"
+          >
+            {lookup.label}
+          </Link>
+        );
+      }
+    }
+
+    return formatFieldValue(field, record?.[field.apiName], record);
+  };
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {fields.map((field) => (
@@ -609,7 +646,7 @@ function FieldGrid({ objectDef, record }) {
               color: adminTheme.text,
             }}
           >
-            {formatFieldValue(field, record?.[field.apiName], record)}
+            {renderFieldValue(field)}
           </div>
         </div>
       ))}

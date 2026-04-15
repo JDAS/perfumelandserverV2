@@ -10,6 +10,7 @@ import {
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 import {
   formatFieldValue,
+  getLookupDisplayData,
   getBackToListSearch,
   isBlankBlock,
   splitFieldsIntoColumns,
@@ -59,6 +60,20 @@ function RecordDetailPage() {
     (objectDef?.fields || []).find((field) => field.apiName === apiName);
 
   const renderFieldValue = (field) => {
+    if (field?.type === "lookup") {
+      const lookup = getLookupDisplayData(field, record?.[field.apiName], record);
+      if (lookup.isLinkable) {
+        return (
+          <Link
+            to={`/admin/${lookup.objectApi}/${lookup.recordId}/view?tab=${lookup.objectApi}`}
+            className="font-medium text-blue-600 underline-offset-2 hover:underline"
+          >
+            {lookup.label}
+          </Link>
+        );
+      }
+    }
+
     return formatFieldValue(field, record?.[field.apiName], record);
   };
 

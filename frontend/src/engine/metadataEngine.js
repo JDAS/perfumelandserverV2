@@ -94,12 +94,7 @@ function parseLocalDateValue(value) {
 
 export function formatFieldValue(field, value, record = null) {
   if (field?.type === "lookup") {
-    const lookupLabel =
-      record?._lookup?.[field.apiName]?.label ||
-      record?.[`${field.apiName}Label`] ||
-      value;
-
-    return lookupLabel || "-";
+    return getLookupDisplayData(field, value, record).label;
   }
 
   if (value === undefined || value === null || value === "") {
@@ -127,4 +122,18 @@ export function formatFieldValue(field, value, record = null) {
     default:
       return String(value);
   }
+}
+
+export function getLookupDisplayData(field, value, record = null) {
+  const lookupData = record?._lookup?.[field.apiName] || null;
+  const label = lookupData?.label || record?.[`${field.apiName}Label`] || value || "-";
+  const recordId = lookupData?.id || value || "";
+  const objectApi = field?.referenceTo || lookupData?.objectApi || "";
+
+  return {
+    label: label || "-",
+    recordId: recordId ? String(recordId) : "",
+    objectApi: objectApi ? String(objectApi) : "",
+    isLinkable: Boolean(field?.type === "lookup" && recordId && objectApi),
+  };
 }

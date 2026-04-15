@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { deleteRecord, getRelatedRecords } from "../services/customService";
-import { formatFieldValue } from "../engine/metadataEngine";
+import { formatFieldValue, getLookupDisplayData } from "../engine/metadataEngine";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 import AttachmentRelatedListSection from "./AttachmentRelatedListSection";
 import { useToast } from "./ui/ToastContext";
@@ -144,6 +144,24 @@ function RelatedListSection({ parentObject, parentId, section }) {
     }
   };
 
+  const renderCellValue = (field, record) => {
+    if (field?.type === "lookup") {
+      const lookup = getLookupDisplayData(field, record?.[field.apiName], record);
+      if (lookup.isLinkable) {
+        return (
+          <Link
+            to={`/admin/${lookup.objectApi}/${lookup.recordId}/view?tab=${lookup.objectApi}`}
+            className="font-medium text-blue-600 underline-offset-2 hover:underline"
+          >
+            {lookup.label}
+          </Link>
+        );
+      }
+    }
+
+    return formatFieldValue(field, record[field.apiName], record);
+  };
+
   return (
     <div className="bg-white rounded-xl shadow p-6">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -180,7 +198,7 @@ function RelatedListSection({ parentObject, parentId, section }) {
                 <tr key={record._id} className="hover:bg-gray-50">
                   {columns.map((field) => (
                     <td key={field.apiName} className="p-3 border-b">
-                      {formatFieldValue(field, record[field.apiName], record)}
+                      {renderCellValue(field, record)}
                     </td>
                   ))}
 
