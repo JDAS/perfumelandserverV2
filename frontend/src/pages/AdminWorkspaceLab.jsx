@@ -115,6 +115,19 @@ function makeRecordTab(record, objectDef) {
   };
 }
 
+function makeRecordTabFromLookup({ objectApi, recordId, label, objectDef }) {
+  return {
+    id: recordTabId(objectApi, recordId),
+    type: "record",
+    objectApi,
+    recordId,
+    label: label || `${objectDef?.name || "Registro"} ${String(recordId || "").slice(-6)}`,
+    pinned: false,
+    activeSubtabId: "detail",
+    subtabs: [{ id: "detail", type: "detail", label: "Detalle", pinned: true }],
+  };
+}
+
 function makeChildSubtab(record, objectDef) {
   return {
     id: childSubtabId(objectDef.apiName, record._id),
@@ -325,7 +338,7 @@ function formatFilterLabel(filter, objectDef) {
   )}`;
 }
 
-function ListPanel({ objectDef, onOpenRecord }) {
+function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
   const [records, setRecords] = useState([]);
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -422,12 +435,13 @@ function ListPanel({ objectDef, onOpenRecord }) {
       const lookup = getLookupDisplayData(field, record?.[field.apiName], record);
       if (lookup.isLinkable) {
         return (
-          <Link
-            to={`/admin/${lookup.objectApi}/${lookup.recordId}/view?tab=${lookup.objectApi}`}
+          <button
+            type="button"
+            onClick={() => onOpenLookupRecord(lookup)}
             className="font-medium text-blue-600 underline-offset-2 hover:underline"
           >
             {lookup.label}
-          </Link>
+          </button>
         );
       }
     }
@@ -607,7 +621,7 @@ function ListPanel({ objectDef, onOpenRecord }) {
   );
 }
 
-function FieldGrid({ objectDef, record }) {
+function FieldGrid({ objectDef, record, onOpenLookupRecord }) {
   const fields = getDetailFields(objectDef).slice(0, 16);
 
   const renderFieldValue = (field) => {
@@ -615,12 +629,13 @@ function FieldGrid({ objectDef, record }) {
       const lookup = getLookupDisplayData(field, record?.[field.apiName], record);
       if (lookup.isLinkable) {
         return (
-          <Link
-            to={`/admin/${lookup.objectApi}/${lookup.recordId}/view?tab=${lookup.objectApi}`}
+          <button
+            type="button"
+            onClick={() => onOpenLookupRecord(lookup)}
             className="font-medium text-blue-600 underline-offset-2 hover:underline"
           >
             {lookup.label}
-          </Link>
+          </button>
         );
       }
     }
@@ -654,7 +669,7 @@ function FieldGrid({ objectDef, record }) {
   );
 }
 
-function RelatedPanel({ parentObjectApi, parentId, section, onOpenRecord }) {
+function RelatedPanel({ parentObjectApi, parentId, section, onOpenRecord, onOpenLookupRecord }) {
   const { getObjectByApiNameFromCache } = useObjectMetadata();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -776,7 +791,19 @@ function RelatedPanel({ parentObjectApi, parentId, section, onOpenRecord }) {
                       className="border-b p-2 text-sm"
                       style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                     >
-                      {formatFieldValue(field, record[field.apiName], record)}
+                      {field?.type === "lookup" && getLookupDisplayData(field, record[field.apiName], record).isLinkable ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onOpenLookupRecord(getLookupDisplayData(field, record[field.apiName], record))
+                          }
+                          className="font-medium text-blue-600 underline-offset-2 hover:underline"
+                        >
+                          {getLookupDisplayData(field, record[field.apiName], record).label}
+                        </button>
+                      ) : (
+                        formatFieldValue(field, record[field.apiName], record)
+                      )}
                     </td>
                   ))}
                   <td className="border-b p-2" style={{ borderColor: adminTheme.border }}>
@@ -802,7 +829,13 @@ function RelatedPanel({ parentObjectApi, parentId, section, onOpenRecord }) {
   );
 }
 
-function RecordDetailPanel({ objectDef, recordId, allowChildren = false, onOpenChild }) {
+function RecordDetailPanel({
+  objectDef,
+  recordId,
+  allowChildren = false,
+  onOpenChild,
+  onOpenLookupRecord,
+}) {
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const relatedSections = (objectDef.layout?.[0]?.sections || []).filter(
@@ -881,7 +914,7 @@ function RecordDetailPanel({ objectDef, recordId, allowChildren = false, onOpenC
           </span>
         </div>
 
-        <FieldGrid objectDef={objectDef} record={record} />
+        <FieldGrid objectDef={objectDef} record={record} onOpenLookupRecord={onOpenLookupRecord} />
       </div>
 
       {allowChildren
@@ -892,6 +925,7 @@ function RecordDetailPanel({ objectDef, recordId, allowChildren = false, onOpenC
               parentId={recordId}
               section={section}
               onOpenRecord={onOpenChild}
+              onOpenLookupRecord={onOpenLookupRecord}
             />
           ))
         : null}
@@ -899,7 +933,14 @@ function RecordDetailPanel({ objectDef, recordId, allowChildren = false, onOpenC
   );
 }
 
-function RecordWorkspace({ objectDef, tab, onActivateSubtab, onCloseSubtab, onOpenChild }) {
+function RecordWorkspace({
+  objectDef,
+  tab,
+  onActivateSubtab,
+  onCloseSubtab,
+  onOpenChild,
+  onOpenLookupRecord,
+}) {
   const { getObjectByApiNameFromCache } = useObjectMetadata();
   const activeSubtab =
     tab.subtabs.find((subtab) => subtab.id === tab.activeSubtabId) || tab.subtabs[0];
@@ -930,9 +971,14 @@ function RecordWorkspace({ objectDef, tab, onActivateSubtab, onCloseSubtab, onOp
           recordId={tab.recordId}
           allowChildren
           onOpenChild={onOpenChild}
+          onOpenLookupRecord={onOpenLookupRecord}
         />
       ) : (
-        <RecordDetailPanel objectDef={childObjectDef} recordId={activeSubtab.recordId} />
+        <RecordDetailPanel
+          objectDef={childObjectDef}
+          recordId={activeSubtab.recordId}
+          onOpenLookupRecord={onOpenLookupRecord}
+        />
       )}
     </div>
   );
@@ -1064,6 +1110,29 @@ export default function AdminWorkspaceLab() {
       current.some((tab) => tab.id === nextRecordTab.id) ? current : [...current, nextRecordTab]
     );
   }, []);
+
+  const handleOpenLookupRecord = useCallback(
+    (lookup) => {
+      if (!lookup?.objectApi || !lookup?.recordId) return;
+
+      const targetObjectDef = objectMap.get(lookup.objectApi);
+      if (!targetObjectDef) return;
+
+      const nextRecordTab = makeRecordTabFromLookup({
+        objectApi: lookup.objectApi,
+        recordId: lookup.recordId,
+        label: lookup.label,
+        objectDef: targetObjectDef,
+      });
+
+      setActiveObjectApi(targetObjectDef.apiName);
+      setActiveTabId(nextRecordTab.id);
+      setWorkspaceTabs((current) =>
+        current.some((tab) => tab.id === nextRecordTab.id) ? current : [...current, nextRecordTab]
+      );
+    },
+    [objectMap]
+  );
 
   const handleFocusTab = useCallback((tab) => {
     setActiveTabId(tab.id);
@@ -1290,6 +1359,7 @@ export default function AdminWorkspaceLab() {
               <ListPanel
                 objectDef={activeObjectDef}
                 onOpenRecord={(record) => handleOpenRecord(activeObjectDef, record)}
+                onOpenLookupRecord={handleOpenLookupRecord}
               />
             ) : (
               <RecordWorkspace
@@ -1298,6 +1368,7 @@ export default function AdminWorkspaceLab() {
                 onActivateSubtab={handleActivateSubtab}
                 onCloseSubtab={handleCloseSubtab}
                 onOpenChild={handleOpenChild}
+                onOpenLookupRecord={handleOpenLookupRecord}
               />
             )}
           </div>
