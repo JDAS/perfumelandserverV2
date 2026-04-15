@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import ReportsViewer from "../components/admin/ReportsViewer";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 import {
   formatFieldValue,
@@ -12,6 +13,7 @@ import { useAuthStore } from "../store/authStore";
 import { adminGradient, adminTheme } from "../theme/adminTheme";
 
 const STORAGE_PREFIX = "admin-workspace-lab-v2";
+const HOME_TAB_ID = "home:financial-report";
 
 function readState(key) {
   try {
@@ -48,6 +50,16 @@ function recordTabId(objectApi, recordId) {
 
 function childSubtabId(objectApi, recordId) {
   return `child:${objectApi}:${recordId}`;
+}
+
+function makeHomeTab() {
+  return {
+    id: HOME_TAB_ID,
+    type: "home",
+    objectApi: "",
+    label: "Inicio",
+    pinned: true,
+  };
 }
 
 function getRecordLabel(record, objectDef) {
@@ -660,17 +672,6 @@ function RecordWorkspace({ objectDef, tab, onActivateSubtab, onCloseSubtab, onOp
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p
-            className="text-xs font-semibold uppercase tracking-[0.18em]"
-            style={{ color: adminTheme.accentDeep }}
-          >
-            Nivel 3 local
-          </p>
-          <p className="mt-1 text-sm font-medium" style={{ color: adminTheme.text }}>
-            {objectDef.name} / {tab.label}
-          </p>
-        </div>
         <div className="flex flex-wrap gap-2">
           {tab.subtabs.map((subtab) => (
             <BadgeChip
@@ -721,12 +722,13 @@ function AdminWorkspaceLab() {
     () => new Map(objectTabs.map((objectDef) => [objectDef.apiName, objectDef])),
     [objectTabs]
   );
+  const homeTab = useMemo(() => makeHomeTab(), []);
 
   useEffect(() => {
     const persisted = readState(storageKey);
     setActiveObjectApi(persisted?.activeObjectApi || "");
-    setActiveTabId(persisted?.activeTabId || "");
-    setWorkspaceTabs(persisted?.tabs || []);
+    setActiveTabId(persisted?.activeTabId || HOME_TAB_ID);
+    setWorkspaceTabs(persisted?.tabs?.length ? persisted.tabs : [makeHomeTab()]);
     setSeededInitialWorkspace(Boolean(persisted));
     setRestored(true);
   }, [storageKey]);
@@ -737,9 +739,13 @@ function AdminWorkspaceLab() {
     setWorkspaceTabs((current) => {
       const validApis = new Set(objectTabs.map((objectDef) => objectDef.apiName));
 
-      const nextTabs = current
-        .filter((tab) => validApis.has(tab.objectApi))
+      const nextTabs = [homeTab, ...current]
+        .filter((tab) => tab.type === "home" || validApis.has(tab.objectApi))
         .map((tab) => {
+          if (tab.type === "home") {
+            return homeTab;
+          }
+
           if (tab.type !== "record") return tab;
 
           const nextSubtabs = (tab.subtabs || [])
@@ -767,16 +773,18 @@ function AdminWorkspaceLab() {
 
       if (!nextTabs.length && !seededInitialWorkspace) {
         setSeededInitialWorkspace(true);
-        return [makeListTab(objectTabs[0])];
+        return [homeTab];
       }
 
-      return nextTabs;
+      return nextTabs.filter(
+        (tab, index, tabs) => tabs.findIndex((candidate) => candidate.id === tab.id) === index
+      );
     });
 
     setActiveTabId((current) => {
       const validIds = new Set(
-        workspaceTabs
-          .filter((tab) => objectMap.has(tab.objectApi))
+        [homeTab, ...workspaceTabs]
+          .filter((tab) => tab.type === "home" || objectMap.has(tab.objectApi))
           .map((tab) => tab.id)
       );
 
@@ -784,14 +792,14 @@ function AdminWorkspaceLab() {
         return current;
       }
 
-      return listTabId(objectTabs[0].apiName);
+      return HOME_TAB_ID;
     });
 
     setActiveObjectApi((current) => {
       if (current && objectMap.has(current)) return current;
       return objectTabs[0].apiName;
     });
-  }, [objectMap, objectTabs, restored, seededInitialWorkspace, workspaceTabs]);
+  }, [homeTab, objectMap, objectTabs, restored, seededInitialWorkspace, workspaceTabs]);
 
   useEffect(() => {
     if (!restored) return;
@@ -802,8 +810,7 @@ function AdminWorkspaceLab() {
     });
   }, [activeObjectApi, activeTabId, restored, storageKey, workspaceTabs]);
 
-  const activeTab =
-    workspaceTabs.find((tab) => tab.id === activeTabId) || workspaceTabs[0] || null;
+  const activeTab = workspaceTabs.find((tab) => tab.id === activeTabId) || homeTab;
 
   const handleObjectLaunch = useCallback((objectDef) => {
     const nextListTab = makeListTab(objectDef);
@@ -837,11 +844,16 @@ function AdminWorkspaceLab() {
 
   const handleCloseTab = useCallback((tabId) => {
     setWorkspaceTabs((current) => {
+      const closingTab = current.find((tab) => tab.id === tabId);
+      if (closingTab?.pinned) {
+        return current;
+      }
+
       const nextTabs = current.filter((tab) => tab.id !== tabId);
       const fallbackTab = nextTabs[nextTabs.length - 1] || null;
 
       setActiveTabId((currentActive) =>
-        currentActive === tabId ? fallbackTab?.id || "" : currentActive
+        currentActive === tabId ? fallbackTab?.id || HOME_TAB_ID : currentActive
       );
       setActiveObjectApi((currentObjectApi) =>
         currentActiveObjectApiResolver(currentObjectApi, nextTabs, tabId)
@@ -1084,12 +1096,14 @@ function AdminWorkspaceLab() {
               label={tab.label}
               onClick={() => handleFocusTab(tab)}
               onClose={() => handleCloseTab(tab.id)}
-              closable
+              closable={!tab.pinned}
             />
           ))}
         </div>
 
-        {activeTab.type === "list" ? (
+        {activeTab.type === "home" ? (
+          <ReportsViewer />
+        ) : activeTab.type === "list" ? (
           <ListPanel
             objectDef={activeObjectDef}
             onOpenRecord={(record) => handleOpenRecord(activeObjectDef, record)}
