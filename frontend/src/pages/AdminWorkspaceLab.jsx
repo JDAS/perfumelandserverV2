@@ -11,7 +11,7 @@ import { getRecordById, getRecords, getRelatedRecords } from "../services/custom
 import { useAuthStore } from "../store/authStore";
 import { adminGradient, adminTheme } from "../theme/adminTheme";
 
-const STORAGE_PREFIX = "admin-workspace-lab";
+const STORAGE_PREFIX = "admin-workspace-lab-v2";
 
 function readState(key) {
   try {
@@ -21,10 +21,8 @@ function readState(key) {
     const parsed = JSON.parse(raw);
     return {
       activeObjectApi: typeof parsed?.activeObjectApi === "string" ? parsed.activeObjectApi : "",
-      workspaces:
-        parsed?.workspaces && typeof parsed.workspaces === "object"
-          ? parsed.workspaces
-          : {},
+      activeTabId: typeof parsed?.activeTabId === "string" ? parsed.activeTabId : "",
+      tabs: Array.isArray(parsed?.tabs) ? parsed.tabs : [],
     };
   } catch {
     return null;
@@ -40,12 +38,16 @@ function writeState(key, value) {
   }
 }
 
-function buildWorkspace(objectApi) {
-  return {
-    objectApi,
-    activeTabId: "list",
-    tabs: [{ id: "list", type: "list", label: "Lista", pinned: true }],
-  };
+function listTabId(objectApi) {
+  return `list:${objectApi}`;
+}
+
+function recordTabId(objectApi, recordId) {
+  return `record:${objectApi}:${recordId}`;
+}
+
+function childSubtabId(objectApi, recordId) {
+  return `child:${objectApi}:${recordId}`;
 }
 
 function getRecordLabel(record, objectDef) {
@@ -76,21 +78,39 @@ function getRecordLabel(record, objectDef) {
   return `${objectDef?.name || "Registro"} ${String(record?._id || "").slice(-6)}`;
 }
 
+function makeListTab(objectDef) {
+  return {
+    id: listTabId(objectDef.apiName),
+    type: "list",
+    objectApi: objectDef.apiName,
+    label: objectDef.name,
+    pinned: true,
+  };
+}
+
 function makeRecordTab(record, objectDef) {
   return {
-    id: `record:${objectDef.apiName}:${record._id}`,
+    id: recordTabId(objectDef.apiName, record._id),
     type: "record",
     objectApi: objectDef.apiName,
     recordId: record._id,
     label: getRecordLabel(record, objectDef),
+    pinned: false,
     activeSubtabId: "detail",
-    subtabs: [{ id: "detail", type: "detail", label: "Detalle", pinned: true }],
+    subtabs: [
+      {
+        id: "detail",
+        type: "detail",
+        label: "Detalle",
+        pinned: true,
+      },
+    ],
   };
 }
 
 function makeChildSubtab(record, objectDef) {
   return {
-    id: `child:${objectDef.apiName}:${record._id}`,
+    id: childSubtabId(objectDef.apiName, record._id),
     type: "record",
     objectApi: objectDef.apiName,
     recordId: record._id,
@@ -99,25 +119,12 @@ function makeChildSubtab(record, objectDef) {
   };
 }
 
-function TabChip({
-  active,
-  label,
-  onClick,
-  onClose,
-  closable = false,
-  dark = false,
-  small = false,
-  stack = false,
-}) {
-  const className = `inline-flex items-center gap-2 border font-medium transition ${
-    small ? "rounded-lg px-2.5 py-1.5 text-xs" : "rounded-xl px-3 py-2 text-sm"
-  } ${stack ? "w-full justify-between" : ""}`;
-
+function TabChip({ active, label, onClick, onClose, closable = false, dark = false }) {
   const style = active
     ? dark
       ? {
           background: "rgba(255,255,255,0.18)",
-          color: "#fff",
+          color: "#FFFFFF",
           borderColor: "rgba(255,255,255,0.22)",
         }
       : {
@@ -139,7 +146,10 @@ function TabChip({
         };
 
   return (
-    <div className={className} style={style}>
+    <div
+      className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition"
+      style={style}
+    >
       <button type="button" onClick={onClick} className="text-left">
         {label}
       </button>
@@ -148,8 +158,8 @@ function TabChip({
           type="button"
           onClick={onClose}
           className="text-xs opacity-80 hover:opacity-100"
-          aria-label={`Cerrar ${label}`}
           title={`Cerrar ${label}`}
+          aria-label={`Cerrar ${label}`}
         >
           x
         </button>
@@ -158,50 +168,37 @@ function TabChip({
   );
 }
 
-function Card({ eyebrow, title, description, dark = false, right, children }) {
+function WorkspaceHeader({ activeTab, levelThreeAvailable }) {
   return (
-    <section
-      className="rounded-2xl border p-4"
-      style={
-        dark
-          ? {
-              background: adminGradient(),
-              borderColor: "rgba(255,255,255,0.08)",
-              color: "#fff",
-            }
-          : {
-              background: "linear-gradient(180deg, #FFFFFF 0%, #F8FAFD 100%)",
-              borderColor: adminTheme.border,
-            }
-      }
-    >
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p
-            className="text-xs uppercase tracking-[0.22em]"
-            style={{ color: dark ? "rgba(255,255,255,0.6)" : adminTheme.muted }}
-          >
-            {eyebrow}
-          </p>
-          <h2
-            className="mt-1 text-xl font-semibold"
-            style={{ color: dark ? "#fff" : adminTheme.text }}
-          >
-            {title}
-          </h2>
-          {description ? (
-            <p
-              className="mt-1 text-sm"
-              style={{ color: dark ? "rgba(255,255,255,0.75)" : adminTheme.muted }}
-            >
-              {description}
-            </p>
-          ) : null}
-        </div>
-        {right}
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p
+          className="text-xs uppercase tracking-[0.22em]"
+          style={{ color: adminTheme.muted }}
+        >
+          Area de trabajo
+        </p>
+        <h2 className="mt-1 text-xl font-semibold" style={{ color: adminTheme.text }}>
+          {activeTab?.type === "list"
+            ? `${activeTab.label} · Lista`
+            : `${activeTab?.label || "Registro abierto"}`}
+        </h2>
+        <p className="mt-1 text-sm" style={{ color: adminTheme.muted }}>
+          {activeTab?.type === "list"
+            ? "Abre registros para enviarlos al nivel 2."
+            : "Dentro del registro activo puedes abrir hijos en un nivel 3 local."}
+        </p>
       </div>
-      {children}
-    </section>
+
+      {levelThreeAvailable ? (
+        <div
+          className="rounded-full px-3 py-1 text-xs font-semibold"
+          style={{ backgroundColor: adminTheme.surfaceAlt, color: adminTheme.muted }}
+        >
+          Nivel 3 disponible
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -252,19 +249,6 @@ function ListPanel({ objectDef, onOpenRecord }) {
       className="rounded-2xl border p-5 shadow-[0_16px_36px_rgba(17,24,39,0.06)]"
       style={{ backgroundColor: adminTheme.surface, borderColor: adminTheme.border }}
     >
-      <p
-        className="mb-1 text-xs font-semibold uppercase tracking-[0.18em]"
-        style={{ color: adminTheme.accentDeep }}
-      >
-        Lista activa
-      </p>
-      <h3 className="text-xl font-semibold" style={{ color: adminTheme.text }}>
-        {objectDef.name}
-      </h3>
-      <p className="mb-4 text-sm" style={{ color: adminTheme.muted }}>
-        Desde aqui se abren tabs de nivel 2 para registros individuales.
-      </p>
-
       {loading ? (
         <p style={{ color: adminTheme.muted }}>Cargando registros...</p>
       ) : records.length === 0 ? (
@@ -327,7 +311,7 @@ function FieldGrid({ objectDef, record }) {
   const fields = getDetailFields(objectDef).slice(0, 16);
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {fields.map((field) => (
         <div key={field.apiName}>
           <p
@@ -493,7 +477,7 @@ function RelatedPanel({ parentObjectApi, parentId, section, onOpenRecord }) {
   );
 }
 
-function RecordView({ objectDef, recordId, allowChildren = false, onOpenChild }) {
+function RecordDetailPanel({ objectDef, recordId, allowChildren = false, onOpenChild }) {
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const relatedSections = (objectDef.layout?.[0]?.sections || []).filter(
@@ -591,7 +575,7 @@ function RecordView({ objectDef, recordId, allowChildren = false, onOpenChild })
   );
 }
 
-function RecordArea({ objectDef, tab, onActivateSubtab, onCloseSubtab, onOpenChild }) {
+function RecordWorkspace({ objectDef, tab, onActivateSubtab, onCloseSubtab, onOpenChild }) {
   const { getObjectByApiNameFromCache } = useObjectMetadata();
   const activeSubtab =
     tab.subtabs.find((subtab) => subtab.id === tab.activeSubtabId) || tab.subtabs[0];
@@ -601,7 +585,7 @@ function RecordArea({ objectDef, tab, onActivateSubtab, onCloseSubtab, onOpenChi
       : objectDef;
 
   return (
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+    <div className="space-y-4">
       <div
         className="rounded-2xl border p-4"
         style={{
@@ -609,43 +593,45 @@ function RecordArea({ objectDef, tab, onActivateSubtab, onCloseSubtab, onOpenChi
           borderColor: adminTheme.border,
         }}
       >
-        <p
-          className="mb-1 text-xs font-semibold uppercase tracking-[0.18em]"
-          style={{ color: adminTheme.accentDeep }}
-        >
-          Nivel 3 local
-        </p>
-        <p className="text-sm font-medium" style={{ color: adminTheme.text }}>
-          {objectDef.name} / {tab.label}
-        </p>
-        <p className="mb-3 text-xs" style={{ color: adminTheme.muted }}>
-          Detalle del padre y registros hijos abiertos desde sus listas relacionadas.
-        </p>
-        <div className="flex flex-wrap gap-2 xl:flex-col">
-          {tab.subtabs.map((subtab) => (
-            <TabChip
-              key={subtab.id}
-              active={subtab.id === activeSubtab.id}
-              label={subtab.label}
-              onClick={() => onActivateSubtab(subtab.id)}
-              onClose={() => onCloseSubtab(subtab.id)}
-              closable={!subtab.pinned}
-              small
-              stack
-            />
-          ))}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p
+              className="text-xs font-semibold uppercase tracking-[0.18em]"
+              style={{ color: adminTheme.accentDeep }}
+            >
+              Nivel 3 local
+            </p>
+            <p className="mt-1 text-sm font-medium" style={{ color: adminTheme.text }}>
+              {objectDef.name} / {tab.label}
+            </p>
+            <p className="mt-1 text-xs" style={{ color: adminTheme.muted }}>
+              Los hijos viven dentro del registro activo, no como una card aparte.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {tab.subtabs.map((subtab) => (
+              <TabChip
+                key={subtab.id}
+                active={subtab.id === activeSubtab.id}
+                label={subtab.label}
+                onClick={() => onActivateSubtab(subtab.id)}
+                onClose={() => onCloseSubtab(subtab.id)}
+                closable={!subtab.pinned}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
       {activeSubtab.type === "detail" ? (
-        <RecordView
+        <RecordDetailPanel
           objectDef={objectDef}
           recordId={tab.recordId}
           allowChildren
           onOpenChild={onOpenChild}
         />
       ) : (
-        <RecordView objectDef={childObjectDef} recordId={activeSubtab.recordId} />
+        <RecordDetailPanel objectDef={childObjectDef} recordId={activeSubtab.recordId} />
       )}
     </div>
   );
@@ -659,7 +645,8 @@ function AdminWorkspaceLab() {
     [user?._id, user?.email]
   );
   const [activeObjectApi, setActiveObjectApi] = useState("");
-  const [workspaces, setWorkspaces] = useState({});
+  const [activeTabId, setActiveTabId] = useState("");
+  const [workspaceTabs, setWorkspaceTabs] = useState([]);
   const [restored, setRestored] = useState(false);
 
   const objectTabs = useMemo(
@@ -667,168 +654,191 @@ function AdminWorkspaceLab() {
     [objects]
   );
 
+  const objectMap = useMemo(
+    () => new Map(objectTabs.map((objectDef) => [objectDef.apiName, objectDef])),
+    [objectTabs]
+  );
+
   useEffect(() => {
     const persisted = readState(storageKey);
     setActiveObjectApi(persisted?.activeObjectApi || "");
-    setWorkspaces(persisted?.workspaces || {});
+    setActiveTabId(persisted?.activeTabId || "");
+    setWorkspaceTabs(persisted?.tabs || []);
     setRestored(true);
   }, [storageKey]);
 
   useEffect(() => {
     if (!restored || !objectTabs.length) return;
 
-    const validApis = new Set(objectTabs.map((objectDef) => objectDef.apiName));
-    setActiveObjectApi((current) =>
-      current && validApis.has(current) ? current : objectTabs[0].apiName
-    );
+    setWorkspaceTabs((current) => {
+      const validApis = new Set(objectTabs.map((objectDef) => objectDef.apiName));
 
-    setWorkspaces((current) => {
-      const next = { ...current };
-      for (const objectDef of objectTabs) {
-        if (!next[objectDef.apiName]) {
-          next[objectDef.apiName] = buildWorkspace(objectDef.apiName);
-        }
+      const nextTabs = current
+        .filter((tab) => validApis.has(tab.objectApi))
+        .map((tab) => {
+          if (tab.type !== "record") return tab;
+
+          const nextSubtabs = (tab.subtabs || [])
+            .filter((subtab) => subtab.id === "detail" || validApis.has(subtab.objectApi))
+            .map((subtab) =>
+              subtab.id === "detail"
+                ? subtab
+                : {
+                    ...subtab,
+                    label: subtab.label || "Relacionado",
+                  }
+            );
+
+          return {
+            ...tab,
+            subtabs: nextSubtabs.length
+              ? nextSubtabs
+              : [{ id: "detail", type: "detail", label: "Detalle", pinned: true }],
+            activeSubtabId:
+              nextSubtabs.some((subtab) => subtab.id === tab.activeSubtabId)
+                ? tab.activeSubtabId
+                : "detail",
+          };
+        });
+
+      if (!nextTabs.length) {
+        return [makeListTab(objectTabs[0])];
       }
-      Object.keys(next).forEach((apiName) => {
-        if (!validApis.has(apiName)) {
-          delete next[apiName];
-        }
-      });
-      return next;
+
+      return nextTabs;
     });
-  }, [objectTabs, restored]);
+
+    setActiveTabId((current) => {
+      const validIds = new Set(
+        workspaceTabs
+          .filter((tab) => objectMap.has(tab.objectApi))
+          .map((tab) => tab.id)
+      );
+
+      if (current && validIds.has(current)) {
+        return current;
+      }
+
+      return listTabId(objectTabs[0].apiName);
+    });
+
+    setActiveObjectApi((current) => {
+      if (current && objectMap.has(current)) return current;
+      return objectTabs[0].apiName;
+    });
+  }, [objectMap, objectTabs, restored, workspaceTabs]);
 
   useEffect(() => {
     if (!restored) return;
-    writeState(storageKey, { activeObjectApi, workspaces });
-  }, [activeObjectApi, restored, storageKey, workspaces]);
-
-  const activeObjectDef = objectTabs.find((objectDef) => objectDef.apiName === activeObjectApi);
-  const activeWorkspace = activeObjectApi ? workspaces[activeObjectApi] : null;
-  const activeLevelTwoTab =
-    activeWorkspace?.tabs.find((tab) => tab.id === activeWorkspace.activeTabId) ||
-    activeWorkspace?.tabs?.[0] ||
-    null;
-
-  const openObjectWorkspace = useCallback((objectDef) => {
-    setActiveObjectApi(objectDef.apiName);
-    setWorkspaces((current) => ({
-      ...current,
-      [objectDef.apiName]:
-        current[objectDef.apiName] || buildWorkspace(objectDef.apiName),
-    }));
-  }, []);
-
-  const openRecordAtLevelTwo = useCallback((objectDef, record) => {
-    const nextTab = makeRecordTab(record, objectDef);
-    setActiveObjectApi(objectDef.apiName);
-    setWorkspaces((current) => {
-      const workspace = current[objectDef.apiName] || buildWorkspace(objectDef.apiName);
-      return {
-        ...current,
-        [objectDef.apiName]: {
-          ...workspace,
-          activeTabId: nextTab.id,
-          tabs: workspace.tabs.some((tab) => tab.id === nextTab.id)
-            ? workspace.tabs
-            : [...workspace.tabs, nextTab],
-        },
-      };
+    writeState(storageKey, {
+      activeObjectApi,
+      activeTabId,
+      tabs: workspaceTabs,
     });
+  }, [activeObjectApi, activeTabId, restored, storageKey, workspaceTabs]);
+
+  const activeTab =
+    workspaceTabs.find((tab) => tab.id === activeTabId) || workspaceTabs[0] || null;
+
+  const handleObjectLaunch = useCallback((objectDef) => {
+    const nextListTab = makeListTab(objectDef);
+    setActiveObjectApi(objectDef.apiName);
+    setActiveTabId(nextListTab.id);
+    setWorkspaceTabs((current) =>
+      current.some((tab) => tab.id === nextListTab.id)
+        ? current
+        : [...current, nextListTab]
+    );
   }, []);
 
-  const activateLevelTwoTab = useCallback((objectApi, tabId) => {
-    setWorkspaces((current) => ({
-      ...current,
-      [objectApi]: {
-        ...(current[objectApi] || buildWorkspace(objectApi)),
-        activeTabId: tabId,
-      },
-    }));
+  const handleOpenRecord = useCallback((objectDef, record) => {
+    const nextRecordTab = makeRecordTab(record, objectDef);
+    setActiveObjectApi(objectDef.apiName);
+    setActiveTabId(nextRecordTab.id);
+    setWorkspaceTabs((current) =>
+      current.some((tab) => tab.id === nextRecordTab.id)
+        ? current
+        : [...current, nextRecordTab]
+    );
   }, []);
 
-  const closeLevelTwoTab = useCallback((objectApi, tabId) => {
-    setWorkspaces((current) => {
-      const workspace = current[objectApi];
-      if (!workspace) return current;
-      const tabs = workspace.tabs.filter((tab) => tab.id !== tabId);
-      return {
-        ...current,
-        [objectApi]: {
-          ...workspace,
-          tabs: tabs.length ? tabs : buildWorkspace(objectApi).tabs,
-          activeTabId:
-            workspace.activeTabId === tabId
-              ? tabs[tabs.length - 1]?.id || "list"
-              : workspace.activeTabId,
-        },
-      };
-    });
-  }, []);
-
-  const openChildAtLevelThree = useCallback(
-    (objectApi, levelTwoTabId, record, childObjectDef) => {
-      const childSubtab = makeChildSubtab(record, childObjectDef);
-      setWorkspaces((current) => {
-        const workspace = current[objectApi];
-        if (!workspace) return current;
-        return {
-          ...current,
-          [objectApi]: {
-            ...workspace,
-            tabs: workspace.tabs.map((tab) => {
-              if (tab.id !== levelTwoTabId || tab.type !== "record") return tab;
-              return {
-                ...tab,
-                activeSubtabId: childSubtab.id,
-                subtabs: tab.subtabs.some((subtab) => subtab.id === childSubtab.id)
-                  ? tab.subtabs
-                  : [...tab.subtabs, childSubtab],
-              };
-            }),
-          },
-        };
-      });
+  const handleFocusTab = useCallback(
+    (tab) => {
+      setActiveTabId(tab.id);
+      setActiveObjectApi(tab.objectApi);
     },
     []
   );
 
-  const activateLevelThreeTab = useCallback((objectApi, levelTwoTabId, subtabId) => {
-    setWorkspaces((current) => ({
-      ...current,
-      [objectApi]: {
-        ...current[objectApi],
-        tabs: current[objectApi].tabs.map((tab) =>
-          tab.id === levelTwoTabId && tab.type === "record"
-            ? { ...tab, activeSubtabId: subtabId }
-            : tab
-        ),
-      },
-    }));
+  const handleCloseTab = useCallback((tabId) => {
+    setWorkspaceTabs((current) => {
+      const nextTabs = current.filter((tab) => tab.id !== tabId);
+      const fallbackTab = nextTabs[nextTabs.length - 1] || null;
+
+      setActiveTabId((currentActive) =>
+        currentActive === tabId ? fallbackTab?.id || "" : currentActive
+      );
+      setActiveObjectApi((currentObjectApi) =>
+        currentActiveObjectApiResolver(currentObjectApi, nextTabs, tabId)
+      );
+
+      return nextTabs;
+    });
   }, []);
 
-  const closeLevelThreeTab = useCallback((objectApi, levelTwoTabId, subtabId) => {
-    setWorkspaces((current) => ({
-      ...current,
-      [objectApi]: {
-        ...current[objectApi],
-        tabs: current[objectApi].tabs.map((tab) => {
-          if (tab.id !== levelTwoTabId || tab.type !== "record") return tab;
-          const subtabs = tab.subtabs.filter((subtab) => subtab.id !== subtabId);
-          return {
-            ...tab,
-            subtabs: subtabs.length
-              ? subtabs
-              : [{ id: "detail", type: "detail", label: "Detalle", pinned: true }],
-            activeSubtabId:
-              tab.activeSubtabId === subtabId
-                ? subtabs[subtabs.length - 1]?.id || "detail"
-                : tab.activeSubtabId,
-          };
-        }),
-      },
-    }));
-  }, []);
+  const handleOpenChild = useCallback((record, childObjectDef) => {
+    if (!activeTab || activeTab.type !== "record") return;
+
+    const nextChildSubtab = makeChildSubtab(record, childObjectDef);
+
+    setWorkspaceTabs((current) =>
+      current.map((tab) => {
+        if (tab.id !== activeTab.id || tab.type !== "record") return tab;
+
+        return {
+          ...tab,
+          activeSubtabId: nextChildSubtab.id,
+          subtabs: tab.subtabs.some((subtab) => subtab.id === nextChildSubtab.id)
+            ? tab.subtabs
+            : [...tab.subtabs, nextChildSubtab],
+        };
+      })
+    );
+  }, [activeTab]);
+
+  const handleActivateSubtab = useCallback((subtabId) => {
+    if (!activeTab || activeTab.type !== "record") return;
+
+    setWorkspaceTabs((current) =>
+      current.map((tab) =>
+        tab.id === activeTab.id && tab.type === "record"
+          ? { ...tab, activeSubtabId: subtabId }
+          : tab
+      )
+    );
+  }, [activeTab]);
+
+  const handleCloseSubtab = useCallback((subtabId) => {
+    if (!activeTab || activeTab.type !== "record") return;
+
+    setWorkspaceTabs((current) =>
+      current.map((tab) => {
+        if (tab.id !== activeTab.id || tab.type !== "record") return tab;
+
+        const nextSubtabs = tab.subtabs.filter((subtab) => subtab.id !== subtabId);
+        return {
+          ...tab,
+          subtabs: nextSubtabs.length
+            ? nextSubtabs
+            : [{ id: "detail", type: "detail", label: "Detalle", pinned: true }],
+          activeSubtabId:
+            tab.activeSubtabId === subtabId
+              ? nextSubtabs[nextSubtabs.length - 1]?.id || "detail"
+              : tab.activeSubtabId,
+        };
+      })
+    );
+  }, [activeTab]);
 
   if (!restored || !loaded || loading) {
     return (
@@ -841,7 +851,7 @@ function AdminWorkspaceLab() {
     );
   }
 
-  if (!objectTabs.length || !activeObjectDef || !activeWorkspace || !activeLevelTwoTab) {
+  if (!objectTabs.length || !activeTab) {
     return (
       <div
         className="rounded-[28px] p-6 shadow-[0_20px_56px_rgba(17,24,39,0.18)]"
@@ -853,6 +863,9 @@ function AdminWorkspaceLab() {
       </div>
     );
   }
+
+  const activeObjectDef = objectMap.get(activeTab.objectApi);
+  const levelThreeAvailable = activeTab.type === "record";
 
   return (
     <div className="space-y-4">
@@ -867,10 +880,11 @@ function AdminWorkspaceLab() {
             </p>
             <h1 className="mt-2 text-3xl font-bold">Prueba de navegacion multinivel</h1>
             <p className="mt-2 max-w-3xl text-sm text-white/75">
-              Nivel 1 por objetos, nivel 2 por lista y registros abiertos, y nivel 3
-              local para hijos relacionados dentro del registro activo.
+              Nivel 1 lanza listas al nivel 2. En el nivel 2 conviven listas y registros
+              abiertos de distintos tipos. El nivel 3 vive dentro del registro activo.
             </p>
           </div>
+
           <Link
             to="/admin"
             className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white"
@@ -880,110 +894,85 @@ function AdminWorkspaceLab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(360px,430px)_minmax(0,1fr)]">
-        <Card
-          dark
-          eyebrow="Nivel 1 · Objetos"
-          title="Objetos principales"
-          description="Cada objeto conserva su propio workspace aunque cambies a otro."
-          right={
-            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/80">
-              Persiste al refrescar
-            </span>
-          }
-        >
-          <div className="flex flex-wrap gap-2">
-            {objectTabs.map((objectDef) => (
-              <TabChip
-                key={objectDef.apiName}
-                active={objectDef.apiName === activeObjectApi}
-                label={objectDef.name}
-                onClick={() => openObjectWorkspace(objectDef)}
-                dark
-              />
-            ))}
-          </div>
-        </Card>
-
-        <Card
-          eyebrow={`Nivel 2 · Workspace de ${activeObjectDef.name}`}
-          title="Tabs del objeto activo"
-          description="La lista vive como tab fijo y los registros abiertos quedan al lado."
-          right={
-            <div
-              className="rounded-full px-3 py-1 text-xs font-semibold"
-              style={{ backgroundColor: adminTheme.surfaceAlt, color: adminTheme.text }}
-            >
-              {activeWorkspace.tabs.length} tabs abiertos
-            </div>
-          }
-        >
-          <div className="flex flex-wrap gap-2">
-            {activeWorkspace.tabs.map((tab) => (
-              <TabChip
-                key={tab.id}
-                active={tab.id === activeWorkspace.activeTabId}
-                label={tab.label}
-                onClick={() => activateLevelTwoTab(activeObjectApi, tab.id)}
-                onClose={() => closeLevelTwoTab(activeObjectApi, tab.id)}
-                closable={!tab.pinned}
-              />
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      <Card
-        eyebrow="Area de trabajo"
-        title={
-          activeLevelTwoTab.type === "list"
-            ? `${activeObjectDef.name} · Lista`
-            : `${activeObjectDef.name} · ${activeLevelTwoTab.label}`
-        }
-        description={
-          activeLevelTwoTab.type === "list"
-            ? "Abre registros para sentir el cambio a nivel 2."
-            : "El nivel 3 ahora vive al lado del detalle para aprovechar mejor el espacio."
-        }
-        right={
-          activeLevelTwoTab.type === "record" ? (
-            <div
-              className="rounded-full px-3 py-1 text-xs font-semibold"
-              style={{ backgroundColor: adminTheme.surfaceAlt, color: adminTheme.muted }}
-            >
-              Nivel 3 disponible
-            </div>
-          ) : null
-        }
+      <section
+        className="rounded-2xl border p-4 text-white"
+        style={{ background: adminGradient(), borderColor: "rgba(255,255,255,0.08)" }}
       >
-        {activeLevelTwoTab.type === "list" ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-white/60">
+              Nivel 1 · Objetos
+            </p>
+            <p className="mt-1 text-sm text-white/75">
+              Presiona un objeto y su lista se abre o se enfoca en el nivel 2.
+            </p>
+          </div>
+          <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/80">
+            Persiste al refrescar
+          </span>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {objectTabs.map((objectDef) => (
+            <TabChip
+              key={objectDef.apiName}
+              active={objectDef.apiName === activeObjectApi}
+              label={objectDef.name}
+              onClick={() => handleObjectLaunch(objectDef)}
+              dark
+            />
+          ))}
+        </div>
+      </section>
+
+      <section
+        className="rounded-2xl border p-4"
+        style={{
+          background: "linear-gradient(180deg, #FFFFFF 0%, #F8FAFD 100%)",
+          borderColor: adminTheme.border,
+        }}
+      >
+        <WorkspaceHeader activeTab={activeTab} levelThreeAvailable={levelThreeAvailable} />
+
+        <div className="mb-4 flex flex-wrap gap-2">
+          {workspaceTabs.map((tab) => (
+            <TabChip
+              key={tab.id}
+              active={tab.id === activeTab.id}
+              label={tab.label}
+              onClick={() => handleFocusTab(tab)}
+              onClose={() => handleCloseTab(tab.id)}
+              closable={!tab.pinned}
+            />
+          ))}
+        </div>
+
+        {activeTab.type === "list" ? (
           <ListPanel
             objectDef={activeObjectDef}
-            onOpenRecord={(record) => openRecordAtLevelTwo(activeObjectDef, record)}
+            onOpenRecord={(record) => handleOpenRecord(activeObjectDef, record)}
           />
         ) : (
-          <RecordArea
+          <RecordWorkspace
             objectDef={activeObjectDef}
-            tab={activeLevelTwoTab}
-            onActivateSubtab={(subtabId) =>
-              activateLevelThreeTab(activeObjectApi, activeLevelTwoTab.id, subtabId)
-            }
-            onCloseSubtab={(subtabId) =>
-              closeLevelThreeTab(activeObjectApi, activeLevelTwoTab.id, subtabId)
-            }
-            onOpenChild={(record, childObjectDef) =>
-              openChildAtLevelThree(
-                activeObjectApi,
-                activeLevelTwoTab.id,
-                record,
-                childObjectDef
-              )
-            }
+            tab={activeTab}
+            onActivateSubtab={handleActivateSubtab}
+            onCloseSubtab={handleCloseSubtab}
+            onOpenChild={handleOpenChild}
           />
         )}
-      </Card>
+      </section>
     </div>
   );
+}
+
+function currentActiveObjectApiResolver(currentObjectApi, nextTabs, closedTabId) {
+  if (nextTabs.some((tab) => tab.objectApi === currentObjectApi)) {
+    return currentObjectApi;
+  }
+
+  const fallbackTab = nextTabs[nextTabs.length - 1] || null;
+  return fallbackTab?.objectApi || "";
 }
 
 export default AdminWorkspaceLab;
