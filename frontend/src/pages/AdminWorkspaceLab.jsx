@@ -189,6 +189,15 @@ function makeChildSubtab(record, objectDef) {
   };
 }
 
+function makeEditSubtab() {
+  return {
+    id: "edit",
+    type: "edit",
+    label: "Editar",
+    pinned: false,
+  };
+}
+
 function LauncherChip({ active, label, onClick, icon: Icon = null }) {
   return (
     <button
@@ -578,6 +587,198 @@ function CreateRecordModal({ open, objectDef, onClose, onCreated, initialValues 
   );
 }
 
+function EditRecordPanel({ objectDef, recordId, onSaved }) {
+  const { addToast } = useToast();
+  const fields = useMemo(() => getFormFields(objectDef), [objectDef]);
+  const activeLayout = objectDef?.layout?.[0];
+  const [formData, setFormData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRecord() {
+      try {
+        setLoading(true);
+        const record = await getRecordById(objectDef.apiName, recordId);
+        if (cancelled) return;
+
+        const nextState = Object.fromEntries(
+          fields.map((field) => [field.apiName, formatValueForInput(field, record?.[field.apiName])])
+        );
+        setFormData(nextState);
+      } catch (error) {
+        console.error(error);
+        if (!cancelled) {
+          setFormData({});
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadRecord();
+    return () => {
+      cancelled = true;
+    };
+  }, [fields, objectDef.apiName, recordId]);
+
+  const handleChange = (apiName, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [apiName]: value,
+    }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    for (const field of fields) {
+      const value = formData[field.apiName];
+      if (field.required && (value === undefined || value === null || value === "")) {
+        addToast(`${field.label} es requerido`, "warning");
+        return;
+      }
+    }
+
+    try {
+      setSaving(true);
+      const payload = Object.fromEntries(
+        fields
+          .filter((field) => !["formula", "rollup"].includes(field.type))
+          .map((field) => [field.apiName, formData[field.apiName]])
+      );
+      const updated = await updateRecord(objectDef.apiName, recordId, payload);
+      addToast("Registro actualizado", "success");
+      await onSaved?.(updated);
+    } catch (error) {
+      console.error(error);
+      addToast(error?.response?.data?.error || "No se pudo actualizar el registro", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const renderFieldOrBlank = (item, index) => {
+    if (isBlankBlock(item)) {
+      return (
+        <div
+          key={`${item}-${index}`}
+          className="h-[72px] rounded-xl border-2 border-dashed"
+          style={{ borderColor: adminTheme.border, backgroundColor: adminTheme.surfaceAlt }}
+        />
+      );
+    }
+
+    const field = fields.find((currentField) => currentField.apiName === item);
+    if (!field) return null;
+
+    return (
+      <div key={field.apiName} className="mb-3">
+        {field.type !== "boolean" ? (
+          <label className="mb-1 block text-sm font-medium" style={{ color: adminTheme.text }}>
+            {field.label}
+            {field.required ? <span className="ml-1 text-red-500">*</span> : null}
+          </label>
+        ) : null}
+
+        {renderFieldInput(
+          field,
+          formData[field.apiName],
+          (value) => handleChange(field.apiName, value),
+          {
+            objectDef,
+            formData,
+            setFormData,
+          }
+        )}
+      </div>
+    );
+  };
+
+  const fieldSections = (activeLayout?.sections || []).filter(
+    (section) => section.type !== "relatedList"
+  );
+
+  if (loading) {
+    return (
+      <div
+        className="rounded-2xl border p-5"
+        style={{ backgroundColor: adminTheme.surface, borderColor: adminTheme.border }}
+      >
+        <p style={{ color: adminTheme.muted }}>Cargando formulario...</p>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 rounded-2xl border p-5"
+      style={{ backgroundColor: adminTheme.surface, borderColor: adminTheme.border }}
+    >
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em]" style={{ color: adminTheme.accentDeep }}>
+            Editar {objectDef.name}
+          </p>
+          <h3 className="mt-1 text-2xl font-semibold" style={{ color: adminTheme.text }}>
+            {recordId}
+          </h3>
+        </div>
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          style={{ backgroundColor: adminTheme.text }}
+        >
+          {saving ? "Guardando..." : "Guardar cambios"}
+        </button>
+      </div>
+
+      {fieldSections.length ? (
+        <div className="space-y-5">
+          {fieldSections.map((section, sectionIndex) => {
+            const sectionFields = section.fields || [];
+            const twoColumn = section.columns === 2;
+            const { col1, col2 } = splitFieldsIntoColumns(sectionFields);
+
+            return (
+              <div key={`${section.label || "section"}-${sectionIndex}`}>
+                {section.label ? (
+                  <div className="mb-4">
+                    <p className="text-xs uppercase tracking-[0.22em]" style={{ color: adminTheme.muted }}>
+                      {section.label}
+                    </p>
+                  </div>
+                ) : null}
+
+                {twoColumn ? (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>{col1.map((item, index) => renderFieldOrBlank(item, index))}</div>
+                    <div>{col2.map((item, index) => renderFieldOrBlank(item, index + col1.length))}</div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {sectionFields.map((item, index) => renderFieldOrBlank(item, index))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {fields.map((field, index) => renderFieldOrBlank(field.apiName, index))}
+        </div>
+      )}
+    </form>
+  );
+}
+
 function formatValueForInput(field, value) {
   if (value === undefined || value === null || value === "") return "";
 
@@ -647,7 +848,7 @@ function getFieldDefaultValue(field) {
   return "";
 }
 
-function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
+function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLookupRecord }) {
   const { addToast } = useToast();
   const [records, setRecords] = useState([]);
   const [pagination, setPagination] = useState(null);
@@ -1082,19 +1283,16 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
                         <Eye className="h-4 w-4" strokeWidth={2} />
                       </button>
 
-                      <Link
-                        to={
-                          objectDef.apiName === "quote"
-                            ? `/admin/quote-builder/${record._id}`
-                            : `/admin/${objectDef.apiName}/${record._id}?tab=${objectDef.apiName}`
-                        }
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditRecord(objectDef, record)}
                         title="Editar"
                         aria-label="Editar"
                         className="inline-flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold"
                         style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                       >
                         <Pencil className="h-4 w-4" strokeWidth={2} />
-                      </Link>
+                      </button>
 
                       {objectDef.apiName === "sales" ? (
                         <>
@@ -1715,6 +1913,7 @@ function RecordWorkspace({
   onCloseSubtab,
   onOpenChild,
   onOpenLookupRecord,
+  onRecordSaved,
 }) {
   const { getObjectByApiNameFromCache } = useObjectMetadata();
   const activeSubtab =
@@ -1747,6 +1946,12 @@ function RecordWorkspace({
           allowChildren
           onOpenChild={onOpenChild}
           onOpenLookupRecord={onOpenLookupRecord}
+        />
+      ) : activeSubtab.type === "edit" ? (
+        <EditRecordPanel
+          objectDef={objectDef}
+          recordId={tab.recordId}
+          onSaved={(updatedRecord) => onRecordSaved(tab.id, objectDef, updatedRecord)}
         />
       ) : (
         <RecordDetailPanel
@@ -1836,7 +2041,12 @@ export default function AdminWorkspaceLab() {
           if (tab.type !== "record") return tab;
 
           const nextSubtabs = (tab.subtabs || [])
-            .filter((subtab) => subtab.id === "detail" || validApis.has(subtab.objectApi))
+            .filter(
+              (subtab) =>
+                subtab.id === "detail" ||
+                subtab.id === "edit" ||
+                validApis.has(subtab.objectApi)
+            )
             .map((subtab) =>
               subtab.id === "detail" ? subtab : { ...subtab, label: subtab.label || "Relacionado" }
             );
@@ -1920,6 +2130,39 @@ export default function AdminWorkspaceLab() {
     );
   }, []);
 
+  const handleOpenEditRecord = useCallback((objectDef, record) => {
+    const nextRecordTab = makeRecordTab(record, objectDef);
+    const editSubtab = makeEditSubtab();
+
+    setActiveObjectApi(objectDef.apiName);
+    setActiveTabId(nextRecordTab.id);
+    setWorkspaceTabs((current) => {
+      const existingTab = current.find((tab) => tab.id === nextRecordTab.id);
+      if (!existingTab || existingTab.type !== "record") {
+        return [
+          ...current,
+          {
+            ...nextRecordTab,
+            activeSubtabId: editSubtab.id,
+            subtabs: [...nextRecordTab.subtabs, editSubtab],
+          },
+        ];
+      }
+
+      return current.map((tab) => {
+        if (tab.id !== nextRecordTab.id || tab.type !== "record") return tab;
+
+        const hasEditSubtab = tab.subtabs.some((subtab) => subtab.id === editSubtab.id);
+        return {
+          ...tab,
+          label: nextRecordTab.label,
+          activeSubtabId: editSubtab.id,
+          subtabs: hasEditSubtab ? tab.subtabs : [...tab.subtabs, editSubtab],
+        };
+      });
+    });
+  }, []);
+
   const handleOpenLookupRecord = useCallback(
     (lookup) => {
       if (!lookup?.objectApi || !lookup?.recordId) return;
@@ -1942,6 +2185,20 @@ export default function AdminWorkspaceLab() {
     },
     [objectMap]
   );
+
+  const handleRecordSaved = useCallback((tabId, objectDef, updatedRecord) => {
+    setWorkspaceTabs((current) =>
+      current.map((tab) => {
+        if (tab.id !== tabId || tab.type !== "record") return tab;
+
+        return {
+          ...tab,
+          label: getRecordLabel(updatedRecord, objectDef),
+          activeSubtabId: "detail",
+        };
+      })
+    );
+  }, []);
 
   const handleFocusTab = useCallback((tab) => {
     setActiveTabId(tab.id);
@@ -2184,6 +2441,7 @@ export default function AdminWorkspaceLab() {
               <ListPanel
                 objectDef={activeObjectDef}
                 onOpenRecord={(record) => handleOpenRecord(activeObjectDef, record)}
+                onOpenEditRecord={(record) => handleOpenEditRecord(activeObjectDef, record)}
                 onOpenLookupRecord={handleOpenLookupRecord}
               />
             ) : (
@@ -2194,6 +2452,7 @@ export default function AdminWorkspaceLab() {
                 onCloseSubtab={handleCloseSubtab}
                 onOpenChild={handleOpenChild}
                 onOpenLookupRecord={handleOpenLookupRecord}
+                onRecordSaved={handleRecordSaved}
               />
             )}
           </div>
