@@ -376,16 +376,15 @@ function QuickActionButton({ children, icon: Icon = null, className = "", ...pro
   return (
     <button
       type="button"
-      className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-60 ${className}`}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold disabled:opacity-60 ${className}`}
       {...props}
     >
       {Icon ? <Icon className="h-4 w-4" strokeWidth={2} /> : null}
-      <span>{children}</span>
     </button>
   );
 }
 
-function CreateRecordModal({ open, objectDef, onClose, onCreated }) {
+function CreateRecordModal({ open, objectDef, onClose, onCreated, initialValues = {} }) {
   const { addToast } = useToast();
   const fields = useMemo(() => getFormFields(objectDef), [objectDef]);
   const activeLayout = objectDef?.layout?.[0];
@@ -398,8 +397,8 @@ function CreateRecordModal({ open, objectDef, onClose, onCreated }) {
     const initialState = Object.fromEntries(
       fields.map((field) => [field.apiName, getFieldDefaultValue(field)])
     );
-    setFormData(initialState);
-  }, [fields, open]);
+    setFormData({ ...initialState, ...initialValues });
+  }, [fields, initialValues, open]);
 
   if (!open || !objectDef) return null;
 
@@ -1074,11 +1073,12 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
                       <button
                         type="button"
                         onClick={() => onOpenRecord(record)}
-                        className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
+                        title="Ver"
+                        aria-label="Ver"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold"
                         style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                       >
                         <Eye className="h-4 w-4" strokeWidth={2} />
-                        Ver
                       </button>
 
                       <Link
@@ -1087,27 +1087,31 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
                             ? `/admin/quote-builder/${record._id}`
                             : `/admin/${objectDef.apiName}/${record._id}?tab=${objectDef.apiName}`
                         }
-                        className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
+                        title="Editar"
+                        aria-label="Editar"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold"
                         style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                       >
                         <Pencil className="h-4 w-4" strokeWidth={2} />
-                        Editar
                       </Link>
 
                       {objectDef.apiName === "sales" ? (
                         <>
                           <Link
                             to={`/admin/payment/new?tab=payment&prefill_sale_id=${record._id}`}
-                            className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
+                            title="Registrar pago"
+                            aria-label="Registrar pago"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold"
                             style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                           >
                             <CreditCard className="h-4 w-4" strokeWidth={2} />
-                            Registrar pago
                           </Link>
                           <QuickActionButton
                             onClick={() => handleSyncCampaigns(record._id)}
                             disabled={syncingCampaignId === record._id}
                             icon={Sparkles}
+                            title={syncingCampaignId === record._id ? "Evaluando promo..." : "Evaluar promo"}
+                            aria-label={syncingCampaignId === record._id ? "Evaluando promo..." : "Evaluar promo"}
                             style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                           >
                             {syncingCampaignId === record._id ? "Evaluando..." : "Evaluar promo"}
@@ -1117,6 +1121,8 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
                               onClick={() => handleMarkCommissionPaid(record)}
                               disabled={markingCommissionId === record._id}
                               icon={BadgeCheck}
+                              title={markingCommissionId === record._id ? "Marcando comision..." : "Comision pagada"}
+                              aria-label={markingCommissionId === record._id ? "Marcando comision..." : "Comision pagada"}
                               style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                             >
                               {markingCommissionId === record._id ? "Marcando..." : "Comision pagada"}
@@ -1130,6 +1136,20 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
                           onClick={() => handleConvertQuote(record)}
                           disabled={convertingQuoteId === record._id || record.status === "Convertida"}
                           icon={ChartColumn}
+                          title={
+                            record.status === "Convertida"
+                              ? "Convertida"
+                              : convertingQuoteId === record._id
+                                ? "Convirtiendo..."
+                                : "Convertir"
+                          }
+                          aria-label={
+                            record.status === "Convertida"
+                              ? "Convertida"
+                              : convertingQuoteId === record._id
+                                ? "Convirtiendo..."
+                                : "Convertir"
+                          }
                           style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                         >
                           {record.status === "Convertida"
@@ -1145,6 +1165,8 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
                           onClick={() => handleOpenSummary(record._id)}
                           disabled={summaryLoadingId === record._id}
                           icon={FileText}
+                          title={summaryLoadingId === record._id ? "Cargando resumen..." : "Resumen"}
+                          aria-label={summaryLoadingId === record._id ? "Cargando resumen..." : "Resumen"}
                           style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                         >
                           {summaryLoadingId === record._id ? "Cargando..." : "Resumen"}
@@ -1154,6 +1176,8 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
                       <QuickActionButton
                         onClick={() => handleDelete(record._id)}
                         icon={Trash2}
+                        title="Eliminar"
+                        aria-label="Eliminar"
                         style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                       >
                         Eliminar
@@ -1360,9 +1384,11 @@ function LayoutDetailSections({ objectDef, record, onOpenLookupRecord }) {
 }
 
 function RelatedPanel({ parentObjectApi, parentId, section, onOpenRecord, onOpenLookupRecord }) {
+  const { addToast } = useToast();
   const { getObjectByApiNameFromCache } = useObjectMetadata();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const relatedObjectDef = getObjectByApiNameFromCache(section.relatedObject);
 
   const columns = useMemo(
@@ -1434,12 +1460,24 @@ function RelatedPanel({ parentObjectApi, parentId, section, onOpenRecord, onOpen
         <h4 className="text-base font-semibold" style={{ color: adminTheme.text }}>
           {section.label}
         </h4>
-        <span
-          className="rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
-          style={{ backgroundColor: adminTheme.surface, color: adminTheme.muted }}
-        >
-          Nivel 3
-        </span>
+        <div className="flex items-center gap-2">
+          {relatedObjectDef ? (
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
+              style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+            >
+              Nuevo
+            </button>
+          ) : null}
+          <span
+            className="rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
+            style={{ backgroundColor: adminTheme.surface, color: adminTheme.muted }}
+          >
+            Nivel 3
+          </span>
+        </div>
       </div>
 
       {loading ? (
@@ -1497,17 +1535,19 @@ function RelatedPanel({ parentObjectApi, parentId, section, onOpenRecord, onOpen
                     </td>
                   ))}
                   <td className="border-b p-2" style={{ borderColor: adminTheme.border }}>
-                    <button
+                    <QuickActionButton
                       type="button"
+                      title="Ver"
+                      aria-label="Ver"
+                      icon={Eye}
                       disabled={!relatedObjectDef}
                       onClick={() =>
                         relatedObjectDef && onOpenRecord(record, relatedObjectDef)
                       }
-                      className="rounded-lg border px-3 py-1 text-sm font-medium disabled:opacity-60"
                       style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                     >
-                      Ver hijo
-                    </button>
+                      Ver
+                    </QuickActionButton>
                   </td>
                 </tr>
               ))}
@@ -1515,6 +1555,39 @@ function RelatedPanel({ parentObjectApi, parentId, section, onOpenRecord, onOpen
           </table>
         </div>
       )}
+
+      <CreateRecordModal
+        open={showCreateModal}
+        objectDef={relatedObjectDef}
+        initialValues={{ [section.relatedField]: parentId }}
+        onClose={() => setShowCreateModal(false)}
+        onCreated={async (createdRecord) => {
+          setShowCreateModal(false);
+          try {
+            setLoading(true);
+            const data = await getRelatedRecords(
+              parentObjectApi,
+              parentId,
+              section.relatedObject,
+              section.relatedField,
+              {
+                sortField: section.sortField || "",
+                sortOrder: section.sortOrder || "desc",
+              }
+            );
+            setRecords(data?.records || []);
+          } catch (error) {
+            console.error(error);
+            addToast("No se pudo refrescar la lista relacionada", "error");
+          } finally {
+            setLoading(false);
+          }
+
+          if (createdRecord?._id && relatedObjectDef) {
+            onOpenRecord(createdRecord, relatedObjectDef);
+          }
+        }}
+      />
     </div>
   );
 }
