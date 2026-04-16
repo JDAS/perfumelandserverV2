@@ -160,6 +160,7 @@ function makeRecordTab(record, objectDef) {
     recordId: record._id,
     label: getRecordLabel(record, objectDef),
     pinned: false,
+    refreshKey: 0,
     activeSubtabId: "detail",
     subtabs: [{ id: "detail", type: "detail", label: "Detalle", pinned: true }],
   };
@@ -173,6 +174,7 @@ function makeRecordTabFromLookup({ objectApi, recordId, label, objectDef }) {
     recordId,
     label: label || `${objectDef?.name || "Registro"} ${String(recordId || "").slice(-6)}`,
     pinned: false,
+    refreshKey: 0,
     activeSubtabId: "detail",
     subtabs: [{ id: "detail", type: "detail", label: "Detalle", pinned: true }],
   };
@@ -715,29 +717,7 @@ function EditRecordPanel({ objectDef, recordId, onSaved }) {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-4 rounded-2xl border p-5"
-      style={{ backgroundColor: adminTheme.surface, borderColor: adminTheme.border }}
-    >
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.18em]" style={{ color: adminTheme.accentDeep }}>
-            Editar {objectDef.name}
-          </p>
-          <h3 className="mt-1 text-2xl font-semibold" style={{ color: adminTheme.text }}>
-            {recordId}
-          </h3>
-        </div>
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-          style={{ backgroundColor: adminTheme.text }}
-        >
-          {saving ? "Guardando..." : "Guardar cambios"}
-        </button>
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-4">
 
       {fieldSections.length ? (
         <div className="space-y-5">
@@ -1799,9 +1779,14 @@ function RelatedPanel({ parentObjectApi, parentId, section, onOpenRecord, onOpen
 function RecordDetailPanel({
   objectDef,
   recordId,
+  refreshKey = 0,
   allowChildren = false,
   onOpenChild,
   onOpenLookupRecord,
+  mode = "view",
+  onStartEdit,
+  onCancelEdit,
+  onSaved,
 }) {
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1834,7 +1819,7 @@ function RecordDetailPanel({
     return () => {
       cancelled = true;
     };
-  }, [objectDef.apiName, recordId]);
+  }, [objectDef.apiName, recordId, refreshKey]);
 
   if (loading) {
     return (
@@ -1881,11 +1866,44 @@ function RecordDetailPanel({
           </span>
         </div>
 
-        <LayoutDetailSections
-          objectDef={objectDef}
-          record={record}
-          onOpenLookupRecord={onOpenLookupRecord}
-        />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs uppercase tracking-[0.22em]" style={{ color: adminTheme.muted }}>
+            {mode === "edit" ? "Editando" : "Detalles"}
+          </p>
+
+          {mode === "view" ? (
+            <button
+              type="button"
+              onClick={onStartEdit}
+              className="rounded-xl border px-3 py-2 text-sm font-semibold"
+              style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+            >
+              Editar
+            </button>
+          ) : null}
+        </div>
+
+        {mode === "edit" ? (
+          <div className="space-y-4">
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={onCancelEdit}
+                className="rounded-xl border px-4 py-2 text-sm font-semibold"
+                style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+              >
+                Cancelar
+              </button>
+            </div>
+            <EditRecordPanel objectDef={objectDef} recordId={recordId} onSaved={onSaved} />
+          </div>
+        ) : (
+          <LayoutDetailSections
+            objectDef={objectDef}
+            record={record}
+            onOpenLookupRecord={onOpenLookupRecord}
+          />
+        )}
       </div>
 
       <div className="space-y-4">
@@ -1914,6 +1932,8 @@ function RecordWorkspace({
   onOpenChild,
   onOpenLookupRecord,
   onRecordSaved,
+  onStartEdit,
+  onCancelEdit,
 }) {
   const { getObjectByApiNameFromCache } = useObjectMetadata();
   const activeSubtab =
@@ -1927,7 +1947,7 @@ function RecordWorkspace({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
-        {tab.subtabs.map((subtab) => (
+        {tab.subtabs.filter((subtab) => subtab.id !== "edit").map((subtab) => (
           <BadgeChip
             key={subtab.id}
             active={subtab.id === activeSubtab.id}
@@ -1943,23 +1963,27 @@ function RecordWorkspace({
         <RecordDetailPanel
           objectDef={objectDef}
           recordId={tab.recordId}
+          refreshKey={tab.refreshKey}
           allowChildren
           onOpenChild={onOpenChild}
           onOpenLookupRecord={onOpenLookupRecord}
-        />
-      ) : activeSubtab.type === "edit" ? (
-        <EditRecordPanel
-          objectDef={objectDef}
-          recordId={tab.recordId}
+          mode={tab.activeSubtabId === "edit" ? "edit" : "view"}
+          onStartEdit={() => onStartEdit(tab.id)}
+          onCancelEdit={() => onCancelEdit(tab.id)}
           onSaved={(updatedRecord) => onRecordSaved(tab.id, objectDef, updatedRecord)}
         />
       ) : (
         <RecordDetailPanel
           objectDef={childObjectDef}
           recordId={activeSubtab.recordId}
+          refreshKey={tab.refreshKey}
           allowChildren
           onOpenChild={onOpenChild}
           onOpenLookupRecord={onOpenLookupRecord}
+          mode={tab.activeSubtabId === "edit" ? "edit" : "view"}
+          onStartEdit={() => onStartEdit(tab.id)}
+          onCancelEdit={() => onCancelEdit(tab.id)}
+          onSaved={(updatedRecord) => onRecordSaved(tab.id, childObjectDef, updatedRecord)}
         />
       )}
     </div>
@@ -2163,6 +2187,34 @@ export default function AdminWorkspaceLab() {
     });
   }, []);
 
+  const handleStartEdit = useCallback((tabId) => {
+    setWorkspaceTabs((current) =>
+      current.map((tab) => {
+        if (tab.id !== tabId || tab.type !== "record") return tab;
+
+        const editSubtab = makeEditSubtab();
+        const hasEditSubtab = tab.subtabs.some((subtab) => subtab.id === editSubtab.id);
+        return {
+          ...tab,
+          activeSubtabId: editSubtab.id,
+          subtabs: hasEditSubtab ? tab.subtabs : [...tab.subtabs, editSubtab],
+        };
+      })
+    );
+  }, []);
+
+  const handleCancelEdit = useCallback((tabId) => {
+    setWorkspaceTabs((current) =>
+      current.map((tab) => {
+        if (tab.id !== tabId || tab.type !== "record") return tab;
+        return {
+          ...tab,
+          activeSubtabId: "detail",
+        };
+      })
+    );
+  }, []);
+
   const handleOpenLookupRecord = useCallback(
     (lookup) => {
       if (!lookup?.objectApi || !lookup?.recordId) return;
@@ -2194,6 +2246,7 @@ export default function AdminWorkspaceLab() {
         return {
           ...tab,
           label: getRecordLabel(updatedRecord, objectDef),
+          refreshKey: (tab.refreshKey || 0) + 1,
           activeSubtabId: "detail",
         };
       })
@@ -2453,6 +2506,8 @@ export default function AdminWorkspaceLab() {
                 onOpenChild={handleOpenChild}
                 onOpenLookupRecord={handleOpenLookupRecord}
                 onRecordSaved={handleRecordSaved}
+                onStartEdit={handleStartEdit}
+                onCancelEdit={handleCancelEdit}
               />
             )}
           </div>
