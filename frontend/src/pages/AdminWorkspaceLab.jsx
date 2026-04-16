@@ -718,6 +718,16 @@ function EditRecordPanel({ objectDef, recordId, onSaved }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          style={{ backgroundColor: adminTheme.text }}
+        >
+          {saving ? "Guardando..." : "Guardar cambios"}
+        </button>
+      </div>
 
       {fieldSections.length ? (
         <div className="space-y-5">
