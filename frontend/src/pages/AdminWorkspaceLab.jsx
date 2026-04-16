@@ -667,6 +667,7 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
   const [copying, setCopying] = useState(false);
   const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
   const listView = useMemo(() => getDefaultListView(objectDef), [objectDef]);
+  const createInitialValues = useMemo(() => ({}), []);
   const [viewApiName, setViewApiName] = useState(listView?.apiName || "");
   const currentView = useMemo(
     () =>
@@ -1199,6 +1200,7 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
       <CreateRecordModal
         open={showCreateModal}
         objectDef={objectDef}
+        initialValues={createInitialValues}
         onClose={() => setShowCreateModal(false)}
         onCreated={async (createdRecord) => {
           setShowCreateModal(false);
@@ -1390,6 +1392,10 @@ function RelatedPanel({ parentObjectApi, parentId, section, onOpenRecord, onOpen
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const relatedObjectDef = getObjectByApiNameFromCache(section.relatedObject);
+  const relatedInitialValues = useMemo(
+    () => ({ [section.relatedField]: parentId }),
+    [parentId, section.relatedField]
+  );
 
   const columns = useMemo(
     () =>
@@ -1559,7 +1565,7 @@ function RelatedPanel({ parentObjectApi, parentId, section, onOpenRecord, onOpen
       <CreateRecordModal
         open={showCreateModal}
         objectDef={relatedObjectDef}
-        initialValues={{ [section.relatedField]: parentId }}
+        initialValues={relatedInitialValues}
         onClose={() => setShowCreateModal(false)}
         onCreated={async (createdRecord) => {
           setShowCreateModal(false);
