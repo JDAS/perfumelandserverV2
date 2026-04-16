@@ -978,7 +978,7 @@ function RecordDetailPanel({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)]">
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,4fr)_minmax(320px,2fr)]">
       <div
         className="rounded-2xl border p-5"
         style={{ backgroundColor: adminTheme.surface, borderColor: adminTheme.border }}
@@ -1069,6 +1069,8 @@ function RecordWorkspace({
         <RecordDetailPanel
           objectDef={childObjectDef}
           recordId={activeSubtab.recordId}
+          allowChildren
+          onOpenChild={onOpenChild}
           onOpenLookupRecord={onOpenLookupRecord}
         />
       )}
