@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import DashboardsViewer from "../components/admin/DashboardsViewer";
 import ReportsViewer from "../components/admin/ReportsViewer";
 import Pagination from "../components/ui/Pagination";
 import { renderFieldInput } from "../components/fields/FieldRegistry";
@@ -20,6 +21,8 @@ import { adminTheme } from "../theme/adminTheme";
 
 const STORAGE_PREFIX = "admin-workspace-lab-v2";
 const HOME_TAB_ID = "home:financial-report";
+const REPORTS_TAB_ID = "reports:viewer";
+const DASHBOARDS_TAB_ID = "dashboards:viewer";
 
 function readState(key) {
   try {
@@ -65,6 +68,26 @@ function makeHomeTab() {
     objectApi: "",
     label: "Inicio",
     pinned: true,
+  };
+}
+
+function makeReportsTab() {
+  return {
+    id: REPORTS_TAB_ID,
+    type: "reports",
+    objectApi: "",
+    label: "Reportes",
+    pinned: false,
+  };
+}
+
+function makeDashboardsTab() {
+  return {
+    id: DASHBOARDS_TAB_ID,
+    type: "dashboards",
+    objectApi: "",
+    label: "Dashboards",
+    pinned: false,
   };
 }
 
@@ -1432,6 +1455,8 @@ export default function AdminWorkspaceLab() {
   );
 
   const homeTab = useMemo(() => makeHomeTab(), []);
+  const reportsTab = useMemo(() => makeReportsTab(), []);
+  const dashboardsTab = useMemo(() => makeDashboardsTab(), []);
 
   useEffect(() => {
     const persisted = readState(storageKey);
@@ -1448,10 +1473,24 @@ export default function AdminWorkspaceLab() {
       const validApis = new Set(objectTabs.map((objectDef) => objectDef.apiName));
 
       const nextTabs = [homeTab, ...current]
-        .filter((tab) => tab.type === "home" || validApis.has(tab.objectApi))
+        .filter(
+          (tab) =>
+            tab.type === "home" ||
+            tab.type === "reports" ||
+            tab.type === "dashboards" ||
+            validApis.has(tab.objectApi)
+        )
         .map((tab) => {
           if (tab.type === "home") {
             return homeTab;
+          }
+
+          if (tab.type === "reports") {
+            return reportsTab;
+          }
+
+          if (tab.type === "dashboards") {
+            return dashboardsTab;
           }
 
           if (tab.type !== "record") return tab;
@@ -1492,7 +1531,7 @@ export default function AdminWorkspaceLab() {
 
       return finalTabs;
     });
-  }, [homeTab, objectMap, objectTabs, restored]);
+  }, [dashboardsTab, homeTab, objectMap, objectTabs, reportsTab, restored]);
 
   useEffect(() => {
     if (!restored) return;
@@ -1515,6 +1554,22 @@ export default function AdminWorkspaceLab() {
       current.some((tab) => tab.id === nextListTab.id) ? current : [...current, nextListTab]
     );
   }, []);
+
+  const handleOpenReports = useCallback(() => {
+    setActiveObjectApi("");
+    setActiveTabId(reportsTab.id);
+    setWorkspaceTabs((current) =>
+      current.some((tab) => tab.id === reportsTab.id) ? current : [...current, reportsTab]
+    );
+  }, [reportsTab]);
+
+  const handleOpenDashboards = useCallback(() => {
+    setActiveObjectApi("");
+    setActiveTabId(dashboardsTab.id);
+    setWorkspaceTabs((current) =>
+      current.some((tab) => tab.id === dashboardsTab.id) ? current : [...current, dashboardsTab]
+    );
+  }, [dashboardsTab]);
 
   const handleOpenRecord = useCallback((objectDef, record) => {
     const nextRecordTab = makeRecordTab(record, objectDef);
@@ -1739,6 +1794,16 @@ export default function AdminWorkspaceLab() {
           </p>
 
           <div className="mt-3 flex flex-wrap gap-2">
+            <LauncherChip
+              active={activeTab?.type === "reports"}
+              label="Reportes"
+              onClick={handleOpenReports}
+            />
+            <LauncherChip
+              active={activeTab?.type === "dashboards"}
+              label="Dashboards"
+              onClick={handleOpenDashboards}
+            />
             {objectTabs.map((objectDef) => (
               <LauncherChip
                 key={objectDef.apiName}
@@ -1769,6 +1834,10 @@ export default function AdminWorkspaceLab() {
 
             {activeTab.type === "home" ? (
               <ReportsViewer />
+            ) : activeTab.type === "reports" ? (
+              <ReportsViewer />
+            ) : activeTab.type === "dashboards" ? (
+              <DashboardsViewer />
             ) : activeTab.type === "list" ? (
               <ListPanel
                 objectDef={activeObjectDef}
