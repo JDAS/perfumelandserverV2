@@ -978,7 +978,7 @@ function RecordDetailPanel({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)]">
       <div
         className="rounded-2xl border p-5"
         style={{ backgroundColor: adminTheme.surface, borderColor: adminTheme.border }}
@@ -1007,18 +1007,20 @@ function RecordDetailPanel({
         />
       </div>
 
-      {allowChildren
-        ? relatedSections.map((section, index) => (
-            <RelatedPanel
-              key={`${section.apiName || "related"}-${index}`}
-              parentObjectApi={objectDef.apiName}
-              parentId={recordId}
-              section={section}
-              onOpenRecord={onOpenChild}
-              onOpenLookupRecord={onOpenLookupRecord}
-            />
-          ))
-        : null}
+      <div className="space-y-4">
+        {allowChildren
+          ? relatedSections.map((section, index) => (
+              <RelatedPanel
+                key={`${section.apiName || "related"}-${index}`}
+                parentObjectApi={objectDef.apiName}
+                parentId={recordId}
+                section={section}
+                onOpenRecord={onOpenChild}
+                onOpenLookupRecord={onOpenLookupRecord}
+              />
+            ))
+          : null}
+      </div>
     </div>
   );
 }
