@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  FileText,
   BadgeCheck,
   ChartColumn,
   CreditCard,
+  Pencil,
   Eye,
   LayoutDashboard,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import DashboardsViewer from "../components/admin/DashboardsViewer";
 import ReportsViewer from "../components/admin/ReportsViewer";
+import ClientSummaryModal from "../components/ClientSummaryModal";
 import Pagination from "../components/ui/Pagination";
 import { renderFieldInput } from "../components/fields/FieldRegistry";
 import { useToast } from "../components/ui/ToastContext";
@@ -27,6 +31,8 @@ import {
 import {
   convertQuoteToSale,
   createRecord,
+  deleteRecord,
+  getClientSummary,
   getRecordById,
   getRecords,
   getRelatedRecords,
@@ -656,6 +662,11 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
   const [convertingQuoteId, setConvertingQuoteId] = useState(null);
   const [syncingCampaignId, setSyncingCampaignId] = useState(null);
   const [markingCommissionId, setMarkingCommissionId] = useState(null);
+  const [summary, setSummary] = useState(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryLoadingId, setSummaryLoadingId] = useState(null);
+  const [copying, setCopying] = useState(false);
+  const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
   const listView = useMemo(() => getDefaultListView(objectDef), [objectDef]);
   const [viewApiName, setViewApiName] = useState(listView?.apiName || "");
   const currentView = useMemo(
@@ -765,6 +776,9 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
       ? "/admin/quote-builder"
       : `/admin/${objectDef.apiName}/new?tab=${objectDef.apiName}`;
 
+  const supportsClientSummary =
+    objectDef.apiName === "sales" || objectDef.apiName === "quote";
+
   const handleConvertQuote = async (record) => {
     if (!record?._id || record.status === "Convertida") return;
 
@@ -786,6 +800,66 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
       addToast(error?.response?.data?.error || "No se pudo convertir la cotizacion", "error");
     } finally {
       setConvertingQuoteId(null);
+    }
+  };
+
+  const handleDelete = async (recordId) => {
+    if (!recordId) return;
+    if (!window.confirm("¿Eliminar este registro?")) return;
+
+    try {
+      await deleteRecord(objectDef.apiName, recordId);
+      addToast("Registro eliminado", "success");
+      await loadRecords();
+    } catch (error) {
+      console.error(error);
+      addToast(error?.response?.data?.error || "No se pudo eliminar el registro", "error");
+    }
+  };
+
+  const handleOpenSummary = async (recordId) => {
+    if (!recordId) return;
+
+    try {
+      setSummaryLoadingId(recordId);
+      const data = await getClientSummary(objectDef.apiName, recordId);
+      setSummary(data);
+      setSummaryOpen(true);
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudo generar el resumen", "error");
+    } finally {
+      setSummaryLoadingId(null);
+    }
+  };
+
+  const handleCopySummary = async () => {
+    if (!summary?.whatsappText) return;
+
+    try {
+      setCopying(true);
+      await navigator.clipboard.writeText(summary.whatsappText);
+      addToast("Resumen copiado al portapapeles", "success");
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudo copiar el resumen", "error");
+    } finally {
+      setCopying(false);
+    }
+  };
+
+  const handleOpenWhatsApp = async () => {
+    if (!summary?.whatsappText) return;
+
+    try {
+      setOpeningWhatsApp(true);
+      const encoded = encodeURIComponent(summary.whatsappText);
+      window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudo abrir WhatsApp", "error");
+    } finally {
+      setOpeningWhatsApp(false);
     }
   };
 
@@ -1007,6 +1081,19 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
                         Ver
                       </button>
 
+                      <Link
+                        to={
+                          objectDef.apiName === "quote"
+                            ? `/admin/quote-builder/${record._id}`
+                            : `/admin/${objectDef.apiName}/${record._id}?tab=${objectDef.apiName}`
+                        }
+                        className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
+                        style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+                      >
+                        <Pencil className="h-4 w-4" strokeWidth={2} />
+                        Editar
+                      </Link>
+
                       {objectDef.apiName === "sales" ? (
                         <>
                           <Link
@@ -1052,6 +1139,25 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
                               : "Convertir"}
                         </QuickActionButton>
                       ) : null}
+
+                      {supportsClientSummary ? (
+                        <QuickActionButton
+                          onClick={() => handleOpenSummary(record._id)}
+                          disabled={summaryLoadingId === record._id}
+                          icon={FileText}
+                          style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+                        >
+                          {summaryLoadingId === record._id ? "Cargando..." : "Resumen"}
+                        </QuickActionButton>
+                      ) : null}
+
+                      <QuickActionButton
+                        onClick={() => handleDelete(record._id)}
+                        icon={Trash2}
+                        style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+                      >
+                        Eliminar
+                      </QuickActionButton>
                     </div>
                   </td>
                 </tr>
@@ -1105,6 +1211,16 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
             onOpenRecord(createdRecord);
           }
         }}
+      />
+
+      <ClientSummaryModal
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        summary={summary}
+        onCopy={handleCopySummary}
+        onOpenWhatsApp={handleOpenWhatsApp}
+        copying={copying}
+        openingWhatsApp={openingWhatsApp}
       />
     </div>
   );
