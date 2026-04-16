@@ -1938,6 +1938,7 @@ function RecordWorkspace({
   const { getObjectByApiNameFromCache } = useObjectMetadata();
   const activeSubtab =
     tab.subtabs.find((subtab) => subtab.id === tab.activeSubtabId) || tab.subtabs[0];
+  const isEditingMainRecord = activeSubtab.id === "edit";
 
   const childObjectDef =
     activeSubtab.type === "record"
@@ -1959,7 +1960,7 @@ function RecordWorkspace({
         ))}
       </div>
 
-      {activeSubtab.type === "detail" ? (
+      {activeSubtab.type === "detail" || isEditingMainRecord ? (
         <RecordDetailPanel
           objectDef={objectDef}
           recordId={tab.recordId}
@@ -1967,7 +1968,7 @@ function RecordWorkspace({
           allowChildren
           onOpenChild={onOpenChild}
           onOpenLookupRecord={onOpenLookupRecord}
-          mode={tab.activeSubtabId === "edit" ? "edit" : "view"}
+          mode={isEditingMainRecord ? "edit" : "view"}
           onStartEdit={() => onStartEdit(tab.id)}
           onCancelEdit={() => onCancelEdit(tab.id)}
           onSaved={(updatedRecord) => onRecordSaved(tab.id, objectDef, updatedRecord)}
