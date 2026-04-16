@@ -15,7 +15,15 @@ import {
   isBlankBlock,
   splitFieldsIntoColumns,
 } from "../engine/metadataEngine";
-import { createRecord, getRecordById, getRecords, getRelatedRecords } from "../services/customService";
+import {
+  convertQuoteToSale,
+  createRecord,
+  getRecordById,
+  getRecords,
+  getRelatedRecords,
+  syncSaleCampaigns,
+  updateRecord,
+} from "../services/customService";
 import { useAuthStore } from "../store/authStore";
 import { adminTheme } from "../theme/adminTheme";
 
@@ -639,6 +647,9 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
   const [sortBy, setSortBy] = useState("");
   const [sortOrder, setSortOrder] = useState("desc");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [convertingQuoteId, setConvertingQuoteId] = useState(null);
+  const [syncingCampaignId, setSyncingCampaignId] = useState(null);
+  const [markingCommissionId, setMarkingCommissionId] = useState(null);
   const listView = useMemo(() => getDefaultListView(objectDef), [objectDef]);
   const [viewApiName, setViewApiName] = useState(listView?.apiName || "");
   const currentView = useMemo(
@@ -662,10 +673,38 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
     setPage(1);
   }, [currentView?.apiName, currentView?.sortBy, currentView?.sortOrder]);
 
+  const loadRecords = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await getRecords(objectDef.apiName, {
+        page,
+        limit: 12,
+        search: searchTerm,
+        sortBy: sortBy || "createdAt",
+        sortOrder: sortOrder || "desc",
+        filters: JSON.stringify(activeFilters),
+      });
+      setRecords(data?.records || []);
+      setPagination(
+        data?.pagination || {
+          page: data?.page || page,
+          pages: data?.pages || 1,
+          total: data?.total || 0,
+          limit: data?.limit || 12,
+        }
+      );
+    } catch {
+      setRecords([]);
+      setPagination(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeFilters, objectDef.apiName, page, searchTerm, sortBy, sortOrder]);
+
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
+    async function run() {
       try {
         setLoading(true);
         const data = await getRecords(objectDef.apiName, {
@@ -676,22 +715,20 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
           sortOrder: sortOrder || "desc",
           filters: JSON.stringify(activeFilters),
         });
-        if (!cancelled) {
-          setRecords(data?.records || []);
-          setPagination(
-            data?.pagination || {
-              page: data?.page || page,
-              pages: data?.pages || 1,
-              total: data?.total || 0,
-              limit: data?.limit || 12,
-            }
-          );
-        }
+        if (cancelled) return;
+        setRecords(data?.records || []);
+        setPagination(
+          data?.pagination || {
+            page: data?.page || page,
+            pages: data?.pages || 1,
+            total: data?.total || 0,
+            limit: data?.limit || 12,
+          }
+        );
       } catch {
-        if (!cancelled) {
-          setRecords([]);
-          setPagination(null);
-        }
+        if (cancelled) return;
+        setRecords([]);
+        setPagination(null);
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -699,7 +736,7 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
       }
     }
 
-    load();
+    run();
     return () => {
       cancelled = true;
     };
@@ -721,6 +758,62 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
     objectDef.apiName === "quote"
       ? "/admin/quote-builder"
       : `/admin/${objectDef.apiName}/new?tab=${objectDef.apiName}`;
+
+  const handleConvertQuote = async (record) => {
+    if (!record?._id || record.status === "Convertida") return;
+
+    try {
+      setConvertingQuoteId(record._id);
+      const result = await convertQuoteToSale(record._id);
+      addToast("Cotizacion convertida en venta", "success");
+      if (result?.saleId) {
+        onOpenLookupRecord({
+          objectApi: "sales",
+          recordId: result.saleId,
+          label: "Venta convertida",
+          isLinkable: true,
+        });
+      }
+      await loadRecords();
+    } catch (error) {
+      console.error(error);
+      addToast(error?.response?.data?.error || "No se pudo convertir la cotizacion", "error");
+    } finally {
+      setConvertingQuoteId(null);
+    }
+  };
+
+  const handleSyncCampaigns = async (recordId) => {
+    if (!recordId) return;
+
+    try {
+      setSyncingCampaignId(recordId);
+      await syncSaleCampaigns(recordId);
+      addToast("Promo evaluada", "success");
+      await loadRecords();
+    } catch (error) {
+      console.error(error);
+      addToast(error?.response?.data?.error || "No se pudo evaluar la promo", "error");
+    } finally {
+      setSyncingCampaignId(null);
+    }
+  };
+
+  const handleMarkCommissionPaid = async (record) => {
+    if (!record?._id) return;
+
+    try {
+      setMarkingCommissionId(record._id);
+      await updateRecord(objectDef.apiName, record._id, { commission_paid: true });
+      addToast("Comision marcada como pagada", "success");
+      await loadRecords();
+    } catch (error) {
+      console.error(error);
+      addToast(error?.response?.data?.error || "No se pudo marcar la comision", "error");
+    } finally {
+      setMarkingCommissionId(null);
+    }
+  };
 
   const renderCellValue = (field, record) => {
     if (field?.type === "lookup") {
@@ -879,11 +972,8 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
                     </button>
                   </th>
                 ))}
-                <th
-                  className="border-b p-3 text-left text-sm font-semibold"
-                  style={{ borderColor: adminTheme.border }}
-                >
-                  Accion
+                <th className="border-b p-3 text-left text-sm font-semibold" style={{ borderColor: adminTheme.border }}>
+                  Acciones
                 </th>
               </tr>
             </thead>
@@ -900,14 +990,64 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
                     </td>
                   ))}
                   <td className="border-b p-3" style={{ borderColor: adminTheme.border }}>
-                    <button
-                      type="button"
-                      onClick={() => onOpenRecord(record)}
-                      className="rounded-lg border px-3 py-2 text-sm font-semibold"
-                      style={{ borderColor: adminTheme.border, color: adminTheme.text }}
-                    >
-                      Ver
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onOpenRecord(record)}
+                        className="rounded-lg border px-3 py-2 text-sm font-semibold"
+                        style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+                      >
+                        Ver
+                      </button>
+
+                      {objectDef.apiName === "sales" ? (
+                        <>
+                          <Link
+                            to={`/admin/payment/new?tab=payment&prefill_sale_id=${record._id}`}
+                            className="rounded-lg border px-3 py-2 text-sm font-semibold"
+                            style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+                          >
+                            Registrar pago
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => handleSyncCampaigns(record._id)}
+                            disabled={syncingCampaignId === record._id}
+                            className="rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-60"
+                            style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+                          >
+                            {syncingCampaignId === record._id ? "Evaluando..." : "Evaluar promo"}
+                          </button>
+                          {!record.commission_paid && Number(record.commission_amount || 0) > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => handleMarkCommissionPaid(record)}
+                              disabled={markingCommissionId === record._id}
+                              className="rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-60"
+                              style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+                            >
+                              {markingCommissionId === record._id ? "Marcando..." : "Comision pagada"}
+                            </button>
+                          ) : null}
+                        </>
+                      ) : null}
+
+                      {objectDef.apiName === "quote" ? (
+                        <button
+                          type="button"
+                          onClick={() => handleConvertQuote(record)}
+                          disabled={convertingQuoteId === record._id || record.status === "Convertida"}
+                          className="rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-60"
+                          style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+                        >
+                          {record.status === "Convertida"
+                            ? "Convertida"
+                            : convertingQuoteId === record._id
+                              ? "Convirtiendo..."
+                              : "Convertir"}
+                        </button>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}
