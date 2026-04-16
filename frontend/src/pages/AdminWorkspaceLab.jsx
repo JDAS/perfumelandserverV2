@@ -1,4 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  BadgeCheck,
+  ChartColumn,
+  CreditCard,
+  Eye,
+  LayoutDashboard,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import DashboardsViewer from "../components/admin/DashboardsViewer";
 import ReportsViewer from "../components/admin/ReportsViewer";
@@ -174,12 +183,12 @@ function makeChildSubtab(record, objectDef) {
   };
 }
 
-function LauncherChip({ active, label, onClick }) {
+function LauncherChip({ active, label, onClick, icon: Icon = null }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="rounded-xl border px-3 py-2 text-sm font-medium transition"
+      className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition"
       style={
         active
           ? {
@@ -194,25 +203,9 @@ function LauncherChip({ active, label, onClick }) {
             }
       }
     >
+      {Icon ? <Icon className="h-4 w-4" strokeWidth={2} /> : null}
       {label}
     </button>
-  );
-}
-
-function CloseIcon({ className = "h-3 w-3" }) {
-  return (
-    <svg
-      viewBox="0 0 12 12"
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    >
-      <path d="M3 3L9 9" />
-      <path d="M9 3L3 9" />
-    </svg>
   );
 }
 
@@ -257,7 +250,7 @@ function ClassicTab({ active, label, onClick, onClose, closable = false }) {
               }
           }
         >
-          <CloseIcon className="h-2.5 w-2.5" />
+          <X className="h-3 w-3" strokeWidth={2.25} />
         </button>
       ) : null}
     </div>
@@ -304,7 +297,7 @@ function BadgeChip({ active, label, onClick, onClose, closable = false }) {
               }
           }
         >
-          <CloseIcon className="h-2.5 w-2.5" />
+          <X className="h-3 w-3" strokeWidth={2.25} />
         </button>
       ) : null}
     </div>
@@ -371,6 +364,19 @@ function formatFilterLabel(filter, objectDef) {
   return `${fieldLabel} ${operatorMap[filter.operator] || filter.operator || "="} ${String(
     filter.value ?? ""
   )}`;
+}
+
+function QuickActionButton({ children, icon: Icon = null, className = "", ...props }) {
+  return (
+    <button
+      type="button"
+      className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-60 ${className}`}
+      {...props}
+    >
+      {Icon ? <Icon className="h-4 w-4" strokeWidth={2} /> : null}
+      <span>{children}</span>
+    </button>
+  );
 }
 
 function CreateRecordModal({ open, objectDef, onClose, onCreated }) {
@@ -994,9 +1000,10 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
                       <button
                         type="button"
                         onClick={() => onOpenRecord(record)}
-                        className="rounded-lg border px-3 py-2 text-sm font-semibold"
+                        className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
                         style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                       >
+                        <Eye className="h-4 w-4" strokeWidth={2} />
                         Ver
                       </button>
 
@@ -1004,40 +1011,38 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
                         <>
                           <Link
                             to={`/admin/payment/new?tab=payment&prefill_sale_id=${record._id}`}
-                            className="rounded-lg border px-3 py-2 text-sm font-semibold"
+                            className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
                             style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                           >
+                            <CreditCard className="h-4 w-4" strokeWidth={2} />
                             Registrar pago
                           </Link>
-                          <button
-                            type="button"
+                          <QuickActionButton
                             onClick={() => handleSyncCampaigns(record._id)}
                             disabled={syncingCampaignId === record._id}
-                            className="rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-60"
+                            icon={Sparkles}
                             style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                           >
                             {syncingCampaignId === record._id ? "Evaluando..." : "Evaluar promo"}
-                          </button>
+                          </QuickActionButton>
                           {!record.commission_paid && Number(record.commission_amount || 0) > 0 ? (
-                            <button
-                              type="button"
+                            <QuickActionButton
                               onClick={() => handleMarkCommissionPaid(record)}
                               disabled={markingCommissionId === record._id}
-                              className="rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-60"
+                              icon={BadgeCheck}
                               style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                             >
                               {markingCommissionId === record._id ? "Marcando..." : "Comision pagada"}
-                            </button>
+                            </QuickActionButton>
                           ) : null}
                         </>
                       ) : null}
 
                       {objectDef.apiName === "quote" ? (
-                        <button
-                          type="button"
+                        <QuickActionButton
                           onClick={() => handleConvertQuote(record)}
                           disabled={convertingQuoteId === record._id || record.status === "Convertida"}
-                          className="rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-60"
+                          icon={ChartColumn}
                           style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                         >
                           {record.status === "Convertida"
@@ -1045,7 +1050,7 @@ function ListPanel({ objectDef, onOpenRecord, onOpenLookupRecord }) {
                             : convertingQuoteId === record._id
                               ? "Convirtiendo..."
                               : "Convertir"}
-                        </button>
+                        </QuickActionButton>
                       ) : null}
                     </div>
                   </td>
@@ -1938,11 +1943,13 @@ export default function AdminWorkspaceLab() {
               active={activeTab?.type === "reports"}
               label="Reportes"
               onClick={handleOpenReports}
+              icon={ChartColumn}
             />
             <LauncherChip
               active={activeTab?.type === "dashboards"}
               label="Dashboards"
               onClick={handleOpenDashboards}
+              icon={LayoutDashboard}
             />
             {objectTabs.map((objectDef) => (
               <LauncherChip
