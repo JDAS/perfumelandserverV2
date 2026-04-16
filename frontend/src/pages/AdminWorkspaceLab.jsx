@@ -1285,7 +1285,7 @@ function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLookupReco
 
                       <button
                         type="button"
-                        onClick={() => handleOpenEditRecord(objectDef, record)}
+                        onClick={() => onOpenEditRecord(record)}
                         title="Editar"
                         aria-label="Editar"
                         className="inline-flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold"
