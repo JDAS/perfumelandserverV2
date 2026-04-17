@@ -57,6 +57,7 @@ function SettingsPage() {
   const [storefrontLoading, setStorefrontLoading] = useState(true);
   const [storefrontSaving, setStorefrontSaving] = useState(false);
   const [availableThemes, setAvailableThemes] = useState([]);
+  const [availableAdminThemes, setAvailableAdminThemes] = useState([]);
   const [availableVariants, setAvailableVariants] = useState([]);
   const [storefrontForm, setStorefrontForm] = useState(defaultStorefrontForm);
   const [adminThemeForm, setAdminThemeForm] = useState(DEFAULT_ADMIN_THEME);
@@ -72,6 +73,7 @@ function SettingsPage() {
       setStorefrontLoading(true);
       const data = await getStorefrontSettings();
       setAvailableThemes(data.availableThemes || []);
+      setAvailableAdminThemes(data.availableAdminThemes || []);
       setAvailableVariants(data.availableVariants || []);
       setStorefrontForm({
         ...defaultStorefrontForm,
@@ -110,8 +112,27 @@ function SettingsPage() {
   const handleAdminThemeChange = (key, value) => {
     setAdminThemeForm((current) => ({
       ...current,
+      ...(key === "themeId" ? {} : { themeId: "custom" }),
       [key]: value,
     }));
+  };
+
+  const applyAdminThemePreset = (themeId) => {
+    const selectedTheme = availableAdminThemes.find((theme) => theme.id === themeId);
+    if (!selectedTheme) return false;
+
+    setAdminThemeForm({
+      themeId: selectedTheme.id,
+      ...selectedTheme.palette,
+    });
+
+    return true;
+  };
+
+  const resetAdminTheme = () => {
+    if (!applyAdminThemePreset(DEFAULT_ADMIN_THEME.themeId)) {
+      setAdminThemeForm(DEFAULT_ADMIN_THEME);
+    }
   };
 
   const handleSaveStorefront = async (event) => {
@@ -258,9 +279,11 @@ function SettingsPage() {
 
             <AdminThemeSettings
               value={adminThemeForm}
+              availableThemes={availableAdminThemes}
               saving={storefrontSaving}
               onChange={handleAdminThemeChange}
-              onReset={() => setAdminThemeForm(DEFAULT_ADMIN_THEME)}
+              onApplyTheme={applyAdminThemePreset}
+              onReset={resetAdminTheme}
               onSave={handleSaveAdminTheme}
             />
           </div>

@@ -1,8 +1,10 @@
 const StorefrontSettings = require("../models/StorefrontSettings");
 const {
   THEMES,
+  ADMIN_THEMES,
   VARIANTS,
   DEFAULT_STOREFRONT_SETTINGS,
+  DEFAULT_ADMIN_THEME_PALETTE,
   DEFAULT_ADMIN_THEME_SETTINGS,
   getThemeById,
   getVariantById,
@@ -47,12 +49,30 @@ function mergeSettings(rawSettings = {}) {
 }
 
 function mergeAdminTheme(rawTheme = {}) {
-  return Object.fromEntries(
-    Object.entries(DEFAULT_ADMIN_THEME_SETTINGS).map(([key, fallback]) => [
+  const requestedThemeId = sanitizeString(rawTheme?.themeId);
+  const selectedPreset =
+    requestedThemeId && requestedThemeId !== "custom"
+      ? ADMIN_THEMES.find((theme) => theme.id === requestedThemeId)
+      : null;
+  const basePalette = selectedPreset?.palette || DEFAULT_ADMIN_THEME_PALETTE;
+  const palette = Object.fromEntries(
+    Object.entries(DEFAULT_ADMIN_THEME_PALETTE).map(([key, fallback]) => [
       key,
-      sanitizeColor(rawTheme?.[key], fallback),
+      sanitizeColor(rawTheme?.[key], basePalette[key] || fallback),
     ])
   );
+  const inferredPreset = ADMIN_THEMES.find((theme) =>
+    Object.entries(theme.palette).every(([key, value]) => palette[key] === value)
+  );
+  const themeId =
+    requestedThemeId === "custom"
+      ? "custom"
+      : selectedPreset?.id || inferredPreset?.id || "custom";
+
+  return {
+    themeId,
+    ...palette,
+  };
 }
 
 async function getOrCreateSettings() {
@@ -76,6 +96,7 @@ exports.getStorefrontSettings = async (_req, res) => {
       storefront: mergeSettings(document.storefront),
       adminTheme: mergeAdminTheme(document.adminTheme),
       availableThemes: THEMES,
+      availableAdminThemes: ADMIN_THEMES,
       availableVariants: VARIANTS,
     });
   } catch (error) {
@@ -172,6 +193,7 @@ exports.updateStorefrontSettings = async (req, res) => {
       storefront: mergeSettings(document.storefront),
       adminTheme: mergeAdminTheme(document.adminTheme),
       availableThemes: THEMES,
+      availableAdminThemes: ADMIN_THEMES,
       availableVariants: VARIANTS,
     });
   } catch (error) {

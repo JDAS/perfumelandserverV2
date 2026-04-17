@@ -76,6 +76,60 @@ const THEMES = [
   },
 ];
 
+const ADMIN_THEMES = [
+  {
+    id: "atlantic-glass",
+    name: "Atlantic Glass",
+    description: "La opcion mas alineada al logo actual: limpia, seria y moderna.",
+    palette: {
+      bg: "#EEF4F9",
+      surface: "#FFFFFF",
+      surfaceAlt: "#E7F0F7",
+      primary: "#163B67",
+      primarySoft: "#1F4E84",
+      accent: "#2E95C2",
+      accentDeep: "#166F97",
+      text: "#0E2B57",
+      muted: "#5B7086",
+      border: "#CCD9E5",
+    },
+  },
+  {
+    id: "slate-copper",
+    name: "Slate Copper",
+    description: "Mas premium y corporativa, con un acento calido menos SaaS.",
+    palette: {
+      bg: "#F4F2EE",
+      surface: "#FFFFFF",
+      surfaceAlt: "#ECE7DE",
+      primary: "#1E293B",
+      primarySoft: "#334155",
+      accent: "#C58A4A",
+      accentDeep: "#9A6430",
+      text: "#1B2430",
+      muted: "#6B7280",
+      border: "#D8D0C2",
+    },
+  },
+  {
+    id: "midnight-cyan",
+    name: "Midnight Cyan",
+    description: "Mas intensa y tecnologica, con mayor contraste visual.",
+    palette: {
+      bg: "#ECF7F7",
+      surface: "#FFFFFF",
+      surfaceAlt: "#DFF3F4",
+      primary: "#0F172A",
+      primarySoft: "#1E293B",
+      accent: "#22C1C3",
+      accentDeep: "#0E7490",
+      text: "#102A43",
+      muted: "#5C6F82",
+      border: "#C9E1E4",
+    },
+  },
+];
+
 const VARIANTS = [
   {
     id: "boutique",
@@ -120,17 +174,11 @@ const DEFAULT_STOREFRONT_SETTINGS = {
     "Perfumeland, una vitrina boutique pensada para explorar y cotizar mejor.",
 };
 
+const DEFAULT_ADMIN_THEME_ID = "atlantic-glass";
+const DEFAULT_ADMIN_THEME_PALETTE = ADMIN_THEMES[0].palette;
 const DEFAULT_ADMIN_THEME_SETTINGS = {
-  bg: "#EEF4F9",
-  surface: "#FFFFFF",
-  surfaceAlt: "#E7F0F7",
-  primary: "#163B67",
-  primarySoft: "#1F4E84",
-  accent: "#2E95C2",
-  accentDeep: "#166F97",
-  text: "#0E2B57",
-  muted: "#5B7086",
-  border: "#CCD9E5",
+  themeId: DEFAULT_ADMIN_THEME_ID,
+  ...DEFAULT_ADMIN_THEME_PALETTE,
 };
 
 function getThemeById(id) {
@@ -141,11 +189,19 @@ function getVariantById(id) {
   return VARIANTS.find((variant) => variant.id === id) || VARIANTS[0];
 }
 
+function getAdminThemeById(id) {
+  return ADMIN_THEMES.find((theme) => theme.id === id) || ADMIN_THEMES[0];
+}
+
 module.exports = {
   THEMES,
+  ADMIN_THEMES,
   VARIANTS,
   DEFAULT_STOREFRONT_SETTINGS,
+  DEFAULT_ADMIN_THEME_ID,
+  DEFAULT_ADMIN_THEME_PALETTE,
   DEFAULT_ADMIN_THEME_SETTINGS,
   getThemeById,
+  getAdminThemeById,
   getVariantById,
 };

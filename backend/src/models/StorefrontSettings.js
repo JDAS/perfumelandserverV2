@@ -30,6 +30,7 @@ const storefrontSettingsSchema = new mongoose.Schema(
       siteTagline: { type: String, default: "" },
     },
     adminTheme: {
+      themeId: { type: String, default: "atlantic-glass" },
       bg: { type: String, default: "#EEF4F9" },
       surface: { type: String, default: "#FFFFFF" },
       surfaceAlt: { type: String, default: "#E7F0F7" },

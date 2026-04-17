@@ -1,4 +1,5 @@
 export const DEFAULT_ADMIN_THEME = {
+  themeId: "atlantic-glass",
   bg: "#EEF4F9",
   surface: "#FFFFFF",
   surfaceAlt: "#E7F0F7",
