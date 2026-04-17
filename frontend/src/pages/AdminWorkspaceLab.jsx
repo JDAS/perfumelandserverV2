@@ -589,7 +589,7 @@ function CreateRecordModal({ open, objectDef, onClose, onCreated, initialValues 
   );
 }
 
-function EditRecordPanel({ objectDef, recordId, onSaved }) {
+function EditRecordPanel({ objectDef, recordId, onSaved, actions = null }) {
   const { addToast } = useToast();
   const fields = useMemo(() => getFormFields(objectDef), [objectDef]);
   const activeLayout = objectDef?.layout?.[0];
@@ -718,16 +718,7 @@ function EditRecordPanel({ objectDef, recordId, onSaved }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-          style={{ backgroundColor: adminTheme.text }}
-        >
-          {saving ? "Guardando..." : "Guardar cambios"}
-        </button>
-      </div>
+      {actions ? actions({ saving }) : null}
 
       {fieldSections.length ? (
         <div className="space-y-5">
@@ -1895,17 +1886,31 @@ function RecordDetailPanel({
 
         {mode === "edit" ? (
           <div className="space-y-4">
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={onCancelEdit}
-                className="rounded-xl border px-4 py-2 text-sm font-semibold"
-                style={{ borderColor: adminTheme.border, color: adminTheme.text }}
-              >
-                Cancelar
-              </button>
-            </div>
-            <EditRecordPanel objectDef={objectDef} recordId={recordId} onSaved={onSaved} />
+            <EditRecordPanel
+              objectDef={objectDef}
+              recordId={recordId}
+              onSaved={onSaved}
+              actions={({ saving }) => (
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={onCancelEdit}
+                    className="rounded-xl border px-4 py-2 text-sm font-semibold"
+                    style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                    style={{ backgroundColor: adminTheme.text }}
+                  >
+                    {saving ? "Guardando..." : "Guardar cambios"}
+                  </button>
+                </div>
+              )}
+            />
           </div>
         ) : (
           <LayoutDetailSections
