@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import AdminThemeSettings from "../components/admin/AdminThemeSettings";
 import DashboardsAdmin from "../components/admin/DashboardsAdmin";
 import ReportsAdmin from "../components/admin/ReportsAdmin";
 import UsersAdmin from "../components/admin/UsersAdmin";
@@ -12,7 +13,11 @@ import ObjectModal from "../components/ObjectModal";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 import { useToast } from "../components/ui/ToastContext";
 import { useStorefront } from "../context/StorefrontContext";
-import { adminGradient, adminTheme } from "../theme/adminTheme";
+import {
+  DEFAULT_ADMIN_THEME,
+  adminGradient,
+  adminTheme,
+} from "../theme/adminTheme";
 import {
   DEFAULT_STOREFRONT_BRAND_NAME,
   DEFAULT_STOREFRONT_LOGO_URL,
@@ -54,9 +59,10 @@ function SettingsPage() {
   const [availableThemes, setAvailableThemes] = useState([]);
   const [availableVariants, setAvailableVariants] = useState([]);
   const [storefrontForm, setStorefrontForm] = useState(defaultStorefrontForm);
+  const [adminThemeForm, setAdminThemeForm] = useState(DEFAULT_ADMIN_THEME);
 
   useEffect(() => {
-    if (activeSection === "storefront") {
+    if (activeSection === "storefront" || activeSection === "vitra") {
       loadStorefrontSettings();
     }
   }, [activeSection]);
@@ -70,6 +76,10 @@ function SettingsPage() {
       setStorefrontForm({
         ...defaultStorefrontForm,
         ...(data.storefront || {}),
+      });
+      setAdminThemeForm({
+        ...DEFAULT_ADMIN_THEME,
+        ...(data.adminTheme || {}),
       });
     } catch (error) {
       console.error(error);
@@ -97,6 +107,13 @@ function SettingsPage() {
     }));
   };
 
+  const handleAdminThemeChange = (key, value) => {
+    setAdminThemeForm((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  };
+
   const handleSaveStorefront = async (event) => {
     event.preventDefault();
     try {
@@ -116,13 +133,34 @@ function SettingsPage() {
     }
   };
 
+  const handleSaveAdminTheme = async (event) => {
+    event.preventDefault();
+    try {
+      setStorefrontSaving(true);
+      await updateStorefrontSettings({ adminTheme: adminThemeForm });
+      await refreshStorefront();
+      addToast("Tema de Vitra actualizado", "success");
+      await loadStorefrontSettings();
+    } catch (error) {
+      console.error(error);
+      addToast(
+        error?.response?.data?.error || "No se pudo guardar el tema de Vitra",
+        "error"
+      );
+    } finally {
+      setStorefrontSaving(false);
+    }
+  };
+
   const selectedTheme = availableThemes.find((theme) => theme.id === storefrontForm.themeId);
   const previewPalette = selectedTheme?.palette || {};
 
   return (
     <div
       className="min-h-screen flex"
-      style={{ background: `linear-gradient(180deg, ${adminTheme.bg} 0%, #eef2f7 100%)` }}
+      style={{
+        background: `linear-gradient(180deg, ${adminTheme.bg} 0%, ${adminTheme.surfaceAlt} 100%)`,
+      }}
     >
       <aside
         className="w-80 border-r p-6 space-y-8"
@@ -145,6 +183,17 @@ function SettingsPage() {
               onClick={() => setActiveSection("storefront")}
             >
               Storefront
+            </button>
+            <button
+              className="block w-full text-left px-3 py-2 rounded-xl"
+              style={
+                activeSection === "vitra"
+                  ? { background: adminGradient(), color: "#fff" }
+                  : { backgroundColor: adminTheme.surfaceAlt, color: adminTheme.text }
+              }
+              onClick={() => setActiveSection("vitra")}
+            >
+              Vitra
             </button>
             <button
               className="block w-full text-left px-3 py-2 rounded-xl"
@@ -195,6 +244,28 @@ function SettingsPage() {
       </aside>
 
       <main className="flex-1 p-8">
+        {activeSection === "vitra" && (
+          <div
+            className="rounded-2xl p-6 shadow-[0_18px_48px_rgba(17,24,39,0.08)]"
+            style={{ backgroundColor: adminTheme.surface }}
+          >
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold">Vitra</h2>
+              <p className="text-sm text-gray-500">
+                Personaliza la identidad visual del shell interno sin tocar el storefront publico.
+              </p>
+            </div>
+
+            <AdminThemeSettings
+              value={adminThemeForm}
+              saving={storefrontSaving}
+              onChange={handleAdminThemeChange}
+              onReset={() => setAdminThemeForm(DEFAULT_ADMIN_THEME)}
+              onSave={handleSaveAdminTheme}
+            />
+          </div>
+        )}
+
         {activeSection === "storefront" && (
           <div
             className="rounded-2xl p-6 shadow-[0_18px_48px_rgba(17,24,39,0.08)]"

@@ -29,6 +29,18 @@ const storefrontSettingsSchema = new mongoose.Schema(
       featureTwoText: { type: String, default: "" },
       siteTagline: { type: String, default: "" },
     },
+    adminTheme: {
+      bg: { type: String, default: "#EEF4F9" },
+      surface: { type: String, default: "#FFFFFF" },
+      surfaceAlt: { type: String, default: "#E7F0F7" },
+      primary: { type: String, default: "#163B67" },
+      primarySoft: { type: String, default: "#1F4E84" },
+      accent: { type: String, default: "#2E95C2" },
+      accentDeep: { type: String, default: "#166F97" },
+      text: { type: String, default: "#0E2B57" },
+      muted: { type: String, default: "#5B7086" },
+      border: { type: String, default: "#CCD9E5" },
+    },
   },
   { timestamps: true }
 );

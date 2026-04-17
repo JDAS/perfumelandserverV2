@@ -7,12 +7,19 @@ import {
   login,
 } from "../services/authService";
 import { useToast } from "../components/ui/ToastContext";
+import { useStorefront } from "../context/StorefrontContext";
 import { DEFAULT_LOGO_URL } from "../constants/branding";
+import {
+  adminGradient,
+  adminTheme,
+  getAdminThemeCssVars,
+} from "../theme/adminTheme";
 
 function LoginPage() {
   const navigate = useNavigate();
   const { user, setAuth } = useAuthStore();
   const { addToast } = useToast();
+  const { adminThemeSettings } = useStorefront();
 
   const [form, setForm] = useState({
     email: "",
@@ -171,24 +178,37 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow p-8">
+    <div
+      className="min-h-screen flex items-center justify-center px-4 py-10"
+      style={{
+        ...getAdminThemeCssVars(adminThemeSettings),
+        background: `radial-gradient(circle at top left, ${adminTheme.accent}22 0%, transparent 28%), linear-gradient(180deg, ${adminTheme.bg} 0%, ${adminTheme.surfaceAlt} 100%)`,
+      }}
+    >
+      <div
+        className="w-full max-w-md rounded-[28px] border p-8 shadow-[0_28px_80px_rgba(14,43,87,0.14)]"
+        style={{ backgroundColor: adminTheme.surface, borderColor: adminTheme.border }}
+      >
         <div className="mb-8 flex justify-center">
-          <img src={DEFAULT_LOGO_URL} alt="Vitra" className="h-12 w-auto" />
+          <div className="rounded-2xl bg-white px-4 py-3 shadow-[0_12px_32px_rgba(14,43,87,0.12)]">
+            <img src={DEFAULT_LOGO_URL} alt="Vitra" className="h-12 w-auto" />
+          </div>
         </div>
         {checkingBootstrap ? (
           <>
-            <h1 className="text-2xl font-bold mb-2">Preparando acceso</h1>
-            <p className="text-sm text-gray-500">
+            <h1 className="mb-2 text-2xl font-bold" style={{ color: adminTheme.text }}>
+              Preparando acceso
+            </h1>
+            <p className="text-sm" style={{ color: adminTheme.muted }}>
               Verificando si este proyecto necesita configuracion inicial...
             </p>
           </>
         ) : bootstrapState.requiresSetup ? (
           <>
-            <h1 className="text-2xl font-bold mb-2">
+            <h1 className="mb-2 text-2xl font-bold" style={{ color: adminTheme.text }}>
               Configurar administrador inicial
             </h1>
-            <p className="text-sm text-gray-500 mb-6">
+            <p className="mb-6 text-sm" style={{ color: adminTheme.muted }}>
               Este proyecto aun no tiene usuarios. Crea aqui el primer admin.
             </p>
 
@@ -200,11 +220,14 @@ function LoginPage() {
 
             <form onSubmit={handleBootstrapSubmit} className="space-y-4">
               <div>
-                <label className="block mb-1 text-sm font-medium">Nombre</label>
+                <label className="mb-1 block text-sm font-medium" style={{ color: adminTheme.text }}>
+                  Nombre
+                </label>
                 <input
                   type="text"
                   name="name"
-                  className="w-full border rounded-lg p-3"
+                  className="w-full rounded-lg border p-3"
+                  style={{ borderColor: adminTheme.border }}
                   value={setupForm.name}
                   onChange={handleSetupChange}
                   placeholder="Admin principal"
@@ -212,11 +235,14 @@ function LoginPage() {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium">Correo</label>
+                <label className="mb-1 block text-sm font-medium" style={{ color: adminTheme.text }}>
+                  Correo
+                </label>
                 <input
                   type="email"
                   name="email"
-                  className="w-full border rounded-lg p-3"
+                  className="w-full rounded-lg border p-3"
+                  style={{ borderColor: adminTheme.border }}
                   value={setupForm.email}
                   onChange={handleSetupChange}
                   placeholder="admin@cliente.com"
@@ -224,13 +250,14 @@ function LoginPage() {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium">
+                <label className="mb-1 block text-sm font-medium" style={{ color: adminTheme.text }}>
                   Contrasena
                 </label>
                 <input
                   type="password"
                   name="password"
-                  className="w-full border rounded-lg p-3"
+                  className="w-full rounded-lg border p-3"
+                  style={{ borderColor: adminTheme.border }}
                   value={setupForm.password}
                   onChange={handleSetupChange}
                   placeholder="********"
@@ -238,13 +265,14 @@ function LoginPage() {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium">
+                <label className="mb-1 block text-sm font-medium" style={{ color: adminTheme.text }}>
                   Confirmar contrasena
                 </label>
                 <input
                   type="password"
                   name="confirmPassword"
-                  className="w-full border rounded-lg p-3"
+                  className="w-full rounded-lg border p-3"
+                  style={{ borderColor: adminTheme.border }}
                   value={setupForm.confirmPassword}
                   onChange={handleSetupChange}
                   placeholder="********"
@@ -252,13 +280,14 @@ function LoginPage() {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium">
+                <label className="mb-1 block text-sm font-medium" style={{ color: adminTheme.text }}>
                   Token de bootstrap
                 </label>
                 <input
                   type="password"
                   name="setupToken"
-                  className="w-full border rounded-lg p-3"
+                  className="w-full rounded-lg border p-3"
+                  style={{ borderColor: adminTheme.border }}
                   value={setupForm.setupToken}
                   onChange={handleSetupChange}
                   placeholder="BOOTSTRAP_ADMIN_TOKEN"
@@ -268,7 +297,8 @@ function LoginPage() {
               <button
                 type="submit"
                 disabled={loading || !bootstrapState.bootstrapEnabled}
-                className="w-full bg-black text-white rounded-lg py-3 disabled:opacity-60"
+                className="w-full rounded-lg py-3 text-white disabled:opacity-60"
+                style={{ background: adminGradient() }}
               >
                 {loading ? "Creando admin..." : "Crear administrador inicial"}
               </button>
@@ -276,18 +306,23 @@ function LoginPage() {
           </>
         ) : (
           <>
-            <h1 className="text-2xl font-bold mb-2">Iniciar sesion</h1>
-            <p className="text-sm text-gray-500 mb-6">
+            <h1 className="mb-2 text-2xl font-bold" style={{ color: adminTheme.text }}>
+              Iniciar sesion
+            </h1>
+            <p className="mb-6 text-sm" style={{ color: adminTheme.muted }}>
               Accede a tu cuenta para continuar
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block mb-1 text-sm font-medium">Correo</label>
+                <label className="mb-1 block text-sm font-medium" style={{ color: adminTheme.text }}>
+                  Correo
+                </label>
                 <input
                   type="email"
                   name="email"
-                  className="w-full border rounded-lg p-3"
+                  className="w-full rounded-lg border p-3"
+                  style={{ borderColor: adminTheme.border }}
                   value={form.email}
                   onChange={handleChange}
                   placeholder="correo@ejemplo.com"
@@ -295,13 +330,14 @@ function LoginPage() {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium">
+                <label className="mb-1 block text-sm font-medium" style={{ color: adminTheme.text }}>
                   Contrasena
                 </label>
                 <input
                   type="password"
                   name="password"
-                  className="w-full border rounded-lg p-3"
+                  className="w-full rounded-lg border p-3"
+                  style={{ borderColor: adminTheme.border }}
                   value={form.password}
                   onChange={handleChange}
                   placeholder="********"
@@ -311,7 +347,8 @@ function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-black text-white rounded-lg py-3 disabled:opacity-60"
+                className="w-full rounded-lg py-3 text-white disabled:opacity-60"
+                style={{ background: adminGradient() }}
               >
                 {loading ? "Ingresando..." : "Ingresar"}
               </button>

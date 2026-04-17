@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { getStorefrontSettings } from "../services/customService";
+import { DEFAULT_ADMIN_THEME } from "../theme/adminTheme";
 
 const defaultTheme = {
   id: "boutique-classic",
@@ -51,6 +52,7 @@ const defaultStorefront = {
 
 const StorefrontContext = createContext({
   storefront: defaultStorefront,
+  adminThemeSettings: DEFAULT_ADMIN_THEME,
   availableThemes: [defaultTheme],
   availableVariants: [defaultStorefront.variant],
   loading: true,
@@ -59,6 +61,7 @@ const StorefrontContext = createContext({
 
 export function StorefrontProvider({ children }) {
   const [storefront, setStorefront] = useState(defaultStorefront);
+  const [adminThemeSettings, setAdminThemeSettings] = useState(DEFAULT_ADMIN_THEME);
   const [availableThemes, setAvailableThemes] = useState([defaultTheme]);
   const [availableVariants, setAvailableVariants] = useState([
     defaultStorefront.variant,
@@ -69,6 +72,7 @@ export function StorefrontProvider({ children }) {
     try {
       const data = await getStorefrontSettings();
       setStorefront(data.storefront || defaultStorefront);
+      setAdminThemeSettings(data.adminTheme || DEFAULT_ADMIN_THEME);
       setAvailableThemes(data.availableThemes || [defaultTheme]);
       setAvailableVariants(data.availableVariants || [defaultStorefront.variant]);
     } catch (error) {
@@ -86,6 +90,7 @@ export function StorefrontProvider({ children }) {
     <StorefrontContext.Provider
       value={{
         storefront,
+        adminThemeSettings,
         availableThemes,
         availableVariants,
         loading,

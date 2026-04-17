@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { adminTheme } from "../theme/adminTheme";
 
 function UserMenu() {
   const navigate = useNavigate();
@@ -33,7 +34,8 @@ function UserMenu() {
     return (
       <button
         onClick={() => navigate("/login")}
-        className="bg-white text-black px-4 py-2 rounded-lg"
+        className="rounded-lg px-4 py-2"
+        style={{ backgroundColor: adminTheme.surface, color: adminTheme.text }}
       >
         Login
       </button>
@@ -49,24 +51,40 @@ function UserMenu() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className="flex items-center gap-3 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl"
+        className="flex items-center gap-3 rounded-2xl border px-3 py-2"
+        style={{
+          backgroundColor: "rgba(255,255,255,0.12)",
+          borderColor: "rgba(255,255,255,0.16)",
+        }}
       >
-        <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center font-bold">
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-white font-bold"
+          style={{ color: adminTheme.text }}
+        >
           {initials}
         </div>
 
-        <div className="text-left hidden sm:block">
+        <div className="hidden text-left sm:block">
           <p className="text-sm font-semibold leading-none">{user.name}</p>
-          <p className="text-xs text-gray-300 mt-1">{user.email}</p>
+          <p className="mt-1 text-xs text-white/70">{user.email}</p>
         </div>
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-72 bg-white text-black rounded-xl shadow-lg border p-4 z-50">
-          <div className="border-b pb-3 mb-3">
+        <div
+          className="absolute right-0 z-50 mt-2 w-72 rounded-2xl border p-4 shadow-lg"
+          style={{
+            backgroundColor: adminTheme.surface,
+            color: adminTheme.text,
+            borderColor: adminTheme.border,
+          }}
+        >
+          <div className="mb-3 border-b pb-3" style={{ borderColor: adminTheme.border }}>
             <p className="font-semibold">{user.name}</p>
-            <p className="text-sm text-gray-500">{user.email}</p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-sm" style={{ color: adminTheme.muted }}>
+              {user.email}
+            </p>
+            <p className="mt-1 text-xs" style={{ color: adminTheme.muted }}>
               {user.isAdmin ? "Administrador" : "Usuario"}
             </p>
           </div>
@@ -77,17 +95,19 @@ function UserMenu() {
                 setOpen(false);
                 navigate("/admin/settings");
               }}
-              className="w-full text-left px-3 py-2 rounded hover:bg-gray-100"
+              className="w-full rounded px-3 py-2 text-left"
+              style={{ color: adminTheme.text }}
             >
-              Configuración
+              Configuracion
             </button>
           )}
 
           <button
             onClick={handleLogout}
-            className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-red-600"
+            className="w-full rounded px-3 py-2 text-left"
+            style={{ color: adminTheme.accentDeep }}
           >
-            Cerrar sesión
+            Cerrar sesion
           </button>
         </div>
       )}

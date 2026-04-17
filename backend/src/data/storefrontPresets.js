@@ -120,6 +120,19 @@ const DEFAULT_STOREFRONT_SETTINGS = {
     "Perfumeland, una vitrina boutique pensada para explorar y cotizar mejor.",
 };
 
+const DEFAULT_ADMIN_THEME_SETTINGS = {
+  bg: "#EEF4F9",
+  surface: "#FFFFFF",
+  surfaceAlt: "#E7F0F7",
+  primary: "#163B67",
+  primarySoft: "#1F4E84",
+  accent: "#2E95C2",
+  accentDeep: "#166F97",
+  text: "#0E2B57",
+  muted: "#5B7086",
+  border: "#CCD9E5",
+};
+
 function getThemeById(id) {
   return THEMES.find((theme) => theme.id === id) || THEMES[0];
 }
@@ -132,6 +145,7 @@ module.exports = {
   THEMES,
   VARIANTS,
   DEFAULT_STOREFRONT_SETTINGS,
+  DEFAULT_ADMIN_THEME_SETTINGS,
   getThemeById,
   getVariantById,
 };

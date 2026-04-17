@@ -3,6 +3,7 @@ const {
   THEMES,
   VARIANTS,
   DEFAULT_STOREFRONT_SETTINGS,
+  DEFAULT_ADMIN_THEME_SETTINGS,
   getThemeById,
   getVariantById,
 } = require("../data/storefrontPresets");
@@ -13,6 +14,12 @@ function sanitizeString(value, fallback = "") {
 
 function withDefaultString(value, fallback) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function sanitizeColor(value, fallback) {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(trimmed) ? trimmed : fallback;
 }
 
 function mergeSettings(rawSettings = {}) {
@@ -39,6 +46,15 @@ function mergeSettings(rawSettings = {}) {
   };
 }
 
+function mergeAdminTheme(rawTheme = {}) {
+  return Object.fromEntries(
+    Object.entries(DEFAULT_ADMIN_THEME_SETTINGS).map(([key, fallback]) => [
+      key,
+      sanitizeColor(rawTheme?.[key], fallback),
+    ])
+  );
+}
+
 async function getOrCreateSettings() {
   let document = await StorefrontSettings.findOne({ singletonKey: "default" });
 
@@ -46,6 +62,7 @@ async function getOrCreateSettings() {
     document = await StorefrontSettings.create({
       singletonKey: "default",
       storefront: DEFAULT_STOREFRONT_SETTINGS,
+      adminTheme: DEFAULT_ADMIN_THEME_SETTINGS,
     });
   }
 
@@ -57,6 +74,7 @@ exports.getStorefrontSettings = async (_req, res) => {
     const document = await getOrCreateSettings();
     return res.json({
       storefront: mergeSettings(document.storefront),
+      adminTheme: mergeAdminTheme(document.adminTheme),
       availableThemes: THEMES,
       availableVariants: VARIANTS,
     });
@@ -68,70 +86,91 @@ exports.getStorefrontSettings = async (_req, res) => {
 
 exports.updateStorefrontSettings = async (req, res) => {
   try {
-    const payload = req.body?.storefront || {};
-    const nextSettings = {
-      themeId: sanitizeString(payload.themeId, DEFAULT_STOREFRONT_SETTINGS.themeId),
-      variantId: sanitizeString(payload.variantId, DEFAULT_STOREFRONT_SETTINGS.variantId),
-      logoUrl: sanitizeString(payload.logoUrl, DEFAULT_STOREFRONT_SETTINGS.logoUrl),
-      logoAlt: sanitizeString(payload.logoAlt, DEFAULT_STOREFRONT_SETTINGS.logoAlt),
-      showCart: Boolean(payload.showCart),
-      showWhatsapp: Boolean(payload.showWhatsapp),
-      whatsappNumber: sanitizeString(payload.whatsappNumber),
-      heroBadge: sanitizeString(payload.heroBadge, DEFAULT_STOREFRONT_SETTINGS.heroBadge),
-      heroTitle: sanitizeString(payload.heroTitle, DEFAULT_STOREFRONT_SETTINGS.heroTitle),
-      heroSubtitle: sanitizeString(
-        payload.heroSubtitle,
-        DEFAULT_STOREFRONT_SETTINGS.heroSubtitle
-      ),
-      heroPrimaryCtaLabel: sanitizeString(
-        payload.heroPrimaryCtaLabel,
-        DEFAULT_STOREFRONT_SETTINGS.heroPrimaryCtaLabel
-      ),
-      heroSecondaryCtaLabel: sanitizeString(
-        payload.heroSecondaryCtaLabel,
-        DEFAULT_STOREFRONT_SETTINGS.heroSecondaryCtaLabel
-      ),
-      highlightEyebrow: sanitizeString(
-        payload.highlightEyebrow,
-        DEFAULT_STOREFRONT_SETTINGS.highlightEyebrow
-      ),
-      highlightTitle: sanitizeString(
-        payload.highlightTitle,
-        DEFAULT_STOREFRONT_SETTINGS.highlightTitle
-      ),
-      featureOneEyebrow: sanitizeString(
-        payload.featureOneEyebrow,
-        DEFAULT_STOREFRONT_SETTINGS.featureOneEyebrow
-      ),
-      featureOneText: sanitizeString(
-        payload.featureOneText,
-        DEFAULT_STOREFRONT_SETTINGS.featureOneText
-      ),
-      featureTwoEyebrow: sanitizeString(
-        payload.featureTwoEyebrow,
-        DEFAULT_STOREFRONT_SETTINGS.featureTwoEyebrow
-      ),
-      featureTwoText: sanitizeString(
-        payload.featureTwoText,
-        DEFAULT_STOREFRONT_SETTINGS.featureTwoText
-      ),
-      siteTagline: sanitizeString(
-        payload.siteTagline,
-        DEFAULT_STOREFRONT_SETTINGS.siteTagline
-      ),
-    };
+    const document = await getOrCreateSettings();
+    const storefrontPayload = req.body?.storefront;
+    const adminThemePayload = req.body?.adminTheme;
 
-    const document = await StorefrontSettings.findOneAndUpdate(
-      { singletonKey: "default" },
-      { $set: { storefront: nextSettings } },
-      {
-        upsert: true,
-        new: true,
-      }
-    );
+    if (storefrontPayload && typeof storefrontPayload === "object") {
+      document.storefront = {
+        themeId: sanitizeString(
+          storefrontPayload.themeId,
+          DEFAULT_STOREFRONT_SETTINGS.themeId
+        ),
+        variantId: sanitizeString(
+          storefrontPayload.variantId,
+          DEFAULT_STOREFRONT_SETTINGS.variantId
+        ),
+        logoUrl: sanitizeString(
+          storefrontPayload.logoUrl,
+          DEFAULT_STOREFRONT_SETTINGS.logoUrl
+        ),
+        logoAlt: sanitizeString(
+          storefrontPayload.logoAlt,
+          DEFAULT_STOREFRONT_SETTINGS.logoAlt
+        ),
+        showCart: Boolean(storefrontPayload.showCart),
+        showWhatsapp: Boolean(storefrontPayload.showWhatsapp),
+        whatsappNumber: sanitizeString(storefrontPayload.whatsappNumber),
+        heroBadge: sanitizeString(
+          storefrontPayload.heroBadge,
+          DEFAULT_STOREFRONT_SETTINGS.heroBadge
+        ),
+        heroTitle: sanitizeString(
+          storefrontPayload.heroTitle,
+          DEFAULT_STOREFRONT_SETTINGS.heroTitle
+        ),
+        heroSubtitle: sanitizeString(
+          storefrontPayload.heroSubtitle,
+          DEFAULT_STOREFRONT_SETTINGS.heroSubtitle
+        ),
+        heroPrimaryCtaLabel: sanitizeString(
+          storefrontPayload.heroPrimaryCtaLabel,
+          DEFAULT_STOREFRONT_SETTINGS.heroPrimaryCtaLabel
+        ),
+        heroSecondaryCtaLabel: sanitizeString(
+          storefrontPayload.heroSecondaryCtaLabel,
+          DEFAULT_STOREFRONT_SETTINGS.heroSecondaryCtaLabel
+        ),
+        highlightEyebrow: sanitizeString(
+          storefrontPayload.highlightEyebrow,
+          DEFAULT_STOREFRONT_SETTINGS.highlightEyebrow
+        ),
+        highlightTitle: sanitizeString(
+          storefrontPayload.highlightTitle,
+          DEFAULT_STOREFRONT_SETTINGS.highlightTitle
+        ),
+        featureOneEyebrow: sanitizeString(
+          storefrontPayload.featureOneEyebrow,
+          DEFAULT_STOREFRONT_SETTINGS.featureOneEyebrow
+        ),
+        featureOneText: sanitizeString(
+          storefrontPayload.featureOneText,
+          DEFAULT_STOREFRONT_SETTINGS.featureOneText
+        ),
+        featureTwoEyebrow: sanitizeString(
+          storefrontPayload.featureTwoEyebrow,
+          DEFAULT_STOREFRONT_SETTINGS.featureTwoEyebrow
+        ),
+        featureTwoText: sanitizeString(
+          storefrontPayload.featureTwoText,
+          DEFAULT_STOREFRONT_SETTINGS.featureTwoText
+        ),
+        siteTagline: sanitizeString(
+          storefrontPayload.siteTagline,
+          DEFAULT_STOREFRONT_SETTINGS.siteTagline
+        ),
+      };
+    }
+
+    if (adminThemePayload && typeof adminThemePayload === "object") {
+      document.adminTheme = mergeAdminTheme(adminThemePayload);
+    }
+
+    await document.save();
 
     return res.json({
       storefront: mergeSettings(document.storefront),
+      adminTheme: mergeAdminTheme(document.adminTheme),
       availableThemes: THEMES,
       availableVariants: VARIANTS,
     });
