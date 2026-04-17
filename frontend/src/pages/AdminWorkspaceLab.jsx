@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import QuoteBuilderModal from "../components/admin/QuoteBuilderModal";
 import DashboardsViewer from "../components/admin/DashboardsViewer";
 import ReportsViewer from "../components/admin/ReportsViewer";
 import ClientSummaryModal from "../components/ClientSummaryModal";
@@ -840,6 +841,7 @@ function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLookupReco
   const [sortBy, setSortBy] = useState("");
   const [sortOrder, setSortOrder] = useState("desc");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showQuoteBuilderModal, setShowQuoteBuilderModal] = useState(false);
   const [convertingQuoteId, setConvertingQuoteId] = useState(null);
   const [syncingCampaignId, setSyncingCampaignId] = useState(null);
   const [markingCommissionId, setMarkingCommissionId] = useState(null);
@@ -952,11 +954,6 @@ function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLookupReco
     setSortBy(fieldApiName);
     setSortOrder(sameField && sortOrder === "asc" ? "desc" : "asc");
   };
-
-  const createHref =
-    objectDef.apiName === "quote"
-      ? "/admin/quote-builder"
-      : `/admin/${objectDef.apiName}/new?tab=${objectDef.apiName}`;
 
   const supportsClientSummary =
     objectDef.apiName === "sales" || objectDef.apiName === "quote";
@@ -1114,13 +1111,14 @@ function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLookupReco
 
           <div className="flex flex-wrap gap-2">
             {objectDef.apiName === "quote" ? (
-              <Link
-                to={createHref}
+              <button
+                type="button"
+                onClick={() => setShowQuoteBuilderModal(true)}
                 className="rounded-xl px-4 py-2 text-sm font-semibold text-white"
                 style={{ backgroundColor: adminTheme.text }}
               >
                 Nueva cotizacion
-              </Link>
+              </button>
             ) : (
               <button
                 type="button"
@@ -1426,6 +1424,23 @@ function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLookupReco
         onOpenWhatsApp={handleOpenWhatsApp}
         copying={copying}
         openingWhatsApp={openingWhatsApp}
+      />
+
+      <QuoteBuilderModal
+        open={showQuoteBuilderModal}
+        onClose={() => setShowQuoteBuilderModal(false)}
+        onSaved={async ({ record }) => {
+          setShowQuoteBuilderModal(false);
+          if (page === 1) {
+            await loadRecords();
+          } else {
+            setPage(1);
+          }
+
+          if (record?._id) {
+            onOpenRecord(record);
+          }
+        }}
       />
     </div>
   );
