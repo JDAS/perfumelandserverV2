@@ -90,114 +90,104 @@ async function getOrCreateSettings() {
 }
 
 exports.getStorefrontSettings = async (_req, res) => {
-  try {
-    const document = await getOrCreateSettings();
-    return res.json({
-      storefront: mergeSettings(document.storefront),
-      adminTheme: mergeAdminTheme(document.adminTheme),
-      availableThemes: THEMES,
-      availableAdminThemes: ADMIN_THEMES,
-      availableVariants: VARIANTS,
-    });
-  } catch (error) {
-    console.error("getStorefrontSettings error:", error);
-    return res.status(500).json({ error: error.message });
-  }
+  const document = await getOrCreateSettings();
+  return res.json({
+    storefront: mergeSettings(document.storefront),
+    adminTheme: mergeAdminTheme(document.adminTheme),
+    availableThemes: THEMES,
+    availableAdminThemes: ADMIN_THEMES,
+    availableVariants: VARIANTS,
+  });
 };
 
 exports.updateStorefrontSettings = async (req, res) => {
-  try {
-    const document = await getOrCreateSettings();
-    const storefrontPayload = req.body?.storefront;
-    const adminThemePayload = req.body?.adminTheme;
+  const document = await getOrCreateSettings();
+  const storefrontPayload = req.body?.storefront;
+  const adminThemePayload = req.body?.adminTheme;
 
-    if (storefrontPayload && typeof storefrontPayload === "object") {
-      document.storefront = {
-        themeId: sanitizeString(
-          storefrontPayload.themeId,
-          DEFAULT_STOREFRONT_SETTINGS.themeId
-        ),
-        variantId: sanitizeString(
-          storefrontPayload.variantId,
-          DEFAULT_STOREFRONT_SETTINGS.variantId
-        ),
-        logoUrl: sanitizeString(
-          storefrontPayload.logoUrl,
-          DEFAULT_STOREFRONT_SETTINGS.logoUrl
-        ),
-        logoAlt: sanitizeString(
-          storefrontPayload.logoAlt,
-          DEFAULT_STOREFRONT_SETTINGS.logoAlt
-        ),
-        showCart: Boolean(storefrontPayload.showCart),
-        showWhatsapp: Boolean(storefrontPayload.showWhatsapp),
-        whatsappNumber: sanitizeString(storefrontPayload.whatsappNumber),
-        heroBadge: sanitizeString(
-          storefrontPayload.heroBadge,
-          DEFAULT_STOREFRONT_SETTINGS.heroBadge
-        ),
-        heroTitle: sanitizeString(
-          storefrontPayload.heroTitle,
-          DEFAULT_STOREFRONT_SETTINGS.heroTitle
-        ),
-        heroSubtitle: sanitizeString(
-          storefrontPayload.heroSubtitle,
-          DEFAULT_STOREFRONT_SETTINGS.heroSubtitle
-        ),
-        heroPrimaryCtaLabel: sanitizeString(
-          storefrontPayload.heroPrimaryCtaLabel,
-          DEFAULT_STOREFRONT_SETTINGS.heroPrimaryCtaLabel
-        ),
-        heroSecondaryCtaLabel: sanitizeString(
-          storefrontPayload.heroSecondaryCtaLabel,
-          DEFAULT_STOREFRONT_SETTINGS.heroSecondaryCtaLabel
-        ),
-        highlightEyebrow: sanitizeString(
-          storefrontPayload.highlightEyebrow,
-          DEFAULT_STOREFRONT_SETTINGS.highlightEyebrow
-        ),
-        highlightTitle: sanitizeString(
-          storefrontPayload.highlightTitle,
-          DEFAULT_STOREFRONT_SETTINGS.highlightTitle
-        ),
-        featureOneEyebrow: sanitizeString(
-          storefrontPayload.featureOneEyebrow,
-          DEFAULT_STOREFRONT_SETTINGS.featureOneEyebrow
-        ),
-        featureOneText: sanitizeString(
-          storefrontPayload.featureOneText,
-          DEFAULT_STOREFRONT_SETTINGS.featureOneText
-        ),
-        featureTwoEyebrow: sanitizeString(
-          storefrontPayload.featureTwoEyebrow,
-          DEFAULT_STOREFRONT_SETTINGS.featureTwoEyebrow
-        ),
-        featureTwoText: sanitizeString(
-          storefrontPayload.featureTwoText,
-          DEFAULT_STOREFRONT_SETTINGS.featureTwoText
-        ),
-        siteTagline: sanitizeString(
-          storefrontPayload.siteTagline,
-          DEFAULT_STOREFRONT_SETTINGS.siteTagline
-        ),
-      };
-    }
-
-    if (adminThemePayload && typeof adminThemePayload === "object") {
-      document.adminTheme = mergeAdminTheme(adminThemePayload);
-    }
-
-    await document.save();
-
-    return res.json({
-      storefront: mergeSettings(document.storefront),
-      adminTheme: mergeAdminTheme(document.adminTheme),
-      availableThemes: THEMES,
-      availableAdminThemes: ADMIN_THEMES,
-      availableVariants: VARIANTS,
-    });
-  } catch (error) {
-    console.error("updateStorefrontSettings error:", error);
-    return res.status(500).json({ error: error.message });
+  if (storefrontPayload && typeof storefrontPayload === "object") {
+    document.storefront = {
+      themeId: sanitizeString(
+        storefrontPayload.themeId,
+        DEFAULT_STOREFRONT_SETTINGS.themeId
+      ),
+      variantId: sanitizeString(
+        storefrontPayload.variantId,
+        DEFAULT_STOREFRONT_SETTINGS.variantId
+      ),
+      logoUrl: sanitizeString(
+        storefrontPayload.logoUrl,
+        DEFAULT_STOREFRONT_SETTINGS.logoUrl
+      ),
+      logoAlt: sanitizeString(
+        storefrontPayload.logoAlt,
+        DEFAULT_STOREFRONT_SETTINGS.logoAlt
+      ),
+      showCart: Boolean(storefrontPayload.showCart),
+      showWhatsapp: Boolean(storefrontPayload.showWhatsapp),
+      whatsappNumber: sanitizeString(storefrontPayload.whatsappNumber),
+      heroBadge: sanitizeString(
+        storefrontPayload.heroBadge,
+        DEFAULT_STOREFRONT_SETTINGS.heroBadge
+      ),
+      heroTitle: sanitizeString(
+        storefrontPayload.heroTitle,
+        DEFAULT_STOREFRONT_SETTINGS.heroTitle
+      ),
+      heroSubtitle: sanitizeString(
+        storefrontPayload.heroSubtitle,
+        DEFAULT_STOREFRONT_SETTINGS.heroSubtitle
+      ),
+      heroPrimaryCtaLabel: sanitizeString(
+        storefrontPayload.heroPrimaryCtaLabel,
+        DEFAULT_STOREFRONT_SETTINGS.heroPrimaryCtaLabel
+      ),
+      heroSecondaryCtaLabel: sanitizeString(
+        storefrontPayload.heroSecondaryCtaLabel,
+        DEFAULT_STOREFRONT_SETTINGS.heroSecondaryCtaLabel
+      ),
+      highlightEyebrow: sanitizeString(
+        storefrontPayload.highlightEyebrow,
+        DEFAULT_STOREFRONT_SETTINGS.highlightEyebrow
+      ),
+      highlightTitle: sanitizeString(
+        storefrontPayload.highlightTitle,
+        DEFAULT_STOREFRONT_SETTINGS.highlightTitle
+      ),
+      featureOneEyebrow: sanitizeString(
+        storefrontPayload.featureOneEyebrow,
+        DEFAULT_STOREFRONT_SETTINGS.featureOneEyebrow
+      ),
+      featureOneText: sanitizeString(
+        storefrontPayload.featureOneText,
+        DEFAULT_STOREFRONT_SETTINGS.featureOneText
+      ),
+      featureTwoEyebrow: sanitizeString(
+        storefrontPayload.featureTwoEyebrow,
+        DEFAULT_STOREFRONT_SETTINGS.featureTwoEyebrow
+      ),
+      featureTwoText: sanitizeString(
+        storefrontPayload.featureTwoText,
+        DEFAULT_STOREFRONT_SETTINGS.featureTwoText
+      ),
+      siteTagline: sanitizeString(
+        storefrontPayload.siteTagline,
+        DEFAULT_STOREFRONT_SETTINGS.siteTagline
+      ),
+    };
   }
+
+  if (adminThemePayload && typeof adminThemePayload === "object") {
+    document.adminTheme = mergeAdminTheme(adminThemePayload);
+  }
+
+  await document.save();
+
+  return res.json({
+    storefront: mergeSettings(document.storefront),
+    adminTheme: mergeAdminTheme(document.adminTheme),
+    availableThemes: THEMES,
+    availableAdminThemes: ADMIN_THEMES,
+    availableVariants: VARIANTS,
+  });
 };

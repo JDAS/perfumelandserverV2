@@ -1,4 +1,5 @@
 const { ensureCloudinaryConfigured } = require("../config/cloudinary");
+const { createHttpError } = require("../utils/httpError");
 
 function uploadBufferToCloudinary(fileBuffer, options = {}) {
   const cloudinary = ensureCloudinaryConfigured();
@@ -25,30 +26,23 @@ function uploadBufferToCloudinary(fileBuffer, options = {}) {
 }
 
 exports.uploadAttachment = async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: "Debes enviar un archivo." });
-    }
-
-    const result = await uploadBufferToCloudinary(req.file.buffer, {
-      filename_override: req.file.originalname,
-      use_filename: true,
-      unique_filename: true,
-    });
-
-    return res.json({
-      fileName: req.file.originalname,
-      mimeType: req.file.mimetype,
-      size: req.file.size,
-      url: result.secure_url || result.url,
-      publicId: result.public_id,
-      width: result.width || null,
-      height: result.height || null,
-    });
-  } catch (error) {
-    console.error("uploadAttachment error:", error);
-    return res.status(error.statusCode || 500).json({
-      error: error.message || "No se pudo subir el archivo.",
-    });
+  if (!req.file) {
+    throw createHttpError(400, "Debes enviar un archivo.");
   }
+
+  const result = await uploadBufferToCloudinary(req.file.buffer, {
+    filename_override: req.file.originalname,
+    use_filename: true,
+    unique_filename: true,
+  });
+
+  return res.json({
+    fileName: req.file.originalname,
+    mimeType: req.file.mimetype,
+    size: req.file.size,
+    url: result.secure_url || result.url,
+    publicId: result.public_id,
+    width: result.width || null,
+    height: result.height || null,
+  });
 };

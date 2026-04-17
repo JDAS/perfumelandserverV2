@@ -1,5 +1,6 @@
 const DashboardDefinition = require("../models/DashboardDefinition");
 const ReportDefinition = require("../models/ReportDefinition");
+const { createHttpError } = require("../utils/httpError");
 
 function normalizeApiName(value = "") {
   return String(value)
@@ -38,54 +39,44 @@ exports.listDashboards = async (req, res) => {
 exports.getDashboardById = async (req, res) => {
   const dashboard = await DashboardDefinition.findById(req.params.id).lean();
   if (!dashboard) {
-    return res.status(404).json({ error: "Dashboard no encontrado" });
+    throw createHttpError(404, "Dashboard no encontrado");
   }
 
   return res.json(await enrichDashboard(dashboard));
 };
 
 exports.createDashboard = async (req, res) => {
-  try {
-    const payload = {
-      ...req.body,
-      apiName: normalizeApiName(req.body.apiName || req.body.name),
-      createdBy: req.user?._id || null,
-      updatedBy: req.user?._id || null,
-    };
+  const payload = {
+    ...req.body,
+    apiName: normalizeApiName(req.body.apiName || req.body.name),
+    createdBy: req.user?._id || null,
+    updatedBy: req.user?._id || null,
+  };
 
-    const dashboard = await DashboardDefinition.create(payload);
-    return res.status(201).json(await enrichDashboard(dashboard.toObject()));
-  } catch (error) {
-    console.error("createDashboard error:", error);
-    return res.status(400).json({ error: error.message });
-  }
+  const dashboard = await DashboardDefinition.create(payload);
+  return res.status(201).json(await enrichDashboard(dashboard.toObject()));
 };
 
 exports.updateDashboard = async (req, res) => {
-  try {
-    const current = await DashboardDefinition.findById(req.params.id);
-    if (!current) {
-      return res.status(404).json({ error: "Dashboard no encontrado" });
-    }
-
-    current.set({
-      ...req.body,
-      apiName: normalizeApiName(req.body.apiName || current.apiName || req.body.name),
-      updatedBy: req.user?._id || null,
-    });
-
-    await current.save();
-    return res.json(await enrichDashboard(current.toObject()));
-  } catch (error) {
-    console.error("updateDashboard error:", error);
-    return res.status(400).json({ error: error.message });
+  const current = await DashboardDefinition.findById(req.params.id);
+  if (!current) {
+    throw createHttpError(404, "Dashboard no encontrado");
   }
+
+  current.set({
+    ...req.body,
+    apiName: normalizeApiName(req.body.apiName || current.apiName || req.body.name),
+    updatedBy: req.user?._id || null,
+  });
+
+  await current.save();
+  return res.json(await enrichDashboard(current.toObject()));
 };
 
 exports.deleteDashboard = async (req, res) => {
   const deleted = await DashboardDefinition.findByIdAndDelete(req.params.id);
   if (!deleted) {
-    return res.status(404).json({ error: "Dashboard no encontrado" });
+    throw createHttpError(404, "Dashboard no encontrado");
   }
   return res.json({ success: true });
 };

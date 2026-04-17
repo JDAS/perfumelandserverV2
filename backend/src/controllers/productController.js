@@ -2,6 +2,17 @@ const Product = require("../models/Product");
 const CustomObject = require("../models/CustomObject");
 const { getCustomRecordModel } = require("../models/CustomRecord");
 const { applyFormulaFields } = require("../utils/formulaEngine");
+const { createHttpError } = require("../utils/httpError");
+
+const DYNAMIC_PRODUCT_CATALOG_FILTER = {
+  isactive: { $ne: false },
+  $or: [
+    { catalog_status: "Listo para catalogo" },
+    { catalog_status: { $exists: false } },
+    { catalog_status: null },
+    { catalog_status: "" },
+  ],
+};
 
 function normalizeLegacyProduct(product) {
   return {
@@ -172,15 +183,7 @@ async function loadDynamicProductContext() {
   const ProductRecord = getCustomRecordModel("product");
   const AttachmentRecord = getCustomRecordModel("attachments");
 
-  const rawProducts = await ProductRecord.find({
-    isactive: { $ne: false },
-    $or: [
-      { catalog_status: "Listo para catalogo" },
-      { catalog_status: { $exists: false } },
-      { catalog_status: null },
-      { catalog_status: "" },
-    ],
-  })
+  const rawProducts = await ProductRecord.find(DYNAMIC_PRODUCT_CATALOG_FILTER)
     .sort({ sort_order: 1, featured: -1, createdAt: -1, _id: -1 })
     .lean();
 
@@ -210,6 +213,35 @@ async function loadDynamicProductContext() {
     rawProducts,
     attachments,
   };
+}
+
+async function loadDynamicProductById(productId) {
+  const objectDefinition = await CustomObject.findOne({ apiName: "product" }).lean();
+  if (!objectDefinition) return null;
+
+  const ProductRecord = getCustomRecordModel("product");
+  const AttachmentRecord = getCustomRecordModel("attachments");
+
+  const rawProduct = await ProductRecord.findOne({
+    _id: productId,
+    ...DYNAMIC_PRODUCT_CATALOG_FILTER,
+  }).lean();
+
+  if (!rawProduct) return null;
+
+  const linkedId = String(rawProduct._id);
+  const attachments = await AttachmentRecord.find({
+    linked_object: "product",
+    $or: [
+      { linked_record_id: linkedId },
+      { linkedrecordid: linkedId },
+    ],
+    isactive: { $ne: false },
+  })
+    .sort({ createdAt: -1, _id: -1 })
+    .lean();
+
+  return buildDynamicProducts([rawProduct], objectDefinition, attachments)[0] || null;
 }
 
 function buildDynamicProducts(rawProducts, objectDefinition, attachments) {
@@ -260,66 +292,48 @@ async function loadDynamicProducts() {
 
 // Crear producto
 exports.createProduct = async (req, res) => {
-  try {
-    const product = await Product.create(req.body);
-    res.status(201).json(product);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  const product = await Product.create(req.body);
+  res.status(201).json(product);
 };
 
 // Obtener todos
 exports.getProducts = async (req, res) => {
-  try {
-    const [legacyProducts, dynamicProducts] = await Promise.all([
-      Product.find().sort({ createdAt: -1, _id: -1 }).lean(),
-      loadDynamicProducts(),
-    ]);
+  const [legacyProducts, dynamicProducts] = await Promise.all([
+    Product.find().sort({ createdAt: -1, _id: -1 }).lean(),
+    loadDynamicProducts(),
+  ]);
 
-    if (dynamicProducts.length > 0) {
-      return res.json(dynamicProducts);
-    }
-
-    return res.json(legacyProducts.map(normalizeLegacyProduct));
-  } catch (error) {
-    console.error("getProducts error:", error);
-    return res.status(500).json({ error: error.message });
+  if (dynamicProducts.length > 0) {
+    return res.json(dynamicProducts);
   }
+
+  return res.json(legacyProducts.map(normalizeLegacyProduct));
 };
 
 exports.getProductById = async (req, res) => {
-  try {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    const dynamicProducts = await loadDynamicProducts();
-    const dynamicMatch = dynamicProducts.find((product) => String(product._id) === String(id));
-
-    if (dynamicMatch) {
-      return res.json(dynamicMatch);
-    }
-
-    const legacyProduct = await Product.findById(id).lean();
-    if (legacyProduct) {
-      return res.json(normalizeLegacyProduct(legacyProduct));
-    }
-
-    return res.status(404).json({ error: "Producto no encontrado" });
-  } catch (error) {
-    console.error("getProductById error:", error);
-    return res.status(500).json({ error: error.message });
+  const dynamicProduct = await loadDynamicProductById(id);
+  if (dynamicProduct) {
+    return res.json(dynamicProduct);
   }
+
+  const legacyProduct = await Product.findById(id).lean();
+  if (legacyProduct) {
+    return res.json(normalizeLegacyProduct(legacyProduct));
+  }
+
+  throw createHttpError(404, "Producto no encontrado");
 };
 
 exports.getProductSharePage = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const dynamicProducts = await loadDynamicProducts();
-    const dynamicMatch = dynamicProducts.find((product) => String(product._id) === String(id));
-
-    if (dynamicMatch) {
+    const dynamicProduct = await loadDynamicProductById(id);
+    if (dynamicProduct) {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      return res.send(buildSharePage(dynamicMatch, req));
+      return res.send(buildSharePage(dynamicProduct, req));
     }
 
     const legacyProduct = await Product.findById(id).lean();

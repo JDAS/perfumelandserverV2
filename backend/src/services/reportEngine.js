@@ -60,8 +60,90 @@ function buildMongoQuery(filters = []) {
   return { $and: conditions };
 }
 
+function isEmptyValue(value) {
+  return (
+    value === undefined ||
+    value === null ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0)
+  );
+}
+
+function matchesFilter(record, filter) {
+  const { field, operator, value } = filter || {};
+  if (!field) return true;
+
+  const currentValue = getValueAtPath(record, field);
+
+  switch (operator) {
+    case "eq":
+      return currentValue === value;
+    case "ne":
+      return currentValue !== value;
+    case "gt":
+      return currentValue > value;
+    case "gte":
+      return currentValue >= value;
+    case "lt":
+      return currentValue < value;
+    case "lte":
+      return currentValue <= value;
+    case "contains":
+      return String(currentValue || "")
+        .toLowerCase()
+        .includes(String(value || "").toLowerCase());
+    case "in": {
+      const values = Array.isArray(value)
+        ? value
+        : String(value || "")
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean);
+      return values.includes(currentValue);
+    }
+    case "isEmpty":
+      return isEmptyValue(currentValue);
+    case "notEmpty":
+      return !isEmptyValue(currentValue);
+    default:
+      return true;
+  }
+}
+
+function applyPostFilters(records = [], filters = []) {
+  if (!filters.length) return records;
+  return records.filter((record) => filters.every((filter) => matchesFilter(record, filter)));
+}
+
 function getFieldDefinition(objectDefinition, fieldName) {
   return (objectDefinition.fields || []).find((field) => field.apiName === fieldName) || null;
+}
+
+function getDefaultColumns(objectDefinition) {
+  return (objectDefinition.fields || []).slice(0, 6).map((field) => field.apiName);
+}
+
+function getSelectedColumns(reportDefinition, objectDefinition) {
+  return reportDefinition.columns?.length
+    ? reportDefinition.columns
+    : getDefaultColumns(objectDefinition);
+}
+
+function splitReportFilters(reportDefinition, objectDefinition) {
+  const mongoFilters = [];
+  const postFilters = [];
+
+  for (const filter of reportDefinition.filters || []) {
+    const fieldDefinition = getFieldDefinition(objectDefinition, filter.field);
+    if (fieldDefinition?.type === "formula") {
+      postFilters.push(filter);
+      continue;
+    }
+
+    mongoFilters.push(filter);
+  }
+
+  return { mongoFilters, postFilters };
 }
 
 function getValueAtPath(record, fieldName) {
@@ -180,27 +262,74 @@ function sortRows(rows, sortDefinitions = []) {
   });
 }
 
-async function loadSourceRecords(reportDefinition) {
-  const objectDefinition = await CustomObject.findOne({
-    apiName: reportDefinition.sourceObject,
-  }).lean();
+function analyzeReportDefinition(reportDefinition, objectDefinition) {
+  const selectedColumns = getSelectedColumns(reportDefinition, objectDefinition);
+  const groupBy = reportDefinition.groupBy || [];
+  const metrics = reportDefinition.metrics || [];
+  const filterFields = (reportDefinition.filters || [])
+    .map((filter) => filter.field)
+    .filter(Boolean);
+  const outputFields = new Set(
+    groupBy.length > 0 || metrics.length > 0 ? [] : selectedColumns
+  );
+  const requiredFields = new Set(filterFields);
 
-  if (!objectDefinition) {
-    const error = new Error(`Objeto fuente no encontrado: ${reportDefinition.sourceObject}`);
-    error.statusCode = 404;
-    throw error;
-  }
+  groupBy.forEach((group) => outputFields.add(group.field));
+  metrics
+    .map((metric) => metric.field)
+    .filter((field) => field && field !== "*")
+    .forEach((field) => outputFields.add(field));
+  outputFields.forEach((field) => requiredFields.add(field));
 
-  const RecordModel = getCustomRecordModel(reportDefinition.sourceObject);
-  const query = buildMongoQuery(reportDefinition.filters || []);
-  const rawRecords = await RecordModel.find(query).lean();
-  const lookupResolved = await resolveLookupData(rawRecords, objectDefinition);
-  const records = lookupResolved.map((record) =>
-    applyFormulaFields(objectDefinition.fields, record)
+  const formulaFields = [...requiredFields].filter(
+    (field) => getFieldDefinition(objectDefinition, field)?.type === "formula"
+  );
+
+  const lookupFields = [...requiredFields].filter(
+    (field) => getFieldDefinition(objectDefinition, field)?.type === "lookup"
   );
 
   return {
-    objectDefinition,
+    selectedColumns,
+    outputFields: [...outputFields].filter(Boolean),
+    requiredFields: [...requiredFields].filter(Boolean),
+    needsFormulaResolution: formulaFields.length > 0,
+    needsLookupResolution: lookupFields.length > 0,
+    canUseMongoAggregation:
+      formulaFields.length === 0 &&
+      (groupBy.length > 0 || metrics.length > 0),
+    canUseProjectedFind: formulaFields.length === 0,
+  };
+}
+
+function buildProjection(fields = []) {
+  if (!fields.length) return null;
+
+  return fields.reduce((projection, field) => {
+    projection[field] = 1;
+    return projection;
+  }, { _id: 1 });
+}
+
+async function loadSourceRecords(reportDefinition, objectDefinition, query, analysis) {
+  const RecordModel = getCustomRecordModel(reportDefinition.sourceObject);
+  const projection = analysis.canUseProjectedFind
+    ? buildProjection(analysis.requiredFields)
+    : null;
+
+  const rawRecords = await RecordModel.find(query, projection).lean();
+
+  let records = rawRecords;
+
+  if (analysis.needsLookupResolution) {
+    records = await resolveLookupData(records, objectDefinition);
+  }
+
+  if (analysis.needsFormulaResolution) {
+    records = records.map((record) => applyFormulaFields(objectDefinition.fields, record));
+  }
+
+  return {
     records,
   };
 }
@@ -223,9 +352,7 @@ function buildReportColumns(reportDefinition, objectDefinition) {
     return [...groupColumns, ...metricColumns];
   }
 
-  const selectedColumns = reportDefinition.columns?.length
-    ? reportDefinition.columns
-    : (objectDefinition.fields || []).slice(0, 6).map((field) => field.apiName);
+  const selectedColumns = getSelectedColumns(reportDefinition, objectDefinition);
 
   return selectedColumns.map((column) => {
     const fieldDef = getFieldDefinition(objectDefinition, column);
@@ -341,13 +468,254 @@ function buildGroupedRows(reportDefinition, objectDefinition, records) {
   };
 }
 
-async function executeReportDefinition(reportDefinition) {
-  const { objectDefinition, records } = await loadSourceRecords(reportDefinition);
+function buildNumericExpression(field) {
+  if (field === "*") return 1;
+  if (!field) return 0;
 
-  const result =
-    (reportDefinition.groupBy || []).length > 0
-      ? buildGroupedRows(reportDefinition, objectDefinition, records)
-      : buildUngroupedRows(reportDefinition, objectDefinition, records);
+  return {
+    $convert: {
+      input: `$${field}`,
+      to: "double",
+      onError: 0,
+      onNull: 0,
+    },
+  };
+}
+
+function buildDateGroupingExpression(field, dateGroup) {
+  if (dateGroup === "none") {
+    return { $ifNull: [`$${field}`, ""] };
+  }
+
+  const format =
+    dateGroup === "year"
+      ? "%Y"
+      : dateGroup === "month"
+        ? "%Y-%m"
+        : "%Y-%m-%d";
+
+  return {
+    $let: {
+      vars: {
+        normalizedDate: {
+          $convert: {
+            input: `$${field}`,
+            to: "date",
+            onError: null,
+            onNull: null,
+          },
+        },
+      },
+      in: {
+        $ifNull: [
+          {
+            $dateToString: {
+              format,
+              date: "$$normalizedDate",
+              timezone: "UTC",
+            },
+          },
+          { $ifNull: [`$${field}`, ""] },
+        ],
+      },
+    },
+  };
+}
+
+function buildMetricAccumulator(metric) {
+  switch (metric.operation) {
+    case "count":
+      return { $sum: 1 };
+    case "sum":
+      return { $sum: buildNumericExpression(metric.field) };
+    case "avg":
+      return { $avg: buildNumericExpression(metric.field) };
+    case "min":
+      return { $min: buildNumericExpression(metric.field) };
+    case "max":
+      return { $max: buildNumericExpression(metric.field) };
+    default:
+      return { $sum: 0 };
+  }
+}
+
+function buildMetricProjection(metric) {
+  if (metric.operation === "avg") {
+    return {
+      $round: [{ $ifNull: [`$${metric.id}`, 0] }, 2],
+    };
+  }
+
+  return {
+    $ifNull: [`$${metric.id}`, 0],
+  };
+}
+
+function buildRowsSummary(metrics, rows) {
+  const summary = {};
+
+  for (const metric of metrics) {
+    if (metric.operation === "count" || metric.operation === "sum") {
+      summary[metric.id] = rows.reduce(
+        (total, row) => total + coerceNumeric(row[metric.id]),
+        0
+      );
+    }
+  }
+
+  return summary;
+}
+
+async function applyGroupedLookupLabels(rows, reportDefinition, objectDefinition, analysis) {
+  if (!rows.length) return rows;
+  if (!analysis.needsLookupResolution) {
+    return rows.map((row) => {
+      const nextRow = { ...row };
+      for (const group of reportDefinition.groupBy || []) {
+        nextRow[`${group.field}__label`] = row[group.field];
+      }
+      return nextRow;
+    });
+  }
+
+  const lookupResolved = await resolveLookupData(rows, objectDefinition);
+
+  return lookupResolved.map((row) => {
+    const nextRow = { ...row };
+
+    for (const group of reportDefinition.groupBy || []) {
+      const fieldDef = getFieldDefinition(objectDefinition, group.field);
+      nextRow[`${group.field}__label`] = resolveGroupDisplayValue(
+        row,
+        fieldDef,
+        row[group.field]
+      );
+    }
+
+    delete nextRow._lookup;
+    return nextRow;
+  });
+}
+
+async function executeMongoAggregatedReport(
+  reportDefinition,
+  objectDefinition,
+  query,
+  analysis
+) {
+  const RecordModel = getCustomRecordModel(reportDefinition.sourceObject);
+  const groupBy = reportDefinition.groupBy || [];
+  const metrics = reportDefinition.metrics || [];
+  const pipeline = [{ $match: query }];
+
+  if (groupBy.length > 0) {
+    const groupStage = { _id: {} };
+    for (const group of groupBy) {
+      groupStage._id[group.field] = buildDateGroupingExpression(
+        group.field,
+        group.dateGroup || "none"
+      );
+    }
+
+    for (const metric of metrics) {
+      groupStage[metric.id] = buildMetricAccumulator(metric);
+    }
+
+    const projectStage = { _id: 0 };
+    for (const group of groupBy) {
+      projectStage[group.field] = `$_id.${group.field}`;
+    }
+    for (const metric of metrics) {
+      projectStage[metric.id] = buildMetricProjection(metric);
+    }
+
+    pipeline.push({ $group: groupStage }, { $project: projectStage });
+
+    const rawRows = await RecordModel.aggregate(pipeline).allowDiskUse(true);
+    const rows = await applyGroupedLookupLabels(
+      rawRows,
+      reportDefinition,
+      objectDefinition,
+      analysis
+    );
+
+    return {
+      columns: buildReportColumns(reportDefinition, objectDefinition),
+      rows: sortRows(rows, reportDefinition.sort || []),
+      summary: buildRowsSummary(metrics, rows),
+    };
+  }
+
+  const groupStage = { _id: null };
+  for (const metric of metrics) {
+    groupStage[metric.id] = buildMetricAccumulator(metric);
+  }
+
+  const projectStage = { _id: 0 };
+  for (const metric of metrics) {
+    projectStage[metric.id] = buildMetricProjection(metric);
+  }
+
+  pipeline.push({ $group: groupStage }, { $project: projectStage });
+
+  const [summaryRow = {}] = await RecordModel.aggregate(pipeline).allowDiskUse(true);
+  const normalizedSummaryRow = metrics.reduce((row, metric) => {
+    row[metric.id] = summaryRow[metric.id] ?? 0;
+    return row;
+  }, {});
+
+  return {
+    columns: buildReportColumns(reportDefinition, objectDefinition),
+    rows: [normalizedSummaryRow],
+    summary: normalizedSummaryRow,
+  };
+}
+
+async function executeReportDefinition(reportDefinition) {
+  const objectDefinition = await CustomObject.findOne({
+    apiName: reportDefinition.sourceObject,
+  }).lean();
+
+  if (!objectDefinition) {
+    const error = new Error(`Objeto fuente no encontrado: ${reportDefinition.sourceObject}`);
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const { mongoFilters, postFilters } = splitReportFilters(
+    reportDefinition,
+    objectDefinition
+  );
+  const query = buildMongoQuery(mongoFilters);
+  const analysis = analyzeReportDefinition(reportDefinition, objectDefinition);
+
+  let finalResult;
+  let totalSourceRecords;
+
+  if (analysis.canUseMongoAggregation && postFilters.length === 0) {
+    const RecordModel = getCustomRecordModel(reportDefinition.sourceObject);
+    totalSourceRecords = await RecordModel.countDocuments(query);
+    finalResult = await executeMongoAggregatedReport(
+      reportDefinition,
+      objectDefinition,
+      query,
+      analysis
+    );
+  } else {
+    const { records } = await loadSourceRecords(
+      reportDefinition,
+      objectDefinition,
+      query,
+      analysis
+    );
+    const filteredRecords = applyPostFilters(records, postFilters);
+    totalSourceRecords = filteredRecords.length;
+
+    finalResult =
+      (reportDefinition.groupBy || []).length > 0
+        ? buildGroupedRows(reportDefinition, objectDefinition, filteredRecords)
+        : buildUngroupedRows(reportDefinition, objectDefinition, filteredRecords);
+  }
 
   return {
     report: {
@@ -358,10 +726,10 @@ async function executeReportDefinition(reportDefinition) {
     },
     sourceObject: reportDefinition.sourceObject,
     sourceObjectLabel: objectDefinition.name,
-    totalSourceRecords: records.length,
-    columns: result.columns,
-    rows: result.rows,
-    summary: result.summary,
+    totalSourceRecords,
+    columns: finalResult.columns,
+    rows: finalResult.rows,
+    summary: finalResult.summary,
   };
 }
 

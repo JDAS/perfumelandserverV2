@@ -2,6 +2,7 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { getJwtSecret, getJwtExpiresIn } = require("../config/auth");
+const { createHttpError } = require("../utils/httpError");
 
 const buildSafeUser = (user) => ({
   _id: user._id,
@@ -90,126 +91,92 @@ exports.register = async (_req, res) => {
 };
 
 exports.getBootstrapStatus = async (_req, res) => {
-  try {
-    const requiresSetup = !(await hasAnyUsers());
-    const bootstrapEnabled =
-      requiresSetup && Boolean(getBootstrapAdminToken());
+  const requiresSetup = !(await hasAnyUsers());
+  const bootstrapEnabled =
+    requiresSetup && Boolean(getBootstrapAdminToken());
 
-    return res.json({
-      requiresSetup,
-      bootstrapEnabled,
-      message:
-        requiresSetup && !bootstrapEnabled
-          ? "Define BOOTSTRAP_ADMIN_TOKEN en el backend para habilitar el setup inicial."
-          : "",
-    });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
-  }
+  return res.json({
+    requiresSetup,
+    bootstrapEnabled,
+    message:
+      requiresSetup && !bootstrapEnabled
+        ? "Define BOOTSTRAP_ADMIN_TOKEN en el backend para habilitar el setup inicial."
+        : "",
+  });
 };
 
 exports.bootstrapAdmin = async (req, res) => {
-  try {
-    const { name, email, password, setupToken } = req.body || {};
+  const { name, email, password, setupToken } = req.body || {};
 
-    await assertBootstrapAllowed(setupToken);
+  await assertBootstrapAllowed(setupToken);
 
-    const user = await createUserFromPayload({
-      name,
-      email,
-      password,
-      isAdmin: true,
-    });
+  const user = await createUserFromPayload({
+    name,
+    email,
+    password,
+    isAdmin: true,
+  });
 
-    return res.status(201).json({
-      token: buildToken(user),
-      user: buildSafeUser(user),
-    });
-  } catch (error) {
-    return res.status(error.statusCode || 500).json({
-      error: error.message,
-      message: error.message,
-    });
-  }
+  return res.status(201).json({
+    token: buildToken(user),
+    user: buildSafeUser(user),
+  });
 };
 
 exports.login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({
-        message: "Correo y contrasena son obligatorios",
-      });
-    }
-
-    const normalizedEmail = String(email).trim().toLowerCase();
-    const user = await User.findOne({ email: normalizedEmail });
-
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ message: "Credenciales invalidas" });
-    }
-
-    return res.json({ token: buildToken(user), user: buildSafeUser(user) });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
+  if (!email || !password) {
+    throw createHttpError(400, "Correo y contrasena son obligatorios");
   }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const user = await User.findOne({ email: normalizedEmail });
+
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    throw createHttpError(401, "Credenciales invalidas");
+  }
+
+  return res.json({ token: buildToken(user), user: buildSafeUser(user) });
 };
 
 exports.updatePreferences = async (req, res) => {
-  try {
-    const { adminTabOrder } = req.body || {};
+  const { adminTabOrder } = req.body || {};
 
-    if (adminTabOrder !== undefined && !Array.isArray(adminTabOrder)) {
-      return res
-        .status(400)
-        .json({ message: "adminTabOrder debe ser un arreglo de tabs" });
-    }
-
-    if (Array.isArray(adminTabOrder)) {
-      req.user.adminTabOrder = adminTabOrder
-        .map((value) => String(value || "").trim())
-        .filter(Boolean);
-    }
-
-    await req.user.save();
-
-    return res.json({ user: buildSafeUser(req.user) });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
+  if (adminTabOrder !== undefined && !Array.isArray(adminTabOrder)) {
+    throw createHttpError(400, "adminTabOrder debe ser un arreglo de tabs");
   }
+
+  if (Array.isArray(adminTabOrder)) {
+    req.user.adminTabOrder = adminTabOrder
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+  }
+
+  await req.user.save();
+
+  return res.json({ user: buildSafeUser(req.user) });
 };
 
 exports.listUsers = async (_req, res) => {
-  try {
-    const users = await User.find()
-      .sort({ createdAt: -1, _id: -1 })
-      .select("-password")
-      .lean();
+  const users = await User.find()
+    .sort({ createdAt: -1, _id: -1 })
+    .select("-password")
+    .lean();
 
-    return res.json(users.map((user) => buildSafeUser(user)));
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
-  }
+  return res.json(users.map((user) => buildSafeUser(user)));
 };
 
 exports.adminCreateUser = async (req, res) => {
-  try {
-    const { name, email, password, isAdmin } = req.body || {};
-    const user = await createUserFromPayload({
-      name,
-      email,
-      password,
-      isAdmin,
-    });
+  const { name, email, password, isAdmin } = req.body || {};
+  const user = await createUserFromPayload({
+    name,
+    email,
+    password,
+    isAdmin,
+  });
 
-    return res.status(201).json({
-      user: buildSafeUser(user),
-    });
-  } catch (error) {
-    return res.status(error.statusCode || 500).json({
-      error: error.message,
-      message: error.message,
-    });
-  }
+  return res.status(201).json({
+    user: buildSafeUser(user),
+  });
 };

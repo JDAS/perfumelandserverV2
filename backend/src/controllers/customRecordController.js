@@ -1,5 +1,3 @@
-const { getCustomRecordModel } = require("../models/CustomRecord");
-const { recalculateParentRollupsFromChild } = require("../utils/rollupEngine");
 const {
   listRecords,
   getRecordByIdEnriched,
@@ -10,187 +8,118 @@ const {
 const { buildClientSummary } = require("../services/clientSummaryService");
 const { convertQuoteToSale } = require("../services/quoteConversionService");
 const { syncSaleCampaigns } = require("../services/campaignSyncService");
+const { createHttpError } = require("../utils/httpError");
 
 exports.createRecord = async (req, res) => {
-  try {
-    const { object } = req.params;
+  const { object } = req.params;
 
-    const result = await saveRecord({
-      objectApiName: object,
-      payload: req.body,
-      user: req.user || null,
-    });
+  const result = await saveRecord({
+    objectApiName: object,
+    payload: req.body,
+    user: req.user || null,
+  });
 
-    res.status(201).json({
-      record: result.record,
-      blockedFields: result.blockedFields,
-    });
-  } catch (error) {
-    console.error("createRecord error:", error);
-    res.status(error.statusCode || 500).json({
-      error: error.message,
-      details: error.details || undefined,
-    });
-  }
+  res.status(201).json({
+    record: result.record,
+    blockedFields: result.blockedFields,
+  });
 };
 
 exports.getRecords = async (req, res) => {
-  try {
-    const { object } = req.params;
+  const { object } = req.params;
 
-    const result = await listRecords(object, req.query);
+  const result = await listRecords(object, req.query);
 
-    res.json(result);
-  } catch (error) {
-    console.error("getRecords error:", error);
-    res.status(error.statusCode || 500).json({
-      error: error.message,
-      stack: process.env.NODE_ENV !== "production" ? error.stack : undefined,
-    });
-  }
+  res.json(result);
 };
 
 exports.getRelatedRecords = async (req, res) => {
-  try {
-    const { object, id, relatedObject, relatedField } = req.params;
+  const { object, id, relatedObject, relatedField } = req.params;
 
-    const result = await getRelatedRecords(
-      object,
-      id,
-      relatedObject,
-      relatedField,
-      {
-        sortField: req.query.sortField,
-        sortOrder: req.query.sortOrder,
-      }
-    );
+  const result = await getRelatedRecords(
+    object,
+    id,
+    relatedObject,
+    relatedField,
+    {
+      sortField: req.query.sortField,
+      sortOrder: req.query.sortOrder,
+    }
+  );
 
-    res.json({
-      records: result.records,
-      total: result.total,
-    });
-  } catch (error) {
-    console.error("getRelatedRecords error:", error);
-    res.status(error.statusCode || 500).json({
-      error: error.message,
-    });
-  }
+  res.json({
+    records: result.records,
+    total: result.total,
+  });
 };
 
 exports.getRecordById = async (req, res) => {
-  try {
-    const { object, id } = req.params;
+  const { object, id } = req.params;
 
-    const record = await getRecordByIdEnriched(object, id);
+  const record = await getRecordByIdEnriched(object, id);
 
-    res.json(record);
-  } catch (error) {
-    console.error("getRecordById error:", error);
-    res.status(error.statusCode || 500).json({
-      error: error.message,
-    });
-  }
+  res.json(record);
 };
 
 exports.getClientSummary = async (req, res) => {
-  try {
-    const { object, id } = req.params;
-    const summary = await buildClientSummary(object, id);
-    res.json(summary);
-  } catch (error) {
-    console.error("getClientSummary error:", error);
-    res.status(error.statusCode || 500).json({
-      error: error.message,
-    });
-  }
+  const { object, id } = req.params;
+  const summary = await buildClientSummary(object, id);
+  res.json(summary);
 };
 
 exports.convertQuoteToSale = async (req, res) => {
-  try {
-    const { object, id } = req.params;
+  const { object, id } = req.params;
 
-    if (object !== "quote") {
-      return res.status(400).json({
-        error: "Esta accion solo aplica a cotizaciones",
-      });
-    }
-
-    const result = await convertQuoteToSale({
-      quoteId: id,
-      user: req.user || null,
-    });
-
-    res.json(result);
-  } catch (error) {
-    console.error("convertQuoteToSale error:", error);
-    res.status(error.statusCode || 500).json({
-      error: error.message,
-    });
+  if (object !== "quote") {
+    throw createHttpError(400, "Esta accion solo aplica a cotizaciones");
   }
+
+  const result = await convertQuoteToSale({
+    quoteId: id,
+    user: req.user || null,
+  });
+
+  res.json(result);
 };
 
 exports.syncSaleCampaigns = async (req, res) => {
-  try {
-    const { object, id } = req.params;
+  const { object, id } = req.params;
 
-    if (object !== "sales") {
-      return res.status(400).json({
-        error: "Esta accion solo aplica a ventas",
-      });
-    }
-
-    const result = await syncSaleCampaigns({
-      saleId: id,
-      user: req.user || null,
-    });
-
-    res.json(result);
-  } catch (error) {
-    console.error("syncSaleCampaigns error:", error);
-    res.status(error.statusCode || 500).json({
-      error: error.message,
-    });
+  if (object !== "sales") {
+    throw createHttpError(400, "Esta accion solo aplica a ventas");
   }
+
+  const result = await syncSaleCampaigns({
+    saleId: id,
+    user: req.user || null,
+  });
+
+  res.json(result);
 };
 
 exports.updateRecord = async (req, res) => {
-  try {
-    const { object, id } = req.params;
+  const { object, id } = req.params;
 
-    const result = await saveRecord({
-      objectApiName: object,
-      recordId: id,
-      payload: req.body,
-      user: req.user || null,
-    });
+  const result = await saveRecord({
+    objectApiName: object,
+    recordId: id,
+    payload: req.body,
+    user: req.user || null,
+  });
 
-    res.json({
-      record: result.record,
-      blockedFields: result.blockedFields,
-    });
-  } catch (error) {
-    console.error("updateRecord error:", error);
-    res.status(error.statusCode || 500).json({
-      error: error.message,
-      details: error.details || undefined,
-    });
-  }
+  res.json({
+    record: result.record,
+    blockedFields: result.blockedFields,
+  });
 };
 
 exports.deleteRecord = async (req, res) => {
-  try {
-    const { object, id } = req.params;
+  const { object, id } = req.params;
 
-    await deleteRecordWithTriggers({
-      objectApiName: object,
-      recordId: id,
-    });
+  await deleteRecordWithTriggers({
+    objectApiName: object,
+    recordId: id,
+  });
 
-    res.json({ message: "Registro eliminado correctamente" });
-  } catch (error) {
-    console.error("deleteRecord error:", error);
-    res.status(error.statusCode || 500).json({
-      error: error.message,
-    });
-  }
+  res.json({ message: "Registro eliminado correctamente" });
 };
