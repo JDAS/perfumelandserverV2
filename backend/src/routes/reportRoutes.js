@@ -11,13 +11,13 @@ const {
 
 const router = express.Router();
 
-router.use(protect);
+router.use(protect, admin);
 
 router.get("/", listReports);
 router.get("/:id", getReportById);
 router.get("/:id/run", runReport);
-router.post("/", admin, createReport);
-router.put("/:id", admin, updateReport);
-router.delete("/:id", admin, deleteReport);
+router.post("/", createReport);
+router.put("/:id", updateReport);
+router.delete("/:id", deleteReport);
 
 module.exports = router;

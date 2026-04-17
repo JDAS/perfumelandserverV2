@@ -1,6 +1,6 @@
 const express = require("express");
 const multer = require("multer");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, admin } = require("../middleware/authMiddleware");
 const { uploadAttachment } = require("../controllers/uploadController");
 
 const router = express.Router();
@@ -12,7 +12,7 @@ const upload = multer({
   },
 });
 
-router.use(protect);
+router.use(protect, admin);
 router.post("/attachments", upload.single("file"), uploadAttachment);
 
 module.exports = router;

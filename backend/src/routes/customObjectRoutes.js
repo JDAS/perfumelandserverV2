@@ -10,12 +10,12 @@ const {
   deleteObject,
 } = require('../controllers/customObjectController');
 
-router.use(protect);
+router.use(protect, admin);
 
 router.get('/', getObjects);
 router.get('/:apiName', getObjectByApiName);
-router.post('/', admin, createObject);
-router.put('/:apiName', admin, updateObject);
-router.delete('/:apiName', admin, deleteObject);
+router.post('/', createObject);
+router.put('/:apiName', updateObject);
+router.delete('/:apiName', deleteObject);
 
 module.exports = router;

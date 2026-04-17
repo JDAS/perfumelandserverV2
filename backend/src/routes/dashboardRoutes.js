@@ -10,12 +10,12 @@ const {
 
 const router = express.Router();
 
-router.use(protect);
+router.use(protect, admin);
 
 router.get("/", listDashboards);
 router.get("/:id", getDashboardById);
-router.post("/", admin, createDashboard);
-router.put("/:id", admin, updateDashboard);
-router.delete("/:id", admin, deleteDashboard);
+router.post("/", createDashboard);
+router.put("/:id", updateDashboard);
+router.delete("/:id", deleteDashboard);
 
 module.exports = router;

@@ -12,6 +12,26 @@ export const register = async (data) => {
   return res.data;
 };
 
+export const getBootstrapStatus = async () => {
+  const res = await apiClient.get(`${API_URL}/bootstrap-status`);
+  return res.data;
+};
+
+export const bootstrapAdmin = async (data) => {
+  const res = await apiClient.post(`${API_URL}/bootstrap-admin`, data);
+  return res.data;
+};
+
+export const getUsers = async () => {
+  const res = await apiClient.get(`${API_URL}/users`);
+  return res.data;
+};
+
+export const createAdminUser = async (data) => {
+  const res = await apiClient.post(`${API_URL}/users`, data);
+  return res.data;
+};
+
 export const updatePreferences = async (payload) => {
   const res = await apiClient.put(`${API_URL}/preferences`, payload);
   return res.data;

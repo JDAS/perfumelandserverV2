@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { protect, admin } = require('../middleware/authMiddleware');
 
 const {
   createRecord,
@@ -14,7 +14,7 @@ const {
   deleteRecord,
 } = require('../controllers/customRecordController');
 
-router.use(protect);
+router.use(protect, admin);
 
 router.post('/:object', createRecord);
 router.get('/:object', getRecords);

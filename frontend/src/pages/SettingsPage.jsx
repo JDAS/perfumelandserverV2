@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import DashboardsAdmin from "../components/admin/DashboardsAdmin";
 import ReportsAdmin from "../components/admin/ReportsAdmin";
+import UsersAdmin from "../components/admin/UsersAdmin";
 import {
   deleteObject,
   getStorefrontSettings,
@@ -176,15 +177,15 @@ function SettingsPage() {
             <button
               className="block w-full text-left px-3 py-2 rounded-xl"
               style={
-                activeSection === "profiles"
+                activeSection === "users"
                   ? { background: adminGradient(), color: "#fff" }
                   : { backgroundColor: adminTheme.surfaceAlt, color: adminTheme.text }
               }
-              onClick={() => setActiveSection("profiles")}
+              onClick={() => setActiveSection("users")}
             >
-              Perfiles
+              Usuarios
             </button>
-          </div>
+            </div>
         </div>
       </aside>
 
@@ -772,10 +773,15 @@ function SettingsPage() {
           </div>
         )}
 
-        {activeSection === "profiles" && (
+        {activeSection === "users" && (
           <div className="bg-white rounded-xl shadow p-6">
-            <h2 className="text-2xl font-bold mb-4">Perfiles</h2>
-            <p className="text-gray-500">Esta sección estará disponible más adelante.</p>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold">Usuarios</h2>
+              <p className="text-sm text-gray-500">
+                Registra accesos internos y revisa rapidamente quienes pueden entrar al sistema.
+              </p>
+            </div>
+            <UsersAdmin />
           </div>
         )}
       </main>
