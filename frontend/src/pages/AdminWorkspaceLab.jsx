@@ -1564,7 +1564,14 @@ function LayoutDetailSections({ objectDef, record, onOpenLookupRecord }) {
   );
 }
 
-function RelatedPanel({ parentObjectApi, parentId, section, onOpenRecord, onOpenLookupRecord }) {
+function RelatedPanel({
+  parentObjectApi,
+  parentId,
+  section,
+  onOpenRecord,
+  onOpenLookupRecord,
+  onParentRefresh,
+}) {
   const { addToast } = useToast();
   const { getObjectByApiNameFromCache } = useObjectMetadata();
   const [records, setRecords] = useState([]);
@@ -1768,6 +1775,8 @@ function RelatedPanel({ parentObjectApi, parentId, section, onOpenRecord, onOpen
             setLoading(false);
           }
 
+          onParentRefresh?.();
+
           if (createdRecord?._id && relatedObjectDef) {
             onOpenRecord(createdRecord, relatedObjectDef);
           }
@@ -1784,6 +1793,7 @@ function RecordDetailPanel({
   allowChildren = false,
   onOpenChild,
   onOpenLookupRecord,
+  onParentRefresh,
   mode = "view",
   onStartEdit,
   onCancelEdit,
@@ -1927,13 +1937,14 @@ function RecordDetailPanel({
               <RelatedPanel
                 key={`${section.apiName || "related"}-${index}`}
                 parentObjectApi={objectDef.apiName}
-                parentId={recordId}
-                section={section}
-                onOpenRecord={onOpenChild}
-                onOpenLookupRecord={onOpenLookupRecord}
-              />
-            ))
-          : null}
+              parentId={recordId}
+              section={section}
+              onOpenRecord={onOpenChild}
+              onOpenLookupRecord={onOpenLookupRecord}
+              onParentRefresh={onParentRefresh}
+            />
+          ))
+        : null}
       </div>
     </div>
   );
@@ -1947,6 +1958,7 @@ function RecordWorkspace({
   onOpenChild,
   onOpenLookupRecord,
   onRecordSaved,
+  onRefreshRecord,
   onStartEdit,
   onCancelEdit,
 }) {
@@ -1983,6 +1995,7 @@ function RecordWorkspace({
           allowChildren
           onOpenChild={onOpenChild}
           onOpenLookupRecord={onOpenLookupRecord}
+          onParentRefresh={() => onRefreshRecord(tab.id)}
           mode={isEditingMainRecord ? "edit" : "view"}
           onStartEdit={() => onStartEdit(tab.id)}
           onCancelEdit={() => onCancelEdit(tab.id)}
@@ -1996,6 +2009,7 @@ function RecordWorkspace({
           allowChildren
           onOpenChild={onOpenChild}
           onOpenLookupRecord={onOpenLookupRecord}
+          onParentRefresh={() => onRefreshRecord(tab.id)}
           mode={tab.activeSubtabId === "edit" ? "edit" : "view"}
           onStartEdit={() => onStartEdit(tab.id)}
           onCancelEdit={() => onCancelEdit(tab.id)}
@@ -2269,6 +2283,18 @@ export default function AdminWorkspaceLab() {
     );
   }, []);
 
+  const handleRefreshRecord = useCallback((tabId) => {
+    setWorkspaceTabs((current) =>
+      current.map((tab) => {
+        if (tab.id !== tabId || tab.type !== "record") return tab;
+        return {
+          ...tab,
+          refreshKey: (tab.refreshKey || 0) + 1,
+        };
+      })
+    );
+  }, []);
+
   const handleFocusTab = useCallback((tab) => {
     setActiveTabId(tab.id);
     if (tab.objectApi) {
@@ -2522,6 +2548,7 @@ export default function AdminWorkspaceLab() {
                 onOpenChild={handleOpenChild}
                 onOpenLookupRecord={handleOpenLookupRecord}
                 onRecordSaved={handleRecordSaved}
+                onRefreshRecord={handleRefreshRecord}
                 onStartEdit={handleStartEdit}
                 onCancelEdit={handleCancelEdit}
               />
