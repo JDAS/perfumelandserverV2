@@ -7,6 +7,7 @@ import {
   login,
 } from "../services/authService";
 import { useToast } from "../components/ui/ToastContext";
+import { DEFAULT_LOGO_URL } from "../constants/branding";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -172,6 +173,9 @@ function LoginPage() {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow p-8">
+        <div className="mb-8 flex justify-center">
+          <img src={DEFAULT_LOGO_URL} alt="Vitra" className="h-12 w-auto" />
+        </div>
         {checkingBootstrap ? (
           <>
             <h1 className="text-2xl font-bold mb-2">Preparando acceso</h1>

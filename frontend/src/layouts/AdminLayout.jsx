@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import UserMenu from "../components/UserMenu";
 import { adminGradient, adminTheme } from "../theme/adminTheme";
+import { DEFAULT_ADMIN_LOGO_LIGHT_URL } from "../constants/branding";
 
 function AdminLayout({ children }) {
   return (
@@ -21,7 +22,7 @@ function AdminLayout({ children }) {
         <div className="flex items-center gap-6">
           <Link to="/admin" className="flex items-center gap-4">
             <img
-              src="/branding/vitra-admin-logo-dark.svg"
+              src={DEFAULT_ADMIN_LOGO_LIGHT_URL}
               alt="Vitra"
               className="h-12 w-auto"
             />

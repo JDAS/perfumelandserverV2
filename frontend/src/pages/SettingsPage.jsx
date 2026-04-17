@@ -13,12 +13,17 @@ import { useObjectMetadata } from "../context/ObjectMetadataContext";
 import { useToast } from "../components/ui/ToastContext";
 import { useStorefront } from "../context/StorefrontContext";
 import { adminGradient, adminTheme } from "../theme/adminTheme";
+import {
+  DEFAULT_STOREFRONT_BRAND_NAME,
+  DEFAULT_STOREFRONT_LOGO_URL,
+  DEFAULT_STOREFRONT_SITE_TAGLINE,
+} from "../constants/branding";
 
 const defaultStorefrontForm = {
   themeId: "boutique-classic",
   variantId: "boutique",
-  logoUrl: "/logoName.png",
-  logoAlt: "Perfumeland",
+  logoUrl: DEFAULT_STOREFRONT_LOGO_URL,
+  logoAlt: DEFAULT_STOREFRONT_BRAND_NAME,
   showCart: false,
   showWhatsapp: false,
   whatsappNumber: "",
@@ -33,7 +38,7 @@ const defaultStorefrontForm = {
   featureOneText: "",
   featureTwoEyebrow: "",
   featureTwoText: "",
-  siteTagline: "",
+  siteTagline: DEFAULT_STOREFRONT_SITE_TAGLINE,
 };
 
 function SettingsPage() {
@@ -267,7 +272,7 @@ function SettingsPage() {
                       <input
                         type="text"
                         className="w-full rounded-lg border p-3"
-                        placeholder="/logoName.png o https://..."
+                        placeholder={`${DEFAULT_STOREFRONT_LOGO_URL} o https://...`}
                         value={storefrontForm.logoUrl}
                         onChange={(event) =>
                           handleStorefrontChange("logoUrl", event.target.value)
@@ -280,7 +285,7 @@ function SettingsPage() {
                       <input
                         type="text"
                         className="w-full rounded-lg border p-3"
-                        placeholder="Perfumeland"
+                        placeholder={DEFAULT_STOREFRONT_BRAND_NAME}
                         value={storefrontForm.logoAlt}
                         onChange={(event) =>
                           handleStorefrontChange("logoAlt", event.target.value)
@@ -313,7 +318,7 @@ function SettingsPage() {
                       style={{ backgroundColor: previewPalette.primary || "#0d2f6b" }}
                     >
                       <img
-                        src={storefrontForm.logoUrl || "/logoName.png"}
+                        src={storefrontForm.logoUrl || DEFAULT_STOREFRONT_LOGO_URL}
                         alt={storefrontForm.logoAlt || "Storefront logo"}
                         className="h-10 w-auto"
                       />
