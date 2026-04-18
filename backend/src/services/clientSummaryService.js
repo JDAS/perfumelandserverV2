@@ -100,100 +100,117 @@ function buildQuoteWhatsappText(summary, payments) {
     return `Hola, tu cotizacion sale para ${formatCRC(summary.cashTotal)} al contado.`;
   }
 
-  const productLines = products.map((product) => {
-    const quantity = toNumber(product.quantity) || 1;
-    return quantity > 1
-      ? `- ${product.name} x${quantity}`
-      : `- ${product.name}`;
-  });
   const activeDiscountProducts = products.filter(
-    (product) => toNumber(product.discountAmount) > 0 || toNumber(product.cashDiscountAmount) > 0 || toNumber(product.creditDiscountAmount) > 0
+    (product) =>
+      toNumber(product.discountAmount) > 0 ||
+      toNumber(product.cashDiscountAmount) > 0 ||
+      toNumber(product.creditDiscountAmount) > 0
   );
 
-  const lines = [];
-  lines.push(
-    productCount === 1 && totalUnits === 1
-      ? "Hola, te comparto la cotizacion de este perfume:"
-      : "Hola, te comparto la cotizacion de estos perfumes:"
-  );
-  lines.push("");
-  lines.push(...productLines);
-  lines.push("");
-  lines.push(
-    totalUnits > 1
-      ? `Total al contado por ${totalUnits} unidades: ${formatCRC(summary.cashTotal)}`
-      : `Total al contado: ${formatCRC(summary.cashTotal)}`
-  );
-
-  if (activeDiscountProducts.length === 1) {
-    const product = activeDiscountProducts[0];
-    const reasonSuffix = product.discountReason ? ` por ${product.discountReason}` : "";
-
-    if (product.cashDiscountAmount > 0 && product.creditDiscountAmount > 0) {
-      if (product.cashDiscountAmount === product.creditDiscountAmount) {
-        lines.push(
-          `Se aplica un descuento de ${formatCRC(product.cashDiscountAmount)} tanto al contado como al credito${reasonSuffix}.`
-        );
-      } else {
-        lines.push(
-          `Se aplica un descuento de ${formatCRC(product.cashDiscountAmount)} al contado y de ${formatCRC(product.creditDiscountAmount)} al credito${reasonSuffix}.`
-        );
+  const describeProducts = () => {
+    if (productCount === 1) {
+      const product = products[0];
+      const quantity = toNumber(product.quantity) || 1;
+      if (quantity === 1) {
+        return {
+          subject: `El ${product.name}`,
+          verb: "sale",
+        };
       }
-    } else if (product.cashDiscountAmount > 0) {
-      lines.push(
-        `Se aplica un descuento de ${formatCRC(product.cashDiscountAmount)} al precio de contado${reasonSuffix}.`
-      );
-    } else if (product.creditDiscountAmount > 0) {
-      lines.push(
-        `Se aplica un descuento de ${formatCRC(product.creditDiscountAmount)} al precio credito${reasonSuffix}.`
-      );
+
+      return {
+        subject: `Las ${quantity} ${product.name}`,
+        verb: "salen",
+      };
     }
-  } else if (activeDiscountProducts.length > 1) {
-    if (summary.cashDiscountTotal > 0 && summary.creditDiscountTotal > 0) {
-      if (summary.cashDiscountTotal === summary.creditDiscountTotal) {
-        lines.push(
-          `Se aplica un descuento total de ${formatCRC(summary.cashDiscountTotal)} tanto al contado como al credito.`
-        );
-      } else {
-        lines.push(
-          `Se aplica un descuento total de ${formatCRC(summary.cashDiscountTotal)} al contado y de ${formatCRC(summary.creditDiscountTotal)} al credito.`
-        );
+
+    if (productCount === 2) {
+      return {
+        subject: `El ${products[0].name} y el ${products[1].name}`,
+        verb: "salen",
+      };
+    }
+
+    const names = products.map((product) => product.name).filter(Boolean);
+    const lastName = names.pop();
+    return {
+      subject: `Los perfumes ${names.join(", ")} y ${lastName}`,
+      verb: "salen",
+    };
+  };
+
+  const buildDiscountSentence = () => {
+    if (activeDiscountProducts.length === 1) {
+      const product = activeDiscountProducts[0];
+      const reasonSuffix = product.discountReason ? ` por ${product.discountReason}` : "";
+
+      if (product.cashDiscountAmount > 0 && product.creditDiscountAmount > 0) {
+        if (product.cashDiscountAmount === product.creditDiscountAmount) {
+          return ` Se aplica un descuento de ${formatCRC(product.cashDiscountAmount)} tanto al contado como al credito${reasonSuffix}.`;
+        }
+
+        return ` Se aplica un descuento de ${formatCRC(product.cashDiscountAmount)} al contado y de ${formatCRC(product.creditDiscountAmount)} al credito${reasonSuffix}.`;
       }
-    } else if (summary.cashDiscountTotal > 0) {
-      lines.push(
-        `Se aplica un descuento total de ${formatCRC(summary.cashDiscountTotal)} al precio de contado.`
-      );
-    } else if (summary.creditDiscountTotal > 0) {
-      lines.push(
-        `Se aplica un descuento total de ${formatCRC(summary.creditDiscountTotal)} al precio credito.`
-      );
+
+      if (product.cashDiscountAmount > 0) {
+        return ` Se aplica un descuento de ${formatCRC(product.cashDiscountAmount)} al precio de contado${reasonSuffix}.`;
+      }
+
+      if (product.creditDiscountAmount > 0) {
+        return ` Se aplica un descuento de ${formatCRC(product.creditDiscountAmount)} al precio credito${reasonSuffix}.`;
+      }
     }
-  }
+
+    if (activeDiscountProducts.length > 1) {
+      if (summary.cashDiscountTotal > 0 && summary.creditDiscountTotal > 0) {
+        if (summary.cashDiscountTotal === summary.creditDiscountTotal) {
+          return ` Se aplica un descuento total de ${formatCRC(summary.cashDiscountTotal)} tanto al contado como al credito.`;
+        }
+
+        return ` Se aplica un descuento total de ${formatCRC(summary.cashDiscountTotal)} al contado y de ${formatCRC(summary.creditDiscountTotal)} al credito.`;
+      }
+
+      if (summary.cashDiscountTotal > 0) {
+        return ` Se aplica un descuento total de ${formatCRC(summary.cashDiscountTotal)} al precio de contado.`;
+      }
+
+      if (summary.creditDiscountTotal > 0) {
+        return ` Se aplica un descuento total de ${formatCRC(summary.creditDiscountTotal)} al precio credito.`;
+      }
+    }
+
+    return "";
+  };
+
+  const { subject, verb } = describeProducts();
+  const parts = [
+    "Hola, sí.",
+    `${subject} ${verb} en ${formatCRC(summary.cashTotal)} al contado`,
+  ];
 
   if (summary.paymentType === "Credito" && payments.length) {
     const creditTotal = payments.reduce(
       (sum, payment) => sum + toNumber(payment.expectedAmount),
       0
     );
-    lines.push(`Total a credito: ${formatCRC(creditTotal)}`);
-    lines.push(`Primer pago: ${formatCRC(payments[0].expectedAmount)}`);
-
-    if (creditTotal > 50000 && payments.length > 1) {
-      lines.push(
-        `Al ser un credito mayor a ${formatCRC(50000)}, el primer pago puede llegar hasta 40%.`
-      );
-    }
+    parts.push(
+      `y en ${formatCRC(creditTotal)} a credito, con un primer pago de ${formatCRC(
+        payments[0].expectedAmount
+      )}`
+    );
 
     if (payments.length > 1) {
-      lines.push(
-        `${payments.length - 1} cuotas de ${formatCRC(
+      parts.push(
+        `y ${payments.length - 1} cuotas de ${formatCRC(
           payments[1]?.expectedAmount || 0
-        )} cada una, por quincena.`
+        )} cada una, por quincena`
       );
     }
+
+    return `${parts.join(" ")}.${buildDiscountSentence()}`.replace(/\s+\./g, ".");
   }
 
-  return lines.join("\n");
+  return `${parts.join(" ")}.${buildDiscountSentence()}`.replace(/\s+\./g, ".");
 }
 
 async function buildSalesClientSummary(recordId) {
