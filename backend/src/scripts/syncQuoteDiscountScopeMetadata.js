@@ -10,8 +10,19 @@ const DISCOUNT_SCOPE_FIELD = {
   apiName: "discount_scope",
   type: "select",
   required: false,
-  options: ["Ambos", "Solo contado", "Solo credito"],
-  defaultValue: "Ambos",
+  options: ["Sin descuento", "Ambos", "Solo contado", "Solo credito"],
+  defaultValue: "Sin descuento",
+  visibleInList: true,
+  visibleInDetail: true,
+  visibleInForm: true,
+};
+
+const DISCOUNT_REASON_FIELD = {
+  label: "Motivo del descuento",
+  apiName: "discount_reason",
+  type: "text",
+  required: false,
+  defaultValue: "",
   visibleInList: true,
   visibleInDetail: true,
   visibleInForm: true,
@@ -43,6 +54,23 @@ async function run() {
     objectDefinition.fields.splice(insertIndex, 0, DISCOUNT_SCOPE_FIELD);
   }
 
+  const existingReasonFieldIndex = (objectDefinition.fields || []).findIndex(
+    (field) => field.apiName === "discount_reason"
+  );
+
+  if (existingReasonFieldIndex >= 0) {
+    objectDefinition.fields[existingReasonFieldIndex] = {
+      ...objectDefinition.fields[existingReasonFieldIndex].toObject?.(),
+      ...DISCOUNT_REASON_FIELD,
+    };
+  } else {
+    const scopeIndex = (objectDefinition.fields || []).findIndex(
+      (field) => field.apiName === "discount_scope"
+    );
+    const insertIndex = scopeIndex >= 0 ? scopeIndex + 1 : objectDefinition.fields.length;
+    objectDefinition.fields.splice(insertIndex, 0, DISCOUNT_REASON_FIELD);
+  }
+
   objectDefinition.layout = (objectDefinition.layout || []).map((layout) => ({
     ...layout.toObject?.(),
     sections: (layout.sections || []).map((section) => {
@@ -57,6 +85,14 @@ async function run() {
       ) {
         const discountFieldIndex = nextSection.fields.indexOf("discount");
         nextSection.fields.splice(discountFieldIndex + 1, 0, "discount_scope");
+      }
+
+      if (
+        nextSection.fields.includes("discount_scope") &&
+        !nextSection.fields.includes("discount_reason")
+      ) {
+        const scopeFieldIndex = nextSection.fields.indexOf("discount_scope");
+        nextSection.fields.splice(scopeFieldIndex + 1, 0, "discount_reason");
       }
 
       return nextSection;

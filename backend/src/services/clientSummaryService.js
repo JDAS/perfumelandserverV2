@@ -23,19 +23,25 @@ function normalizePaymentKeyword(value) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-function normalizeDiscountScope(value = "") {
-  if (value === "Solo contado" || value === "Solo credito" || value === "Ambos") {
+function normalizeDiscountScope(value = "", discount = 0) {
+  if (
+    value === "Sin descuento" ||
+    value === "Solo contado" ||
+    value === "Solo credito" ||
+    value === "Ambos"
+  ) {
     return value;
   }
 
-  return "Ambos";
+  return toNumber(discount) > 0 ? "Ambos" : "Sin descuento";
 }
 
 function getDiscountForScope(scope, discount, type) {
   const normalizedDiscount = Math.max(toNumber(discount), 0);
-  const normalizedScope = normalizeDiscountScope(scope);
+  const normalizedScope = normalizeDiscountScope(scope, normalizedDiscount);
   const normalizedType = normalizePaymentKeyword(type) === "credito" ? "Credito" : "Contado";
 
+  if (normalizedScope === "Sin descuento" || normalizedDiscount <= 0) return 0;
   if (normalizedScope === "Ambos") return normalizedDiscount;
   if (normalizedScope === "Solo contado") {
     return normalizedType === "Contado" ? normalizedDiscount : 0;
@@ -100,6 +106,9 @@ function buildQuoteWhatsappText(summary, payments) {
       ? `- ${product.name} x${quantity}`
       : `- ${product.name}`;
   });
+  const activeDiscountProducts = products.filter(
+    (product) => toNumber(product.discountAmount) > 0 || toNumber(product.cashDiscountAmount) > 0 || toNumber(product.creditDiscountAmount) > 0
+  );
 
   const lines = [];
   lines.push(
@@ -116,24 +125,49 @@ function buildQuoteWhatsappText(summary, payments) {
       : `Total al contado: ${formatCRC(summary.cashTotal)}`
   );
 
-  if (summary.cashDiscountTotal > 0 && summary.creditDiscountTotal > 0) {
-    if (summary.cashDiscountTotal === summary.creditDiscountTotal) {
+  if (activeDiscountProducts.length === 1) {
+    const product = activeDiscountProducts[0];
+    const reasonSuffix = product.discountReason ? ` por ${product.discountReason}` : "";
+
+    if (product.cashDiscountAmount > 0 && product.creditDiscountAmount > 0) {
+      if (product.cashDiscountAmount === product.creditDiscountAmount) {
+        lines.push(
+          `Se aplica un descuento de ${formatCRC(product.cashDiscountAmount)} tanto al contado como al credito${reasonSuffix}.`
+        );
+      } else {
+        lines.push(
+          `Se aplica un descuento de ${formatCRC(product.cashDiscountAmount)} al contado y de ${formatCRC(product.creditDiscountAmount)} al credito${reasonSuffix}.`
+        );
+      }
+    } else if (product.cashDiscountAmount > 0) {
       lines.push(
-        `Se aplica un descuento de ${formatCRC(summary.cashDiscountTotal)} tanto al contado como al credito.`
+        `Se aplica un descuento de ${formatCRC(product.cashDiscountAmount)} al precio de contado${reasonSuffix}.`
       );
-    } else {
+    } else if (product.creditDiscountAmount > 0) {
       lines.push(
-        `Se aplica un descuento de ${formatCRC(summary.cashDiscountTotal)} al contado y de ${formatCRC(summary.creditDiscountTotal)} al credito.`
+        `Se aplica un descuento de ${formatCRC(product.creditDiscountAmount)} al precio credito${reasonSuffix}.`
       );
     }
-  } else if (summary.cashDiscountTotal > 0) {
-    lines.push(
-      `Se aplica un descuento de ${formatCRC(summary.cashDiscountTotal)} al precio contado.`
-    );
-  } else if (summary.creditDiscountTotal > 0) {
-    lines.push(
-      `Se aplica un descuento de ${formatCRC(summary.creditDiscountTotal)} al precio credito.`
-    );
+  } else if (activeDiscountProducts.length > 1) {
+    if (summary.cashDiscountTotal > 0 && summary.creditDiscountTotal > 0) {
+      if (summary.cashDiscountTotal === summary.creditDiscountTotal) {
+        lines.push(
+          `Se aplica un descuento total de ${formatCRC(summary.cashDiscountTotal)} tanto al contado como al credito.`
+        );
+      } else {
+        lines.push(
+          `Se aplica un descuento total de ${formatCRC(summary.cashDiscountTotal)} al contado y de ${formatCRC(summary.creditDiscountTotal)} al credito.`
+        );
+      }
+    } else if (summary.cashDiscountTotal > 0) {
+      lines.push(
+        `Se aplica un descuento total de ${formatCRC(summary.cashDiscountTotal)} al precio de contado.`
+      );
+    } else if (summary.creditDiscountTotal > 0) {
+      lines.push(
+        `Se aplica un descuento total de ${formatCRC(summary.creditDiscountTotal)} al precio credito.`
+      );
+    }
   }
 
   if (summary.paymentType === "Credito" && payments.length) {
@@ -284,7 +318,8 @@ async function buildQuoteClientSummary(recordId) {
       creditLineTotal: Math.max(creditLineSubtotal - creditDiscountAmount, 0),
       creditDiscountAmount,
       creditDiscountAmountFormatted: formatCRC(creditDiscountAmount),
-      discountScope: normalizeDiscountScope(item.discount_scope),
+      discountScope: normalizeDiscountScope(item.discount_scope, item.discount),
+      discountReason: String(item.discount_reason || "").trim(),
       originalPrice,
       originalPriceFormatted: formatCRC(originalPrice),
       salePrice: lineTotal,

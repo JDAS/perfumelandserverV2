@@ -2,6 +2,10 @@ const path = require("path");
 require("dotenv").config({ path: path.resolve(__dirname, "../../.env") });
 
 const mongoose = require("mongoose");
+const {
+  seedLegacyInventoryFromSales,
+  syncInventoryForProductsOnConnection,
+} = require("../services/legacyInventorySeedService");
 
 const SOURCE_DB_NAME = process.env.MIGRATION_SOURCE_DB || "perfumeland";
 const TARGET_DB_NAME = process.env.MIGRATION_TARGET_DB || "test";
@@ -916,6 +920,15 @@ async function main() {
     targetConnection,
     dryRun,
   });
+  const legacyInventorySeedResult = await seedLegacyInventoryFromSales({
+    connection: targetConnection,
+    dryRun,
+  });
+  const legacyInventorySyncResult = await syncInventoryForProductsOnConnection({
+    connection: targetConnection,
+    productIds: legacyInventorySeedResult.touchedProductIds,
+    dryRun,
+  });
 
   const salesShape = await inspectSalesShape(sourceConnection);
 
@@ -930,6 +943,11 @@ async function main() {
         attachmentResult,
         expenseResult,
         salesMigrationResult,
+        legacyInventorySeedResult: {
+          ...legacyInventorySeedResult,
+          touchedProductIds: legacyInventorySeedResult.touchedProductIds.length,
+        },
+        legacyInventorySyncResult,
         salesShape,
         nextStep:
           "La fase 2 ya queda mapeada; ahora podemos validar integridad y luego depurar reglas de negocio especiales.",

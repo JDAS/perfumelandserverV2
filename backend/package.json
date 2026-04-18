@@ -14,6 +14,8 @@
     "enrich:products": "node src/scripts/enrichProductCatalog.js",
     "sync:sale-item-pricing": "node src/scripts/syncSaleItemPricingTrigger.js",
     "sync:sales-inventory": "node src/scripts/syncSalesInventoryMetadata.js",
+    "backfill:legacy-inventory": "node src/scripts/backfillLegacyInventoryFromSales.js",
+    "backfill:legacy-inventory:write": "node src/scripts/backfillLegacyInventoryFromSales.js --write",
     "cleanup:legacy-assets": "node src/scripts/cleanupLegacyAssetAttachments.js",
     "seed:analytics": "node src/scripts/seedAnalytics.js",
     "backfill:product-catalog-status": "node src/scripts/backfillProductCatalogStatus.js",

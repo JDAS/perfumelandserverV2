@@ -2,19 +2,25 @@ const { getCustomRecordModel } = require("../models/CustomRecord");
 const { recalculateParentRollupsFromChild } = require("../utils/rollupEngine");
 const { saveRecord } = require("./customRecordService");
 
-function normalizeDiscountScope(value = "") {
-  if (value === "Solo contado" || value === "Solo credito" || value === "Ambos") {
+function normalizeDiscountScope(value = "", discount = 0) {
+  if (
+    value === "Sin descuento" ||
+    value === "Solo contado" ||
+    value === "Solo credito" ||
+    value === "Ambos"
+  ) {
     return value;
   }
 
-  return "Ambos";
+  return Number(discount) > 0 ? "Ambos" : "Sin descuento";
 }
 
 function resolveScopedDiscount(scope, discount, paymentType) {
   const normalizedDiscount = Math.max(Number(discount) || 0, 0);
   const normalizedType = paymentType === "Credito" ? "Credito" : "Contado";
-  const normalizedScope = normalizeDiscountScope(scope);
+  const normalizedScope = normalizeDiscountScope(scope, normalizedDiscount);
 
+  if (normalizedScope === "Sin descuento" || normalizedDiscount <= 0) return 0;
   if (normalizedScope === "Ambos") return normalizedDiscount;
   if (normalizedScope === "Solo contado") {
     return normalizedType === "Contado" ? normalizedDiscount : 0;
