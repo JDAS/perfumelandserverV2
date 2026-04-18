@@ -66,6 +66,11 @@ async function getOutstandingLoans(targetDb, sourceDb) {
 async function getInventoryPurchaseTotal(targetDb, sourceDb) {
   const stockTotals = await aggregateSingle(targetDb.collection("stock"), [
     {
+      $match: {
+        legacy_inventory_seed: { $ne: true },
+      },
+    },
+    {
       $group: {
         _id: null,
         total: {
