@@ -23,6 +23,30 @@ function normalizePaymentKeyword(value) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function normalizeDiscountScope(value = "") {
+  if (value === "Solo contado" || value === "Solo credito" || value === "Ambos") {
+    return value;
+  }
+
+  return "Ambos";
+}
+
+function getDiscountForScope(scope, discount, type) {
+  const normalizedDiscount = Math.max(toNumber(discount), 0);
+  const normalizedScope = normalizeDiscountScope(scope);
+  const normalizedType = normalizePaymentKeyword(type) === "credito" ? "Credito" : "Contado";
+
+  if (normalizedScope === "Ambos") return normalizedDiscount;
+  if (normalizedScope === "Solo contado") {
+    return normalizedType === "Contado" ? normalizedDiscount : 0;
+  }
+  if (normalizedScope === "Solo credito") {
+    return normalizedType === "Credito" ? normalizedDiscount : 0;
+  }
+
+  return 0;
+}
+
 async function loadLookupNames(idsByObject = {}) {
   const result = {};
 
@@ -92,7 +116,27 @@ function buildQuoteWhatsappText(summary, payments) {
       : `Total al contado: ${formatCRC(summary.cashTotal)}`
   );
 
-  if (summary.type === "Credito" && payments.length) {
+  if (summary.cashDiscountTotal > 0 && summary.creditDiscountTotal > 0) {
+    if (summary.cashDiscountTotal === summary.creditDiscountTotal) {
+      lines.push(
+        `Se aplica un descuento de ${formatCRC(summary.cashDiscountTotal)} tanto al contado como al credito.`
+      );
+    } else {
+      lines.push(
+        `Se aplica un descuento de ${formatCRC(summary.cashDiscountTotal)} al contado y de ${formatCRC(summary.creditDiscountTotal)} al credito.`
+      );
+    }
+  } else if (summary.cashDiscountTotal > 0) {
+    lines.push(
+      `Se aplica un descuento de ${formatCRC(summary.cashDiscountTotal)} al precio contado.`
+    );
+  } else if (summary.creditDiscountTotal > 0) {
+    lines.push(
+      `Se aplica un descuento de ${formatCRC(summary.creditDiscountTotal)} al precio credito.`
+    );
+  }
+
+  if (summary.paymentType === "Credito" && payments.length) {
     const creditTotal = payments.reduce(
       (sum, payment) => sum + toNumber(payment.expectedAmount),
       0
@@ -209,9 +253,24 @@ async function buildQuoteClientSummary(recordId) {
     const lineTotal = toNumber(item.total);
     const productMeta = productMap.get(String(item.product)) || { name: "Perfume", price: 0 };
     const cashUnitPrice = productMeta.price || toNumber(item.list_price) || toNumber(item.price);
+    const creditUnitPrice = toNumber(item.price) || cashUnitPrice;
     const cashLineSubtotal = cashUnitPrice * quantity;
-    const originalPrice = cashLineSubtotal || lineTotal + toNumber(item.discount);
-    const discountAmount = Math.max(originalPrice - lineTotal, 0);
+    const creditLineSubtotal = creditUnitPrice * quantity;
+    const cashDiscountAmount = getDiscountForScope(
+      item.discount_scope,
+      item.discount,
+      "Contado"
+    );
+    const creditDiscountAmount = getDiscountForScope(
+      item.discount_scope,
+      item.discount,
+      "Credito"
+    );
+    const originalPrice = cashLineSubtotal;
+    const discountAmount =
+      normalizePaymentKeyword(quote.type) === "credito"
+        ? creditDiscountAmount
+        : cashDiscountAmount;
 
     return {
       id: String(item._id),
@@ -219,7 +278,13 @@ async function buildQuoteClientSummary(recordId) {
       quantity,
       cashUnitPrice,
       cashUnitPriceFormatted: formatCRC(cashUnitPrice),
-      cashLineTotal: Math.max(cashLineSubtotal - toNumber(item.discount), 0),
+      cashLineTotal: Math.max(cashLineSubtotal - cashDiscountAmount, 0),
+      cashDiscountAmount,
+      cashDiscountAmountFormatted: formatCRC(cashDiscountAmount),
+      creditLineTotal: Math.max(creditLineSubtotal - creditDiscountAmount, 0),
+      creditDiscountAmount,
+      creditDiscountAmountFormatted: formatCRC(creditDiscountAmount),
+      discountScope: normalizeDiscountScope(item.discount_scope),
       originalPrice,
       originalPriceFormatted: formatCRC(originalPrice),
       salePrice: lineTotal,
@@ -232,6 +297,14 @@ async function buildQuoteClientSummary(recordId) {
   const totalOriginal = products.reduce((sum, product) => sum + product.originalPrice, 0);
   const totalDiscounts = products.reduce((sum, product) => sum + product.discountAmount, 0);
   const cashTotal = products.reduce((sum, product) => sum + product.cashLineTotal, 0);
+  const cashDiscountTotal = products.reduce(
+    (sum, product) => sum + product.cashDiscountAmount,
+    0
+  );
+  const creditDiscountTotal = products.reduce(
+    (sum, product) => sum + product.creditDiscountAmount,
+    0
+  );
   const normalizedType = normalizePaymentKeyword(quote.type);
   const payments = calculatePayments({
     total: products.reduce((sum, product) => sum + product.salePrice, 0),
@@ -254,6 +327,10 @@ async function buildQuoteClientSummary(recordId) {
     totalDiscountsFormatted: formatCRC(totalDiscounts),
     cashTotal,
     cashTotalFormatted: formatCRC(cashTotal),
+    cashDiscountTotal,
+    cashDiscountTotalFormatted: formatCRC(cashDiscountTotal),
+    creditDiscountTotal,
+    creditDiscountTotalFormatted: formatCRC(creditDiscountTotal),
     totalSale: payments.reduce((sum, payment) => sum + toNumber(payment.expectedAmount), 0),
     totalSaleFormatted: formatCRC(
       payments.reduce((sum, payment) => sum + toNumber(payment.expectedAmount), 0)

@@ -2,6 +2,30 @@ const { getCustomRecordModel } = require("../models/CustomRecord");
 const { recalculateParentRollupsFromChild } = require("../utils/rollupEngine");
 const { saveRecord } = require("./customRecordService");
 
+function normalizeDiscountScope(value = "") {
+  if (value === "Solo contado" || value === "Solo credito" || value === "Ambos") {
+    return value;
+  }
+
+  return "Ambos";
+}
+
+function resolveScopedDiscount(scope, discount, paymentType) {
+  const normalizedDiscount = Math.max(Number(discount) || 0, 0);
+  const normalizedType = paymentType === "Credito" ? "Credito" : "Contado";
+  const normalizedScope = normalizeDiscountScope(scope);
+
+  if (normalizedScope === "Ambos") return normalizedDiscount;
+  if (normalizedScope === "Solo contado") {
+    return normalizedType === "Contado" ? normalizedDiscount : 0;
+  }
+  if (normalizedScope === "Solo credito") {
+    return normalizedType === "Credito" ? normalizedDiscount : 0;
+  }
+
+  return 0;
+}
+
 async function resolveLatestStockCost(productId) {
   if (!productId) return undefined;
 
@@ -70,7 +94,11 @@ async function convertQuoteToSale({ quoteId, user = null }) {
     const quantity = Number(quoteItem.quantity) || 1;
     const price = Number(quoteItem.price) || 0;
     const listPrice = Number(quoteItem.list_price) || price;
-    const discount = Number(quoteItem.discount) || 0;
+    const discount = resolveScopedDiscount(
+      quoteItem.discount_scope,
+      quoteItem.discount,
+      quote.type || "Contado"
+    );
     const subtotal = quantity * price;
     const total = subtotal - discount;
     const costSnapshot = await resolveLatestStockCost(quoteItem.product);

@@ -23,7 +23,32 @@ function defaultItem() {
     price: 0,
     list_price: 0,
     discount: 0,
+    discount_scope: "Ambos",
   };
+}
+
+function normalizeDiscountScope(value = "") {
+  if (value === "Solo contado" || value === "Solo credito" || value === "Ambos") {
+    return value;
+  }
+
+  return "Ambos";
+}
+
+function getDiscountForScope(scope, discount, type) {
+  const normalizedDiscount = Math.max(Number(discount) || 0, 0);
+  const normalizedType = type === "Credito" ? "Credito" : "Contado";
+  const normalizedScope = normalizeDiscountScope(scope);
+
+  if (normalizedScope === "Ambos") return normalizedDiscount;
+  if (normalizedScope === "Solo contado") {
+    return normalizedType === "Contado" ? normalizedDiscount : 0;
+  }
+  if (normalizedScope === "Solo credito") {
+    return normalizedType === "Credito" ? normalizedDiscount : 0;
+  }
+
+  return 0;
 }
 
 function getCreditAdjustedPrice(basePrice, type) {
@@ -103,6 +128,7 @@ export default function QuoteBuilderWorkspace({
             price: Number(item.price) || 0,
             list_price: Number(item.list_price) || 0,
             discount: Number(item.discount) || 0,
+            discount_scope: normalizeDiscountScope(item.discount_scope),
           }));
 
           setItems(nextItems.length ? nextItems : [defaultItem()]);
@@ -139,26 +165,50 @@ export default function QuoteBuilderWorkspace({
       items.map((item) => {
         const quantity = Number(item.quantity) || 1;
         const price = Number(item.price) || 0;
+        const listPrice = Number(item.list_price) || price;
         const discount = Number(item.discount) || 0;
+        const discountScope = normalizeDiscountScope(item.discount_scope);
         const subtotal = quantity * price;
-        const total = subtotal - discount;
-        return { ...item, quantity, price, discount, subtotal, total };
+        const cashSubtotal = quantity * listPrice;
+        const cashDiscount = getDiscountForScope(discountScope, discount, "Contado");
+        const creditDiscount = getDiscountForScope(discountScope, discount, "Credito");
+        const total = Math.max(subtotal - getDiscountForScope(discountScope, discount, quote.type), 0);
+        return {
+          ...item,
+          quantity,
+          price,
+          list_price: listPrice,
+          discount,
+          discount_scope: discountScope,
+          subtotal,
+          cashSubtotal,
+          cashDiscount,
+          creditDiscount,
+          total,
+        };
       }),
-    [items]
+    [items, quote.type]
   );
 
   const cashTotal = useMemo(
     () =>
       computedItems.reduce((sum, item) => {
-        const basePrice = Number(item.list_price) || Number(item.price) || 0;
-        return sum + Math.max(basePrice * item.quantity - item.discount, 0);
+        return sum + Math.max(item.cashSubtotal - item.cashDiscount, 0);
       }, 0),
     [computedItems]
   );
 
   const creditTotal = useMemo(
-    () => computedItems.reduce((sum, item) => sum + (Number(item.total) || 0), 0),
-    [computedItems]
+    () =>
+      computedItems.reduce((sum, item) => {
+        const creditUnitPrice =
+          quote.type === "Credito"
+            ? Number(item.price) || 0
+            : getCreditAdjustedPrice(Number(item.list_price) || Number(item.price) || 0, "Credito");
+        const creditSubtotal = creditUnitPrice * item.quantity;
+        return sum + Math.max(creditSubtotal - item.creditDiscount, 0);
+      }, 0),
+    [computedItems, quote.type]
   );
 
   const paymentPreview = useMemo(
@@ -261,6 +311,7 @@ export default function QuoteBuilderWorkspace({
             price: item.price,
             list_price: item.list_price || item.price,
             discount: item.discount || 0,
+            discount_scope: normalizeDiscountScope(item.discount_scope),
           };
 
           return item._id
@@ -481,7 +532,7 @@ export default function QuoteBuilderWorkspace({
 
             {computedItems.map((item, index) => (
               <div key={`quote-item-${item._id || index}`} className="rounded-xl border p-4">
-                <div className="grid gap-3 md:grid-cols-[1.7fr_0.8fr_0.8fr_0.8fr_auto]">
+                <div className="grid gap-3 md:grid-cols-[1.6fr_0.75fr_0.75fr_0.75fr_1fr_auto]">
                   <div>
                     <label className="mb-1 block text-sm font-medium">Producto</label>
                     <LookupField
@@ -543,6 +594,21 @@ export default function QuoteBuilderWorkspace({
                     />
                   </div>
 
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Aplica a</label>
+                    <select
+                      className="w-full rounded-lg border p-3"
+                      value={item.discount_scope}
+                      onChange={(event) =>
+                        updateItem(index, { discount_scope: event.target.value })
+                      }
+                    >
+                      <option value="Ambos">Ambos</option>
+                      <option value="Solo contado">Solo contado</option>
+                      <option value="Solo credito">Solo credito</option>
+                    </select>
+                  </div>
+
                   <div className="flex items-end">
                     <button
                       type="button"
@@ -557,7 +623,9 @@ export default function QuoteBuilderWorkspace({
                 <div className="mt-3 grid gap-3 md:grid-cols-3">
                   <div className="rounded-lg bg-gray-50 p-3 text-sm">
                     <p className="text-gray-500">Contado</p>
-                    <p className="mt-1 font-semibold">{formatCRC(item.list_price || item.price)}</p>
+                    <p className="mt-1 font-semibold">
+                      {formatCRC(Math.max(item.cashSubtotal - item.cashDiscount, 0))}
+                    </p>
                   </div>
 
                   <div className="rounded-lg bg-gray-50 p-3 text-sm">
@@ -572,6 +640,18 @@ export default function QuoteBuilderWorkspace({
                     <p className="mt-1 font-semibold">{formatCRC(item.total)}</p>
                   </div>
                 </div>
+
+                {item.discount > 0 ? (
+                  <p className="mt-3 text-sm text-gray-500">
+                    Descuento de {formatCRC(item.discount)} aplicado a{" "}
+                    {item.discount_scope === "Ambos"
+                      ? "contado y credito"
+                      : item.discount_scope === "Solo contado"
+                        ? "contado"
+                        : "credito"}
+                    .
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>
