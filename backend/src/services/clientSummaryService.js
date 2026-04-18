@@ -59,38 +59,63 @@ function buildSalesWhatsappText(summary) {
 }
 
 function buildQuoteWhatsappText(summary, payments) {
-  const lines = [];
-  lines.push("Hola, si");
+  const products = Array.isArray(summary.products) ? summary.products : [];
+  const totalUnits = products.reduce(
+    (sum, product) => sum + (toNumber(product.quantity) || 1),
+    0
+  );
+  const productCount = products.length;
 
-  summary.products.forEach((product, index) => {
-    const prefix = index === 0 ? " la " : "";
-    const suffix =
-      index === summary.products.length - 2 && summary.products.length > 1
-        ? " y "
-        : index < summary.products.length - 1
-          ? ", "
-          : "";
-    lines.push(`${prefix}${product.name}${suffix}`);
+  if (productCount === 0) {
+    return `Hola, tu cotizacion sale para ${formatCRC(summary.cashTotal)} al contado.`;
+  }
+
+  const productLines = products.map((product) => {
+    const quantity = toNumber(product.quantity) || 1;
+    return quantity > 1
+      ? `- ${product.name} x${quantity}`
+      : `- ${product.name}`;
   });
 
-  let text = lines.join("");
-  text +=
-    (summary.products.length > 1 ? ", salen para " : ", sale para ") +
-    `${formatCRC(summary.cashTotal)} al contado`;
+  const lines = [];
+  lines.push(
+    productCount === 1 && totalUnits === 1
+      ? "Hola, te comparto la cotizacion de este perfume:"
+      : "Hola, te comparto la cotizacion de estos perfumes:"
+  );
+  lines.push("");
+  lines.push(...productLines);
+  lines.push("");
+  lines.push(
+    totalUnits > 1
+      ? `Total al contado por ${totalUnits} unidades: ${formatCRC(summary.cashTotal)}`
+      : `Total al contado: ${formatCRC(summary.cashTotal)}`
+  );
 
   if (summary.type === "Credito" && payments.length) {
-    const creditTotal = payments.reduce((sum, payment) => sum + toNumber(payment.expectedAmount), 0);
-    text += ` y para ${formatCRC(creditTotal)} a credito, con un primer pago de ${formatCRC(payments[0].expectedAmount)}`;
+    const creditTotal = payments.reduce(
+      (sum, payment) => sum + toNumber(payment.expectedAmount),
+      0
+    );
+    lines.push(`Total a credito: ${formatCRC(creditTotal)}`);
+    lines.push(`Primer pago: ${formatCRC(payments[0].expectedAmount)}`);
+
     if (creditTotal > 50000 && payments.length > 1) {
-      text += `, al ser un credito mayor a ${formatCRC(50000)}, el primer pago es de hasta 40%`;
+      lines.push(
+        `Al ser un credito mayor a ${formatCRC(50000)}, el primer pago puede llegar hasta 40%.`
+      );
     }
+
     if (payments.length > 1) {
-      text += `, y ${payments.length - 1} cuotas de ${formatCRC(payments[1]?.expectedAmount || 0)} cada una, por quincena`;
+      lines.push(
+        `${payments.length - 1} cuotas de ${formatCRC(
+          payments[1]?.expectedAmount || 0
+        )} cada una, por quincena.`
+      );
     }
   }
 
-  text += ".";
-  return text;
+  return lines.join("\n");
 }
 
 async function buildSalesClientSummary(recordId) {
