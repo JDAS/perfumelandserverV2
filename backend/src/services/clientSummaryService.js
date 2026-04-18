@@ -386,15 +386,7 @@ async function buildQuoteClientSummary(recordId) {
     expectedAmountFormatted: formatCRC(payment.expectedAmount),
   }));
 
-  summary.whatsappText = buildQuoteWhatsappText(
-    {
-      products,
-      cashTotal,
-      creditTotal: summary.creditPreviewTotal,
-      type: quote.type,
-    },
-    payments
-  );
+  summary.whatsappText = buildQuoteWhatsappText(summary, summary.payments);
 
   return summary;
 }
