@@ -206,8 +206,16 @@ function buildQuoteWhatsappText(summary, payments) {
         )} cada una, por quincena`
       );
     }
+    let message = `${parts.join(" ")}.`;
 
-    return `${parts.join(" ")}.${buildDiscountSentence()}`.replace(/\s+\./g, ".");
+    if (creditTotal > 50000 && payments.length > 1) {
+      message += ` Al ser un credito mayor a ${formatCRC(
+        50000
+      )}, el primer pago puede llegar hasta 40%.`;
+    }
+
+    message += buildDiscountSentence();
+    return message.replace(/\s+\./g, ".");
   }
 
   return `${parts.join(" ")}.${buildDiscountSentence()}`.replace(/\s+\./g, ".");
