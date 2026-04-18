@@ -70,33 +70,51 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-function getFrontendBaseUrl(req) {
-  const configured =
-    process.env.FRONTEND_APP_URL ||
-    process.env.PUBLIC_APP_URL ||
-    process.env.CORS_ORIGIN ||
-    "";
+function getConfiguredPublicBaseUrl() {
+  const candidates = [
+    process.env.FRONTEND_APP_URL,
+    process.env.PUBLIC_APP_URL,
+    ...(process.env.CORS_ORIGIN || "").split(","),
+  ]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
 
-  const normalizedConfigured = configured
-    .split(",")
-    .map((item) => item.trim())
-    .find(Boolean);
+  for (const candidate of candidates) {
+    try {
+      return new URL(candidate).toString().replace(/\/+$/, "");
+    } catch (_error) {
+      continue;
+    }
+  }
 
-  if (normalizedConfigured) {
-    return normalizedConfigured.replace(/\/+$/, "");
+  return "";
+}
+
+function getPublicBaseUrl(req) {
+  const configuredBaseUrl = getConfiguredPublicBaseUrl();
+
+  if (configuredBaseUrl) {
+    return configuredBaseUrl;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw createHttpError(
+      500,
+      "Configura FRONTEND_APP_URL o PUBLIC_APP_URL para generar enlaces publicos seguros"
+    );
   }
 
   return `${req.protocol}://${req.get("host")}`.replace(/\/+$/, "");
 }
 
 function buildSharePage(product, req) {
-  const frontendBaseUrl = getFrontendBaseUrl(req);
-  const appUrl = `${frontendBaseUrl}/products/${product._id}`;
-  const shareUrl = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+  const publicBaseUrl = getPublicBaseUrl(req);
+  const appUrl = `${publicBaseUrl}/products/${product._id}`;
+  const shareUrl = `${publicBaseUrl}/api/products/share/${product._id}`;
   const imageUrl = product.image || "/logoName.png";
   const absoluteImage = /^https?:\/\//i.test(imageUrl)
     ? imageUrl
-    : `${frontendBaseUrl}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
+    : `${publicBaseUrl}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
   const title = `${product.name} | Perfumeland`;
   const description =
     product.short_description ||
@@ -163,9 +181,6 @@ function buildSharePage(product, req) {
       <p>Abriendo el producto...</p>
       <a href="${escapeHtml(appUrl)}">Abrir en Perfumeland</a>
     </main>
-    <script>
-      window.location.replace(${JSON.stringify(appUrl)});
-    </script>
   </body>
 </html>`;
 }

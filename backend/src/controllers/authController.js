@@ -3,6 +3,11 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { getJwtSecret, getJwtExpiresIn } = require("../config/auth");
 const { createHttpError } = require("../utils/httpError");
+const {
+  assertAuthActionAllowed,
+  recordAuthFailure,
+  clearAuthFailures,
+} = require("../services/authRateLimitService");
 
 const buildSafeUser = (user) => ({
   _id: user._id,
@@ -107,20 +112,33 @@ exports.getBootstrapStatus = async (_req, res) => {
 
 exports.bootstrapAdmin = async (req, res) => {
   const { name, email, password, setupToken } = req.body || {};
+  const normalizedEmail = String(email || "").trim().toLowerCase();
 
-  await assertBootstrapAllowed(setupToken);
+  assertAuthActionAllowed("bootstrapAdmin", req);
 
-  const user = await createUserFromPayload({
-    name,
-    email,
-    password,
-    isAdmin: true,
-  });
+  try {
+    await assertBootstrapAllowed(setupToken);
 
-  return res.status(201).json({
-    token: buildToken(user),
-    user: buildSafeUser(user),
-  });
+    const user = await createUserFromPayload({
+      name,
+      email: normalizedEmail,
+      password,
+      isAdmin: true,
+    });
+
+    clearAuthFailures("bootstrapAdmin", req);
+
+    return res.status(201).json({
+      token: buildToken(user),
+      user: buildSafeUser(user),
+    });
+  } catch (error) {
+    if (error?.statusCode && error.statusCode < 500) {
+      recordAuthFailure("bootstrapAdmin", req);
+    }
+
+    throw error;
+  }
 };
 
 exports.login = async (req, res) => {
@@ -131,12 +149,16 @@ exports.login = async (req, res) => {
   }
 
   const normalizedEmail = String(email).trim().toLowerCase();
+  assertAuthActionAllowed("login", req, normalizedEmail);
+
   const user = await User.findOne({ email: normalizedEmail });
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
+    recordAuthFailure("login", req, normalizedEmail);
     throw createHttpError(401, "Credenciales invalidas");
   }
 
+  clearAuthFailures("login", req, normalizedEmail);
   return res.json({ token: buildToken(user), user: buildSafeUser(user) });
 };
 

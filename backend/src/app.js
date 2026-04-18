@@ -13,8 +13,13 @@ const reportRoutes = require("./routes/reportRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const { createCorsOptions } = require("./config/cors");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
+const { applySecurityHeaders } = require("./middleware/securityHeaders");
+
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
 
 app.use(cors(createCorsOptions()));
+app.use(applySecurityHeaders);
 app.use(express.json({ limit: "1mb" }));
 
 app.use("/api/products", productRoutes);
