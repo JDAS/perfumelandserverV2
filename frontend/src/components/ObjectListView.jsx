@@ -15,14 +15,16 @@ import Pagination from "./ui/Pagination";
 import { useToast } from "./ui/ToastContext";
 
 function IconButton({
-  as: Component = "button",
+  as = "button",
   label,
   className = "",
   children,
   ...props
 }) {
+  const Tag = as;
+
   return (
-    <Component
+    <Tag
       title={label}
       aria-label={label}
       className={`inline-flex h-9 w-9 items-center justify-center rounded text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
@@ -30,7 +32,7 @@ function IconButton({
     >
       <span className="sr-only">{label}</span>
       {children}
-    </Component>
+    </Tag>
   );
 }
 

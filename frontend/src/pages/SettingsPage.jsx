@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AdminThemeSettings from "../components/admin/AdminThemeSettings";
 import DashboardsAdmin from "../components/admin/DashboardsAdmin";
@@ -62,13 +62,7 @@ function SettingsPage() {
   const [storefrontForm, setStorefrontForm] = useState(defaultStorefrontForm);
   const [adminThemeForm, setAdminThemeForm] = useState(DEFAULT_ADMIN_THEME);
 
-  useEffect(() => {
-    if (activeSection === "storefront" || activeSection === "vitra") {
-      loadStorefrontSettings();
-    }
-  }, [activeSection]);
-
-  const loadStorefrontSettings = async () => {
+  const loadStorefrontSettings = useCallback(async () => {
     try {
       setStorefrontLoading(true);
       const data = await getStorefrontSettings();
@@ -89,7 +83,13 @@ function SettingsPage() {
     } finally {
       setStorefrontLoading(false);
     }
-  };
+  }, [addToast]);
+
+  useEffect(() => {
+    if (activeSection === "storefront" || activeSection === "vitra") {
+      loadStorefrontSettings();
+    }
+  }, [activeSection, loadStorefrontSettings]);
 
   const handleDeleteObject = async (apiName) => {
     if (!window.confirm(`¿Seguro que deseas eliminar el objeto "${apiName}"?`)) return;

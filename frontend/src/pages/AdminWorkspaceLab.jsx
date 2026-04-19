@@ -384,7 +384,7 @@ function formatFilterLabel(filter, objectDef) {
   )}`;
 }
 
-function QuickActionButton({ children, icon: Icon = null, className = "", ...props }) {
+function QuickActionButton({ icon: Icon = null, className = "", ...props }) {
   return (
     <button
       type="button"
@@ -862,7 +862,7 @@ function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLookupReco
     () => getListColumns(objectDef, currentView).slice(0, 6),
     [currentView, objectDef]
   );
-  const activeFilters = currentView?.filters || [];
+  const activeFilters = useMemo(() => currentView?.filters || [], [currentView?.filters]);
 
   useEffect(() => {
     setViewApiName(listView?.apiName || "");
@@ -2053,10 +2053,17 @@ export default function AdminWorkspaceLab() {
     [user?._id, user?.email]
   );
 
-  const [activeObjectApi, setActiveObjectApi] = useState("");
-  const [activeTabId, setActiveTabId] = useState(HOME_TAB_ID);
-  const [workspaceTabs, setWorkspaceTabs] = useState([makeHomeTab()]);
-  const [restored, setRestored] = useState(false);
+  const persistedState = useMemo(() => readState(storageKey), [storageKey]);
+  const [activeObjectApi, setActiveObjectApi] = useState(
+    () => persistedState?.activeObjectApi || ""
+  );
+  const [activeTabId, setActiveTabId] = useState(
+    () => persistedState?.activeTabId || HOME_TAB_ID
+  );
+  const [workspaceTabs, setWorkspaceTabs] = useState(
+    () => persistedState?.tabs?.length ? persistedState.tabs : [makeHomeTab()]
+  );
+  const restored = true;
 
   const objectTabs = useMemo(
     () => objects.filter((obj) => obj.active !== false && obj.tabsEnabled !== false),
@@ -2073,16 +2080,9 @@ export default function AdminWorkspaceLab() {
   const dashboardsTab = useMemo(() => makeDashboardsTab(), []);
 
   useEffect(() => {
-    const persisted = readState(storageKey);
-    setActiveObjectApi(persisted?.activeObjectApi || "");
-    setActiveTabId(persisted?.activeTabId || HOME_TAB_ID);
-    setWorkspaceTabs(persisted?.tabs?.length ? persisted.tabs : [homeTab]);
-    setRestored(true);
-  }, [homeTab, storageKey]);
-
-  useEffect(() => {
     if (!restored || !objectTabs.length) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setWorkspaceTabs((current) => {
       const validApis = new Set(objectTabs.map((objectDef) => objectDef.apiName));
 

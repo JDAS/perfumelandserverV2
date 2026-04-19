@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { normalizeApiName } from "../engine/metadataEngine";
 import { useToast } from "./ui/ToastContext";
 
@@ -44,6 +44,87 @@ function buildDateDefaultValue(dateDefault) {
   }
 
   return String(dateDefault.value || "").trim();
+}
+
+function createEmptyField() {
+  return {
+    label: "",
+    apiName: "",
+    type: "text",
+    required: false,
+    options: [],
+    defaultValue: "",
+    referenceTo: "",
+    visibleInList: true,
+    visibleInDetail: true,
+    visibleInForm: true,
+    formula: {
+      expression: "",
+      returnType: "text",
+    },
+    rollup: {
+      relatedObject: "",
+      relatedField: "",
+      operation: "sum",
+      fieldToAggregate: "",
+      filterField: "",
+      filterOperator: "eq",
+      filterValue: "",
+    },
+  };
+}
+
+function buildObjectFormState(initialData) {
+  const emptyField = createEmptyField();
+
+  if (!initialData) {
+    return {
+      name: "",
+      pluralLabel: "",
+      description: "",
+      apiName: "",
+      active: true,
+      tabsEnabled: true,
+      fields: [],
+      editingFieldApiName: null,
+      field: emptyField,
+    };
+  }
+
+  return {
+    name: initialData.name || "",
+    pluralLabel: initialData.pluralLabel || initialData.name || "",
+    description: initialData.description || "",
+    apiName: initialData.apiName || "",
+    active: initialData.active !== false,
+    tabsEnabled: initialData.tabsEnabled !== false,
+    fields: (initialData.fields || []).map((currentField) => ({
+      ...emptyField,
+      ...currentField,
+      options: currentField.options || [],
+      defaultValue:
+        currentField.type === "date"
+          ? normalizeDateDefaultValue(currentField.defaultValue)
+          : currentField.defaultValue ??
+            (currentField.type === "boolean" ? false : ""),
+      referenceTo: currentField.referenceTo || "",
+      formula: {
+        expression: currentField.formula?.expression || "",
+        returnType: currentField.formula?.returnType || "text",
+      },
+      rollup: {
+        relatedObject: currentField.rollup?.relatedObject || "",
+        relatedField: currentField.rollup?.relatedField || "",
+        operation: currentField.rollup?.operation || "sum",
+        fieldToAggregate: currentField.rollup?.fieldToAggregate || "",
+        filterField: currentField.rollup?.filterField || "",
+        filterOperator: currentField.rollup?.filterOperator || "eq",
+        filterValue: currentField.rollup?.filterValue ?? "",
+      },
+    })),
+    editingFieldApiName: null,
+    field: emptyField,
+  };
 }
 
 function renderDefaultValueInput(field, setField) {
@@ -157,90 +238,34 @@ function renderDefaultValueInput(field, setField) {
 }
 
 function ObjectForm({ initialData = null, onSave, saving = false }) {
+  const formKey = initialData?.apiName || "__new_object__";
+
+  return (
+    <ObjectFormContent
+      key={formKey}
+      initialData={initialData}
+      onSave={onSave}
+      saving={saving}
+    />
+  );
+}
+
+function ObjectFormContent({ initialData = null, onSave, saving = false }) {
   const { addToast } = useToast();
-  const emptyField = {
-    label: "",
-    apiName: "",
-    type: "text",
-    required: false,
-    options: [],
-    defaultValue: "",
-    referenceTo: "",
-    visibleInList: true,
-    visibleInDetail: true,
-    visibleInForm: true,
-    formula: {
-      expression: "",
-      returnType: "text",
-    },
-    rollup: {
-      relatedObject: "",
-      relatedField: "",
-      operation: "sum",
-      fieldToAggregate: "",
-      filterField: "",
-      filterOperator: "eq",
-      filterValue: "",
-    },
-  };
+  const initialState = buildObjectFormState(initialData);
+  const emptyField = createEmptyField();
 
-  const [name, setName] = useState("");
-  const [pluralLabel, setPluralLabel] = useState("");
-  const [description, setDescription] = useState("");
-  const [apiName, setApiName] = useState("");
-  const [active, setActive] = useState(true);
-  const [tabsEnabled, setTabsEnabled] = useState(true);
-  const [fields, setFields] = useState([]);
-  const [editingFieldApiName, setEditingFieldApiName] = useState(null);
-  const [field, setField] = useState(emptyField);
-
-  useEffect(() => {
-    if (initialData) {
-      setName(initialData.name || "");
-      setPluralLabel(initialData.pluralLabel || initialData.name || "");
-      setDescription(initialData.description || "");
-      setApiName(initialData.apiName || "");
-      setActive(initialData.active !== false);
-      setTabsEnabled(initialData.tabsEnabled !== false);
-      setFields(
-        (initialData.fields || []).map((currentField) => ({
-          ...emptyField,
-          ...currentField,
-          options: currentField.options || [],
-          defaultValue:
-            currentField.type === "date"
-              ? normalizeDateDefaultValue(currentField.defaultValue)
-              : currentField.defaultValue ??
-                (currentField.type === "boolean" ? false : ""),
-          referenceTo: currentField.referenceTo || "",
-          formula: {
-            expression: currentField.formula?.expression || "",
-            returnType: currentField.formula?.returnType || "text",
-          },
-          rollup: {
-            relatedObject: currentField.rollup?.relatedObject || "",
-            relatedField: currentField.rollup?.relatedField || "",
-            operation: currentField.rollup?.operation || "sum",
-            fieldToAggregate: currentField.rollup?.fieldToAggregate || "",
-            filterField: currentField.rollup?.filterField || "",
-            filterOperator: currentField.rollup?.filterOperator || "eq",
-            filterValue: currentField.rollup?.filterValue ?? "",
-          },
-        }))
-      );
-    } else {
-      setName("");
-      setPluralLabel("");
-      setDescription("");
-      setApiName("");
-      setActive(true);
-      setTabsEnabled(true);
-      setFields([]);
-    }
-
-    setField(emptyField);
-    setEditingFieldApiName(null);
-  }, [initialData]);
+  const [name, setName] = useState(() => initialState.name);
+  const [pluralLabel, setPluralLabel] = useState(() => initialState.pluralLabel);
+  const [description, setDescription] = useState(() => initialState.description);
+  const [apiName, setApiName] = useState(() => initialState.apiName);
+  const [active, setActive] = useState(() => initialState.active);
+  const [tabsEnabled, setTabsEnabled] = useState(() => initialState.tabsEnabled);
+  const [fields, setFields] = useState(() => initialState.fields);
+  const [editingFieldApiName, setEditingFieldApiName] = useState(
+    () => initialState.editingFieldApiName
+  );
+  const [field, setField] = useState(() => initialState.field);
 
   const resetFieldForm = () => {
     setField(emptyField);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createDashboard,
   deleteDashboard,
@@ -58,10 +58,6 @@ export default function DashboardsAdmin() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const reportMap = useMemo(
     () => new Map(reports.map((report) => [String(report._id), report])),
     [reports]
@@ -78,7 +74,7 @@ export default function DashboardsAdmin() {
     [form, reportMap]
   );
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [dashboardsData, reportsData] = await Promise.all([
@@ -93,7 +89,11 @@ export default function DashboardsAdmin() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const resetForm = () => {
     setSelectedId("");

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState } from "react";
 import { getStorefrontSettings } from "../services/customService";
 import { DEFAULT_ADMIN_THEME } from "../theme/adminTheme";

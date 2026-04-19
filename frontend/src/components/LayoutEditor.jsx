@@ -11,14 +11,9 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
   const { objects = [] } = useObjectMetadata();
   const { addToast } = useToast();
 
-  const [localLayout, setLocalLayout] = useState(
-    JSON.parse(JSON.stringify(layout))
-  );
-
   const normalizeSections = (sections = []) =>
     sections.map((section, index) => ({
       id: section.id || `section_${index}_${section.apiName || section.label}`,
-      label: section.label || "Nueva sección",
       label: section.label || "",
       type: section.type === "relatedList" ? "relatedList" : "fields",
       columns: section.type === "relatedList" ? 1 : section.columns || 1,
@@ -31,7 +26,7 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
     }));
 
   const [sections, setSections] = useState(
-    normalizeSections(localLayout.sections || [])
+    normalizeSections(layout.sections || [])
   );
 
   const sectionsWithDisplaySettings = useMemo(
@@ -76,8 +71,6 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
         id: `section_${Date.now()}`,
         showLabel: false,
         label: "",
-        label: "Nueva sección",
-        label: "",
         type: "fields",
         columns: 2,
         fields: [],
@@ -96,8 +89,6 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
       {
         id: `section_${Date.now()}`,
         showLabel: false,
-        label: "",
-        label: "Nueva lista relacionada",
         label: "",
         type: "relatedList",
         columns: 1,
@@ -367,30 +358,35 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
     }
 
     const cleanedLayout = {
-      ...localLayout,
-      sections: sections.map(({ id, ...section }) => ({
-        ...section,
-        label: section.showLabel === false ? "" : section.label || "",
-        type: section.type === "relatedList" ? "relatedList" : "fields",
-        columns:
-          section.type === "relatedList"
-            ? 1
-            : Number(section.columns) === 2
-            ? 2
-            : 1,
-        fields: section.type === "relatedList" ? [] : section.fields || [],
-        relatedObject:
-          section.type === "relatedList" ? section.relatedObject || "" : "",
-        relatedField:
-          section.type === "relatedList" ? section.relatedField || "" : "",
-        relatedColumns:
-          section.type === "relatedList" ? section.relatedColumns || [] : [],
-        sortField: section.type === "relatedList" ? section.sortField || "" : "",
-        sortOrder:
-          section.type === "relatedList" && section.sortOrder === "asc"
-            ? "asc"
-            : "desc",
-      })),
+      ...layout,
+      sections: sections.map((section) => {
+        const nextSection = {
+          ...section,
+          label: section.showLabel === false ? "" : section.label || "",
+          type: section.type === "relatedList" ? "relatedList" : "fields",
+          columns:
+            section.type === "relatedList"
+              ? 1
+              : Number(section.columns) === 2
+                ? 2
+                : 1,
+          fields: section.type === "relatedList" ? [] : section.fields || [],
+          relatedObject:
+            section.type === "relatedList" ? section.relatedObject || "" : "",
+          relatedField:
+            section.type === "relatedList" ? section.relatedField || "" : "",
+          relatedColumns:
+            section.type === "relatedList" ? section.relatedColumns || [] : [],
+          sortField: section.type === "relatedList" ? section.sortField || "" : "",
+          sortOrder:
+            section.type === "relatedList" && section.sortOrder === "asc"
+              ? "asc"
+              : "desc",
+        };
+
+        delete nextSection.id;
+        return nextSection;
+      }),
     };
 
     onSave(cleanedLayout);
@@ -401,7 +397,7 @@ function LayoutEditor({ layout, allFields, onSave, onCancel }) {
       <div>
         <h2 className="text-xl font-bold">Editar layout</h2>
         <p className="text-sm text-gray-500">
-          {localLayout.label} · {localLayout.apiName}
+          {layout.label} · {layout.apiName}
         </p>
       </div>
 

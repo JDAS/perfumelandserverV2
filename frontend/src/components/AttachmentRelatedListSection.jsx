@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   createRecord,
@@ -74,7 +74,7 @@ function AttachmentRelatedListSection({ parentObject, parentId, section }) {
     detailQuery.set("tab", section.relatedObject);
   }
 
-  const loadAttachments = async () => {
+  const loadAttachments = useCallback(async () => {
     if (!fieldMap.linkedObject || !fieldMap.linkedRecordId) {
       setRecords([]);
       setLoading(false);
@@ -109,20 +109,20 @@ function AttachmentRelatedListSection({ parentObject, parentId, section }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadAttachments();
   }, [
-    parentObject,
-    parentId,
-    section.relatedObject,
-    section.sortField,
-    section.sortOrder,
     fieldMap.linkedObject,
     fieldMap.linkedRecordId,
     fieldMap.uploadedAt,
+    parentId,
+    parentObject,
+    section.relatedObject,
+    section.sortField,
+    section.sortOrder,
   ]);
+
+  useEffect(() => {
+    loadAttachments();
+  }, [loadAttachments]);
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0] || null;

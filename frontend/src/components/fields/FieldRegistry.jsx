@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import LookupField from "./LookupField";
 
 function BaseInput({ type = "text", value, onChange, className = "", ...props }) {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createAdminUser, getUsers } from "../../services/authService";
 import { useToast } from "../ui/ToastContext";
 import { useAuthStore } from "../../store/authStore";
@@ -34,7 +34,7 @@ export default function UsersAdmin() {
     [users]
   );
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getUsers();
@@ -48,11 +48,11 @@ export default function UsersAdmin() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [loadUsers]);
 
   const handleChange = (key, value) => {
     setForm((current) => ({

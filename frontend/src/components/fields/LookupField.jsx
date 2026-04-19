@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getRecordById, getRecords } from "../../services/customService";
 
 const lookupCache = new Map();
@@ -52,7 +52,7 @@ function LookupField({ field, value, onChange, formData = {}, onSelect = null })
 
   const getCacheKey = (referenceTo, id) => `${referenceTo}:${id}`;
 
-  const getOptionLabel = (record) => {
+  const getOptionLabel = useCallback((record) => {
     if (field?.referenceTo === "product" && record?.name) {
       const volumeSuffix =
         record?.volume !== undefined && record?.volume !== null && record?.volume !== ""
@@ -70,7 +70,41 @@ function LookupField({ field, value, onChange, formData = {}, onSelect = null })
       record?._lookupLabel ||
       record?._id
     );
-  };
+  }, [field?.referenceTo]);
+
+  const searchRecords = useCallback(async (term) => {
+    if (!field?.referenceTo || !open) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await getRecords(field.referenceTo, {
+        page: 1,
+        limit: 10,
+        search: term?.trim() || "",
+        sortBy: "createdAt",
+        sortOrder: "desc",
+        filters: JSON.stringify(resolvedLookupFilters),
+      });
+
+      const fetchedResults = response.records || [];
+
+      fetchedResults.forEach((record) => {
+        if (record?._id) {
+          lookupCache.set(getCacheKey(field.referenceTo, record._id), record);
+        }
+      });
+
+      setResults(fetchedResults);
+    } catch (error) {
+      console.error("Error buscando lookup:", error);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [field?.referenceTo, open, resolvedLookupFilters]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -122,7 +156,7 @@ function LookupField({ field, value, onChange, formData = {}, onSelect = null })
     return () => {
       active = false;
     };
-  }, [field?.referenceTo, value]);
+  }, [field?.referenceTo, getOptionLabel, value]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -130,41 +164,7 @@ function LookupField({ field, value, onChange, formData = {}, onSelect = null })
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [search, field?.referenceTo, open, resolvedLookupFilters]);
-
-  const searchRecords = async (term) => {
-    if (!field?.referenceTo || !open) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const response = await getRecords(field.referenceTo, {
-        page: 1,
-        limit: 10,
-        search: term?.trim() || "",
-        sortBy: "createdAt",
-        sortOrder: "desc",
-        filters: JSON.stringify(resolvedLookupFilters),
-      });
-
-      const fetchedResults = response.records || [];
-
-      fetchedResults.forEach((record) => {
-        if (record?._id) {
-          lookupCache.set(getCacheKey(field.referenceTo, record._id), record);
-        }
-      });
-
-      setResults(fetchedResults);
-    } catch (error) {
-      console.error("Error buscando lookup:", error);
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [search, searchRecords]);
 
   const handleSelect = (record) => {
     if (record?._id && field?.referenceTo) {

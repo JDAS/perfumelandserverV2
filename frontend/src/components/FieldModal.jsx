@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { normalizeApiName } from "../engine/metadataEngine";
 import { useToast } from "./ui/ToastContext";
 
@@ -44,6 +44,69 @@ function buildDateDefaultValue(dateDefault) {
   }
 
   return String(dateDefault.value || "").trim();
+}
+
+function createEmptyField() {
+  return {
+    label: "",
+    apiName: "",
+    type: "text",
+    required: false,
+    options: [],
+    defaultValue: "",
+    referenceTo: "",
+    lookupFilters: [],
+    visibleInList: true,
+    visibleInDetail: true,
+    visibleInForm: true,
+    formula: {
+      expression: "",
+      returnType: "text",
+    },
+    rollup: {
+      relatedObject: "",
+      relatedField: "",
+      operation: "sum",
+      fieldToAggregate: "",
+      filterField: "",
+      filterOperator: "eq",
+      filterValue: "",
+    },
+  };
+}
+
+function buildFieldState(initialData) {
+  const emptyField = createEmptyField();
+
+  if (!initialData) {
+    return emptyField;
+  }
+
+  return {
+    ...emptyField,
+    ...initialData,
+    options: initialData.options || [],
+    defaultValue:
+      initialData.type === "date"
+        ? normalizeDateDefaultValue(initialData.defaultValue)
+        : initialData.defaultValue ??
+          (initialData.type === "boolean" ? false : ""),
+    referenceTo: initialData.referenceTo || "",
+    lookupFilters: initialData.lookupFilters || [],
+    formula: {
+      expression: initialData.formula?.expression || "",
+      returnType: initialData.formula?.returnType || "text",
+    },
+    rollup: {
+      relatedObject: initialData.rollup?.relatedObject || "",
+      relatedField: initialData.rollup?.relatedField || "",
+      operation: initialData.rollup?.operation || "sum",
+      fieldToAggregate: initialData.rollup?.fieldToAggregate || "",
+      filterField: initialData.rollup?.filterField || "",
+      filterOperator: initialData.rollup?.filterOperator || "eq",
+      filterValue: initialData.rollup?.filterValue ?? "",
+    },
+  };
 }
 
 function renderDefaultValueInput(field, setField) {
@@ -176,67 +239,23 @@ function renderDefaultValueInput(field, setField) {
 }
 
 function FieldModal({ open, onClose, onSave, initialData = null }) {
+  if (!open) return null;
+
+  const modalKey = initialData?.apiName || initialData?.label || "new-field";
+
+  return (
+    <FieldModalContent
+      key={modalKey}
+      onClose={onClose}
+      onSave={onSave}
+      initialData={initialData}
+    />
+  );
+}
+
+function FieldModalContent({ onClose, onSave, initialData = null }) {
   const { addToast } = useToast();
-  const emptyField = {
-    label: "",
-    apiName: "",
-    type: "text",
-    required: false,
-    options: [],
-    defaultValue: "",
-    referenceTo: "",
-    lookupFilters: [],
-    visibleInList: true,
-    visibleInDetail: true,
-    visibleInForm: true,
-    formula: {
-      expression: "",
-      returnType: "text",
-    },
-    rollup: {
-      relatedObject: "",
-      relatedField: "",
-      operation: "sum",
-      fieldToAggregate: "",
-      filterField: "",
-      filterOperator: "eq",
-      filterValue: "",
-    },
-  };
-
-  const [field, setField] = useState(emptyField);
-
-  useEffect(() => {
-    if (initialData) {
-      setField({
-        ...emptyField,
-        ...initialData,
-        options: initialData.options || [],
-        defaultValue:
-          initialData.type === "date"
-            ? normalizeDateDefaultValue(initialData.defaultValue)
-            : initialData.defaultValue ??
-              (initialData.type === "boolean" ? false : ""),
-        referenceTo: initialData.referenceTo || "",
-        lookupFilters: initialData.lookupFilters || [],
-        formula: {
-          expression: initialData.formula?.expression || "",
-          returnType: initialData.formula?.returnType || "text",
-        },
-        rollup: {
-          relatedObject: initialData.rollup?.relatedObject || "",
-          relatedField: initialData.rollup?.relatedField || "",
-          operation: initialData.rollup?.operation || "sum",
-          fieldToAggregate: initialData.rollup?.fieldToAggregate || "",
-          filterField: initialData.rollup?.filterField || "",
-          filterOperator: initialData.rollup?.filterOperator || "eq",
-          filterValue: initialData.rollup?.filterValue ?? "",
-        },
-      });
-    } else {
-      setField(emptyField);
-    }
-  }, [initialData, open]);
+  const [field, setField] = useState(() => buildFieldState(initialData));
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -394,8 +413,6 @@ function FieldModal({ open, onClose, onSave, initialData = null }) {
       lookupFilters: (prev.lookupFilters || []).filter((_, i) => i !== index),
     }));
   };
-
-  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

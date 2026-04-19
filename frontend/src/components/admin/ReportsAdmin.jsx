@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createReport,
   deleteReport,
@@ -133,10 +133,6 @@ export default function ReportsAdmin({ objects }) {
   );
 
   useEffect(() => {
-    loadReports();
-  }, []);
-
-  useEffect(() => {
     if (!form.sourceObject) {
       setSourceFields([]);
       return;
@@ -150,7 +146,7 @@ export default function ReportsAdmin({ objects }) {
       });
   }, [form.sourceObject]);
 
-  const loadReports = async () => {
+  const loadReports = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getReports();
@@ -161,7 +157,11 @@ export default function ReportsAdmin({ objects }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
+
+  useEffect(() => {
+    loadReports();
+  }, [loadReports]);
 
   const resetForm = () => {
     setSelectedId("");

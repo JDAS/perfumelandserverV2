@@ -17,7 +17,7 @@ export function buildListQuery({ searchParams, objectDef }) {
   };
 }
 
-export function buildRecordListRequest({ objectDef, listState }) {
+export function buildRecordListRequest({ listState }) {
   return {
     search: listState.search,
     page: listState.page,

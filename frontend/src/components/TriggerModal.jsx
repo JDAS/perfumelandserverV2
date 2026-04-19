@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import ConditionBuilder from "./ConditionBuilder";
 const EVENT_OPTIONS = [
     "beforeInsert",
@@ -7,19 +7,6 @@ const EVENT_OPTIONS = [
     "afterUpdate",
     "beforeDelete",
     "afterDelete",
-];
-
-const CONDITION_OPERATORS = [
-    "eq",
-    "ne",
-    "gt",
-    "gte",
-    "lt",
-    "lte",
-    "contains",
-    "changed",
-    "isEmpty",
-    "isNotEmpty",
 ];
 
 const ACTION_TYPES = ["updateField", "copyFromLookup", "createRecord", "log", "generatePayments", "generatePaymentPlan", "setSaleItemPrice", "syncSaleItemStatus", "setSalePaymentStatus"];
@@ -43,6 +30,22 @@ const emptyTrigger = {
     actions: [],
 };
 
+function buildTriggerFormState(trigger) {
+    if (!trigger) {
+        return emptyTrigger;
+    }
+
+    return {
+        ...emptyTrigger,
+        ...trigger,
+        conditions: trigger.conditions || {
+            operator: "AND",
+            conditions: [{ field: "", operator: "eq", value: "" }],
+        },
+        actions: Array.isArray(trigger.actions) ? trigger.actions : [],
+    };
+}
+
 function TriggerModal({
     show,
     onClose,
@@ -51,54 +54,33 @@ function TriggerModal({
     fields = [],
     objectOptions = [],
 }) {
-    const [form, setForm] = useState(emptyTrigger);
-
-    useEffect(() => {
-        if (trigger) {
-            setForm({
-                ...emptyTrigger,
-                ...trigger,
-                conditions: trigger.conditions || {
-                    operator: "AND",
-                    conditions: [{ field: "", operator: "eq", value: "" }],
-                },
-                actions: Array.isArray(trigger.actions) ? trigger.actions : [],
-            });
-        } else {
-            setForm(emptyTrigger);
-        }
-    }, [trigger, show]);
-
     if (!show) return null;
+
+    const modalKey = trigger?.name || "new-trigger";
+
+    return (
+        <TriggerModalContent
+            key={modalKey}
+            onClose={onClose}
+            onSave={onSave}
+            trigger={trigger}
+            fields={fields}
+            objectOptions={objectOptions}
+        />
+    );
+}
+
+function TriggerModalContent({
+    onClose,
+    onSave,
+    trigger,
+    fields = [],
+    objectOptions = [],
+}) {
+    const [form, setForm] = useState(() => buildTriggerFormState(trigger));
 
     const updateField = (key, value) => {
         setForm((prev) => ({ ...prev, [key]: value }));
-    };
-
-    const addCondition = () => {
-        setForm((prev) => ({
-            ...prev,
-            conditions: [
-                ...prev.conditions,
-                { field: "", operator: "eq", value: "" },
-            ],
-        }));
-    };
-
-    const updateCondition = (index, key, value) => {
-        setForm((prev) => ({
-            ...prev,
-            conditions: prev.conditions.map((item, i) =>
-                i === index ? { ...item, [key]: value } : item
-            ),
-        }));
-    };
-
-    const removeCondition = (index) => {
-        setForm((prev) => ({
-            ...prev,
-            conditions: prev.conditions.filter((_, i) => i !== index),
-        }));
     };
 
     const addAction = () => {

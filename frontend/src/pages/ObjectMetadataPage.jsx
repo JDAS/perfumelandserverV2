@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   getObjectByApiName,
@@ -32,10 +32,6 @@ function ObjectMetadataPage() {
   const [showTriggerModal, setShowTriggerModal] = useState(false);
   const [editingTriggerIndex, setEditingTriggerIndex] = useState(null);
 
-  useEffect(() => {
-    loadObject();
-  }, [apiName]);
-
   const normalizeObjectData = (data) => ({
     ...data,
     fields: data.fields || [],
@@ -44,7 +40,7 @@ function ObjectMetadataPage() {
     automationTriggers: data.automationTriggers || [],
   });
 
-  const loadObject = async () => {
+  const loadObject = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getObjectByApiName(apiName);
@@ -55,7 +51,11 @@ function ObjectMetadataPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast, apiName]);
+
+  useEffect(() => {
+    loadObject();
+  }, [loadObject]);
 
   const normalizeApiName = (value) =>
     value.toLowerCase().trim().replace(/\s+/g, "_");

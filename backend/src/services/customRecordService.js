@@ -4,9 +4,13 @@ const { applyFormulaFields } = require("../utils/formulaEngine");
 const { recalculateParentRollupsFromChild } = require("../utils/rollupEngine");
 const { buildDefaultPayload, validateRecordPayload } = require("./recordValidationService");
 const { runTriggers } = require("./triggerMotor");
-const triggerEngine = require("./triggerMotor");
-console.log("TRIGGER ENGINE LOADED:", triggerEngine);
-console.log("runTriggers TYPE:", typeof triggerEngine.runTriggers);
+const { syncInventoryForProducts } = require("./inventorySyncService");
+const {
+  resolveLookupData,
+  listRecords: listRecordsWithMetadata,
+  getRecordByIdEnriched: getRecordByIdEnrichedWithMetadata,
+  getRelatedRecords: getRelatedRecordsWithMetadata,
+} = require("./customRecordQueryService");
 
 async function getObjectOrThrow(apiName) {
   const customObject = await CustomObject.findOne({ apiName }).lean();
@@ -29,366 +33,14 @@ async function getRecordOrThrow(objectApiName, recordId) {
   return record;
 }
 
-function toNumber(value) {
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue : 0;
-}
-
-function getCalendarDate(value) {
-  if (!value) return null;
-
-  const parsed = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(parsed.getTime())) return null;
-
-  return new Date(
-    parsed.getUTCFullYear(),
-    parsed.getUTCMonth(),
-    parsed.getUTCDate()
-  );
-}
-
-async function syncInventoryForProducts(productIds = []) {
-  const uniqueProductIds = [...new Set(productIds.filter(Boolean).map(String))];
-  if (!uniqueProductIds.length) return;
-
-  const ProductModel = getCustomRecordModel("product");
-  const StockModel = getCustomRecordModel("stock");
-  const SaleItemModel = getCustomRecordModel("sale_item");
-  const SaleModel = getCustomRecordModel("sales");
-
-  for (const productId of uniqueProductIds) {
-    const [product, stockRows, saleItems] = await Promise.all([
-      ProductModel.findById(productId),
-      StockModel.find({ product: productId }).sort({ createdAt: 1, _id: 1 }).lean(),
-      SaleItemModel.find({
-        product: productId,
-        sale_status: "Completada",
-      }).lean(),
-    ]);
-
-    if (!product) continue;
-
-    const purchaseditems = stockRows.reduce(
-      (sum, row) => sum + toNumber(row?.purchased),
-      0
-    );
-    const hasRealStock = purchaseditems > 0;
-
-    const firstStockAt = stockRows.length
-      ? getCalendarDate(stockRows[0]?.createdAt)
-      : null;
-
-    const trackingStart =
-      getCalendarDate(product.inventory_tracking_started_at) || firstStockAt;
-
-    let sold = 0;
-
-    if (saleItems.length > 0) {
-      const saleIds = [
-        ...new Set(saleItems.map((item) => String(item?.sale || "")).filter(Boolean)),
-      ];
-
-      const sales = await SaleModel.find({ _id: { $in: saleIds } })
-        .select("saledate createdAt")
-        .lean();
-
-      const salesMap = new Map(sales.map((sale) => [String(sale._id), sale]));
-
-      sold = saleItems.reduce((sum, item) => {
-        const relatedSale = salesMap.get(String(item?.sale || ""));
-        const saleDate =
-          getCalendarDate(relatedSale?.saledate) ||
-          getCalendarDate(relatedSale?.createdAt);
-
-        if (trackingStart && saleDate && saleDate < trackingStart) {
-          return sum;
-        }
-
-        return sum + toNumber(item?.quantity);
-      }, 0);
-    }
-
-    const trackInventory = hasRealStock || Boolean(product.track_inventory);
-    const available = trackInventory ? purchaseditems - sold : 0;
-
-    const nextValues = {
-      purchaseditems,
-      sold,
-      available,
-      track_inventory: trackInventory,
-    };
-
-    if (firstStockAt) {
-      nextValues.inventory_tracking_started_at = firstStockAt;
-    }
-
-    const hasChanges =
-      toNumber(product.purchaseditems) !== purchaseditems ||
-      toNumber(product.sold) !== sold ||
-      toNumber(product.available) !== available ||
-      Boolean(product.track_inventory) !== trackInventory ||
-      String(product.inventory_tracking_started_at || "") !==
-        String(firstStockAt || product.inventory_tracking_started_at || "");
-
-    if (!hasChanges) continue;
-
-    product.set(nextValues);
-    Object.keys(nextValues).forEach((key) => product.markModified(key));
-    await product.save();
-  }
-}
-
-function parseFilters(filtersInput) {
-  if (!filtersInput) return [];
-
-  try {
-    const parsed =
-      typeof filtersInput === "string" ? JSON.parse(filtersInput) : filtersInput;
-
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function buildFilterCondition(filter) {
-  const { field, operator, value } = filter || {};
-
-  if (!field || value === undefined || value === null || value === "") {
-    return null;
-  }
-
-  switch (operator) {
-    case "eq":
-      return { [field]: value };
-    case "ne":
-      return { [field]: { $ne: value } };
-    case "gt":
-      return { [field]: { $gt: value } };
-    case "gte":
-      return { [field]: { $gte: value } };
-    case "lt":
-      return { [field]: { $lt: value } };
-    case "lte":
-      return { [field]: { $lte: value } };
-    case "contains":
-      return { [field]: { $regex: String(value), $options: "i" } };
-    default:
-      return null;
-  }
-}
-
-function buildMongoQuery({ objectDefinition, search, filters, viewFilters }) {
-  const query = {};
-  const andConditions = [];
-
-  if (search && String(search).trim()) {
-    const searchableFields = (objectDefinition.fields || [])
-      .filter((f) =>
-        [
-          "text",
-          "textarea",
-          "select",
-          "date",
-          "number",
-          "percentage",
-          "email",
-          "phone",
-          "lookup",
-          "url",
-        ].includes(f.type)
-      )
-      .map((f) => f.apiName);
-
-    if (searchableFields.length > 0) {
-      query.$or = searchableFields.map((field) => ({
-        [field]: { $regex: String(search).trim(), $options: "i" },
-      }));
-    }
-  }
-
-  [...(filters || []), ...(viewFilters || [])]
-    .map(buildFilterCondition)
-    .filter(Boolean)
-    .forEach((condition) => andConditions.push(condition));
-
-  if (andConditions.length > 0) {
-    query.$and = andConditions;
-  }
-
-  return query;
-}
-
-function buildLookupLabel(doc = {}, referenceTo = "") {
-  const baseLabel =
-    doc.name || doc.label || doc.title || doc.fullName || String(doc._id || "");
-
-  if (referenceTo === "product" && doc.volume !== undefined && doc.volume !== null && doc.volume !== "") {
-    return `${baseLabel} - ${doc.volume} ml`;
-  }
-
-  return baseLabel;
-}
-
-async function resolveLookupData(records, objectDefinition) {
-  const plainRecords = records.map((record) =>
-    typeof record?.toObject === "function" ? record.toObject() : { ...record }
-  );
-
-  const lookupFields = (objectDefinition?.fields || []).filter(
-    (field) => field.type === "lookup" && field.referenceTo
-  );
-
-  if (!lookupFields.length || !plainRecords.length) {
-    return plainRecords;
-  }
-
-  const idsByReference = new Map();
-
-  for (const field of lookupFields) {
-    for (const record of plainRecords) {
-      const relatedId = record[field.apiName];
-      if (!relatedId) continue;
-
-      const refName = field.referenceTo;
-      if (!idsByReference.has(refName)) {
-        idsByReference.set(refName, new Set());
-      }
-
-      idsByReference.get(refName).add(String(relatedId));
-    }
-  }
-
-  const relatedDataByReference = new Map();
-
-  await Promise.all(
-    [...idsByReference.entries()].map(async ([referenceTo, idsSet]) => {
-      try {
-        const RelatedModel = getCustomRecordModel(referenceTo);
-        const docs = await RelatedModel.find({
-          _id: { $in: [...idsSet] },
-        }).lean();
-
-        relatedDataByReference.set(
-          referenceTo,
-          new Map(
-            docs.map((doc) => [
-              String(doc._id),
-              {
-                _id: doc._id,
-                label: buildLookupLabel(doc, referenceTo),
-                record: doc,
-              },
-            ])
-          )
-        );
-      } catch (error) {
-        console.error(`lookup resolve batch error (${referenceTo}):`, error);
-        relatedDataByReference.set(referenceTo, new Map());
-      }
-    })
-  );
-
-  return plainRecords.map((record) => {
-    const enriched = { ...record, _lookup: record._lookup || {} };
-
-    for (const field of lookupFields) {
-      const relatedId = record[field.apiName];
-      if (!relatedId) continue;
-
-      const relatedMap = relatedDataByReference.get(field.referenceTo);
-      const related = relatedMap?.get(String(relatedId));
-
-      if (related) {
-        enriched._lookup[field.apiName] = related;
-      }
-    }
-
-    return enriched;
-  });
-}
-
 async function listRecords(apiName, params = {}) {
   const objectDefinition = await getObjectOrThrow(apiName);
-  const RecordModel = getCustomRecordModel(apiName);
-
-  const page = Math.max(Number(params.page) || 1, 1);
-  const limit = Math.min(Math.max(Number(params.limit) || 10, 1), 100);
-
-  const viewApiName = params.view || "all";
-  const activeView =
-    objectDefinition.listViews?.find((v) => v.apiName === viewApiName) ||
-    objectDefinition.listViews?.find((v) => v.isDefault) ||
-    null;
-
-  const sortField =
-    params.sort || params.sortBy || activeView?.sortBy || "createdAt";
-  const sortOrderRaw =
-    params.order || params.sortOrder || activeView?.sortOrder || "desc";
-  const sortOrder = sortOrderRaw === "asc" ? 1 : -1;
-
-  const filters = parseFilters(params.filters);
-  const viewFilters = Array.isArray(activeView?.filters) ? activeView.filters : [];
-
-  const query = buildMongoQuery({
-    objectDefinition,
-    search: params.search,
-    filters,
-    viewFilters,
-  });
-
-  const [rawRecords, total] = await Promise.all([
-    RecordModel.find(query)
-      .sort({ [sortField]: sortOrder, _id: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean(),
-    RecordModel.countDocuments(query),
-  ]);
-
-  const lookupResolved = await resolveLookupData(rawRecords, objectDefinition);
-
-  const records = lookupResolved.map((record) =>
-    applyFormulaFields(objectDefinition.fields, record)
-  );
-
-  const pages = Math.max(Math.ceil(total / limit), 1);
-
-  return {
-    records,
-    total,
-    page,
-    pages,
-    limit,
-    view: viewApiName,
-    sort: sortField,
-    order: sortOrder === 1 ? "asc" : "desc",
-    pagination: {
-      page,
-      pages,
-      total,
-      limit,
-      totalPages: pages,
-      hasNextPage: page < pages,
-      hasPrevPage: page > 1,
-    },
-  };
+  return listRecordsWithMetadata({ objectDefinition, params });
 }
 
 async function getRecordByIdEnriched(apiName, recordId) {
   const objectDefinition = await getObjectOrThrow(apiName);
-  const RecordModel = getCustomRecordModel(apiName);
-
-  const record = await RecordModel.findById(recordId).lean();
-  if (!record) {
-    const error = new Error("Registro no encontrado");
-    error.statusCode = 404;
-    throw error;
-  }
-
-  const [enriched] = await resolveLookupData([record], objectDefinition);
-
-  return applyFormulaFields(objectDefinition.fields, enriched);
+  return getRecordByIdEnrichedWithMetadata({ objectDefinition, recordId });
 }
 
 async function getRelatedRecords(
@@ -400,37 +52,13 @@ async function getRelatedRecords(
 ) {
   const parentObjectDef = await getObjectOrThrow(parentObjectApiName);
   const relatedObjectDef = await getObjectOrThrow(relatedObjectApiName);
-
-  const ParentModel = getCustomRecordModel(parentObjectApiName);
-  const parentRecord = await ParentModel.findById(parentId).lean();
-
-  if (!parentRecord) {
-    const error = new Error("Registro padre no encontrado");
-    error.statusCode = 404;
-    throw error;
-  }
-
-  const RelatedModel = getCustomRecordModel(relatedObjectApiName);
-
-  const rawRecords = await RelatedModel.find({
-    [relatedField]: String(parentRecord._id),
-  })
-    .sort({
-      [options.sortField || "createdAt"]: options.sortOrder === "asc" ? 1 : -1,
-      _id: -1,
-    })
-    .lean();
-
-  const lookupResolved = await resolveLookupData(rawRecords, relatedObjectDef);
-
-  return {
-    records: lookupResolved.map((record) =>
-      applyFormulaFields(relatedObjectDef.fields, record)
-    ),
-    total: rawRecords.length,
-    parentObjectDef,
-    relatedObjectDef,
-  };
+  return getRelatedRecordsWithMetadata({
+    parentObjectDefinition: parentObjectDef,
+    parentId,
+    relatedObjectDefinition: relatedObjectDef,
+    relatedField,
+    options,
+  });
 }
 
 async function saveRecord({ objectApiName, recordId = null, payload = {}, user = null }) {
@@ -491,7 +119,7 @@ async function saveRecord({ objectApiName, recordId = null, payload = {}, user =
     previousRecord,
   });
 
-  // Reaplicar fórmulas por si un trigger cambió campos base
+  // Reaplicar formulas por si un trigger cambia campos base
   finalData = applyFormulaFields(objectDefinition.fields, finalData);
   // ===== FIN BEFORE TRIGGERS =====
 
@@ -499,7 +127,7 @@ async function saveRecord({ objectApiName, recordId = null, payload = {}, user =
   if (isUpdate) {
     existingRecord.set(finalData);
 
-    // 🔥 CLAVE: marcar campos dinámicos como modificados
+    // Marcar campos dinamicos como modificados para persistir cambios flexibles
     Object.keys(finalData).forEach((key) => {
       existingRecord.markModified(key);
     });

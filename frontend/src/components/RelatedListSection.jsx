@@ -27,14 +27,16 @@ function TrashIcon() {
 }
 
 function IconButton({
-  as: Component = "button",
+  as = "button",
   label,
   className = "",
   children,
   ...props
 }) {
+  const Tag = as;
+
   return (
-    <Component
+    <Tag
       title={label}
       aria-label={label}
       className={`inline-flex h-9 w-9 items-center justify-center rounded text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
@@ -42,7 +44,7 @@ function IconButton({
     >
       <span className="sr-only">{label}</span>
       {children}
-    </Component>
+    </Tag>
   );
 }
 
@@ -55,19 +57,16 @@ function RelatedListSection({ parentObject, parentId, section }) {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
 
+  const isAttachmentSection = section.relatedObject === "attachments";
   const relatedObjectDef = getObjectByApiNameFromCache(section.relatedObject);
 
-  if (section.relatedObject === "attachments") {
-    return (
-      <AttachmentRelatedListSection
-        parentObject={parentObject}
-        parentId={parentId}
-        section={section}
-      />
-    );
-  }
-
   const loadRecords = useCallback(async () => {
+    if (!section.relatedObject || !section.relatedField || isAttachmentSection) {
+      setRecords([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const data = await getRelatedRecords(
@@ -88,6 +87,7 @@ function RelatedListSection({ parentObject, parentId, section }) {
       setLoading(false);
     }
   }, [
+    isAttachmentSection,
     parentObject,
     parentId,
     section.relatedObject,
@@ -97,12 +97,8 @@ function RelatedListSection({ parentObject, parentId, section }) {
   ]);
 
   useEffect(() => {
-    if (section.relatedObject && section.relatedField) {
-      loadRecords();
-    }
-  }, [
-    loadRecords,
-  ]);
+    loadRecords();
+  }, [loadRecords]);
 
   const columns = useMemo(() => {
     return (section.relatedColumns || [])
@@ -111,6 +107,16 @@ function RelatedListSection({ parentObject, parentId, section }) {
       )
       .filter(Boolean);
   }, [section.relatedColumns, relatedObjectDef]);
+
+  if (isAttachmentSection) {
+    return (
+      <AttachmentRelatedListSection
+        parentObject={parentObject}
+        parentId={parentId}
+        section={section}
+      />
+    );
+  }
 
   const detailQuery = new URLSearchParams(searchParams);
   if (!detailQuery.get("tab")) {
