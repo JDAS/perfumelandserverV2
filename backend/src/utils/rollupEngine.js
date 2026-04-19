@@ -1,5 +1,6 @@
 const CustomObject = require("../models/CustomObject");
 const { getCustomRecordModel } = require("../models/CustomRecord");
+const { applyFormulaFields } = require("../services/formulaEngine");
 const { runTriggers } = require("../services/triggerMotor");
 
 function buildFilterCondition({ filterField, filterOperator, filterValue }) {
@@ -80,8 +81,13 @@ async function recalculateRollupsForParent({
   if (!rollupFields.length) return;
 
   const ParentModel = getCustomRecordModel(parentObjectApiName);
-  const previousParentRecord = await ParentModel.findById(parentRecordId).lean();
-  if (!previousParentRecord) return;
+  const parentRecord = await ParentModel.findById(parentRecordId);
+  if (!parentRecord) return;
+
+  const previousParentRecord =
+    typeof parentRecord.toObject === "function"
+      ? parentRecord.toObject()
+      : { ...parentRecord };
 
   const updateData = {};
 
@@ -110,16 +116,36 @@ async function recalculateRollupsForParent({
     return;
   }
 
-  const updatedParentRecord = await ParentModel.findByIdAndUpdate(parentRecordId, updateData, {
-    returnDocument: "before",
-    runValidators: false,
-    lean: true,
+  const nextParentRecord = applyFormulaFields(parentObject.fields || [], {
+    ...previousParentRecord,
+    ...updateData,
   });
 
-  const nextParentRecord = {
-    ...(updatedParentRecord || previousParentRecord),
-    ...updateData,
-  };
+  const formulaFields = (parentObject.fields || []).filter(
+    (field) => field.type === "formula"
+  );
+
+  const changedData = {};
+
+  for (const key of Object.keys(updateData)) {
+    if (previousParentRecord?.[key] !== nextParentRecord?.[key]) {
+      changedData[key] = nextParentRecord[key];
+    }
+  }
+
+  for (const field of formulaFields) {
+    if (previousParentRecord?.[field.apiName] !== nextParentRecord?.[field.apiName]) {
+      changedData[field.apiName] = nextParentRecord[field.apiName];
+    }
+  }
+
+  if (!Object.keys(changedData).length) {
+    return;
+  }
+
+  parentRecord.set(changedData);
+  Object.keys(changedData).forEach((key) => parentRecord.markModified(key));
+  await parentRecord.save();
 
   await runTriggers({
     objectDefinition: parentObject,
