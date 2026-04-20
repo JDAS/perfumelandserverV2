@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import {
   FileText,
   BadgeCheck,
@@ -9,29 +9,38 @@ import {
   LayoutDashboard,
   Sparkles,
   Trash2,
-  X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import QuoteBuilderModal from "../components/admin/QuoteBuilderModal";
 import DashboardsViewer from "../components/admin/DashboardsViewer";
 import ReportsViewer from "../components/admin/ReportsViewer";
+import {
+  BadgeChip,
+  ClassicTab,
+  LauncherChip,
+  QuickActionButton,
+  WorkspaceHeader,
+} from "../components/admin/workspaceLab/WorkspaceChrome";
+import {
+  CreateRecordModal,
+  EditRecordPanel,
+} from "../components/admin/workspaceLab/RecordForms";
+import { ListPanel } from "../components/admin/workspaceLab/ListPanel";
+import { RecordDetailPanel } from "../components/admin/workspaceLab/RecordDetailPanel";
 import ClientSummaryModal from "../components/ClientSummaryModal";
 import Pagination from "../components/ui/Pagination";
-import { renderFieldInput } from "../components/fields/FieldRegistry";
 import { useToast } from "../components/ui/ToastContext";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
 import {
   formatFieldValue,
   getLookupDisplayData,
   getDefaultListView,
-  getFormFields,
   getListColumns,
   isBlankBlock,
   splitFieldsIntoColumns,
 } from "../engine/metadataEngine";
 import {
   convertQuoteToSale,
-  createRecord,
   deleteRecord,
   getClientSummary,
   getRecordById,
@@ -201,128 +210,8 @@ function makeEditSubtab() {
   };
 }
 
-function LauncherChip({ active, label, onClick, icon: Icon = null }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition"
-      style={
-        active
-          ? {
-              backgroundColor: adminTheme.text,
-              color: "#FFFFFF",
-              borderColor: adminTheme.text,
-            }
-          : {
-              backgroundColor: adminTheme.surface,
-              color: adminTheme.text,
-              borderColor: adminTheme.border,
-            }
-      }
-    >
-      {Icon ? <Icon className="h-4 w-4" strokeWidth={2} /> : null}
-      {label}
-    </button>
-  );
-}
 
-function ClassicTab({ active, label, onClick, onClose, closable = false }) {
-  return (
-    <div
-      className="inline-flex items-center gap-2 rounded-t-xl border border-b-0 px-4 py-3 text-sm font-medium"
-      style={
-        active
-          ? {
-              backgroundColor: adminTheme.surface,
-              color: adminTheme.text,
-              borderColor: adminTheme.border,
-              transform: "translateY(1px)",
-            }
-          : {
-              backgroundColor: adminTheme.surfaceAlt,
-              color: adminTheme.muted,
-              borderColor: adminTheme.border,
-            }
-      }
-    >
-      <button type="button" onClick={onClick} className="text-left">
-        {label}
-      </button>
-      {closable ? (
-        <button
-          type="button"
-          onClick={onClose}
-          className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold transition"
-          title={`Cerrar ${label}`}
-          aria-label={`Cerrar ${label}`}
-          style={
-            active
-              ? {
-                  backgroundColor: adminTheme.surfaceAlt,
-                  color: adminTheme.muted,
-                }
-              : {
-                  backgroundColor: "rgba(255,255,255,0.72)",
-                  color: adminTheme.muted,
-              }
-          }
-        >
-          <X className="h-3 w-3" strokeWidth={2.25} />
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-function BadgeChip({ active, label, onClick, onClose, closable = false }) {
-  return (
-    <div
-      className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium"
-      style={
-        active
-          ? {
-              backgroundColor: adminTheme.text,
-              color: "#FFFFFF",
-              borderColor: adminTheme.text,
-            }
-          : {
-              backgroundColor: adminTheme.surfaceAlt,
-              color: adminTheme.muted,
-              borderColor: adminTheme.border,
-            }
-      }
-    >
-      <button type="button" onClick={onClick} className="text-left">
-        {label}
-      </button>
-      {closable ? (
-        <button
-          type="button"
-          onClick={onClose}
-          className="inline-flex h-4.5 w-4.5 items-center justify-center rounded-full text-[10px] font-semibold transition"
-          title={`Cerrar ${label}`}
-          aria-label={`Cerrar ${label}`}
-          style={
-            active
-              ? {
-                  backgroundColor: "rgba(255,255,255,0.16)",
-                  color: "#FFFFFF",
-                }
-              : {
-                  backgroundColor: adminTheme.surface,
-                  color: adminTheme.muted,
-              }
-          }
-        >
-          <X className="h-3 w-3" strokeWidth={2.25} />
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-function WorkspaceHeader({ activeTab, levelThreeAvailable }) {
+function _WorkspaceHeaderLegacy({ activeTab, levelThreeAvailable }) {
   const title =
     activeTab?.type === "home"
       ? "Inicio"
@@ -384,453 +273,7 @@ function formatFilterLabel(filter, objectDef) {
   )}`;
 }
 
-function QuickActionButton({ icon: Icon = null, className = "", ...props }) {
-  return (
-    <button
-      type="button"
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold disabled:opacity-60 ${className}`}
-      {...props}
-    >
-      {Icon ? <Icon className="h-4 w-4" strokeWidth={2} /> : null}
-    </button>
-  );
-}
-
-function CreateRecordModal({ open, objectDef, onClose, onCreated, initialValues = {} }) {
-  const { addToast } = useToast();
-  const fields = useMemo(() => getFormFields(objectDef), [objectDef]);
-  const activeLayout = objectDef?.layout?.[0];
-  const [formData, setFormData] = useState({});
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-
-    const initialState = Object.fromEntries(
-      fields.map((field) => [field.apiName, getFieldDefaultValue(field)])
-    );
-    setFormData({ ...initialState, ...initialValues });
-  }, [fields, initialValues, open]);
-
-  if (!open || !objectDef) return null;
-
-  const handleChange = (apiName, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [apiName]: value,
-    }));
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
-    for (const field of fields) {
-      const value = formData[field.apiName];
-      if (field.required && (value === undefined || value === null || value === "")) {
-        addToast(`${field.label} es requerido`, "warning");
-        return;
-      }
-    }
-
-    try {
-      setSaving(true);
-      const payload = Object.fromEntries(
-        fields
-          .filter((field) => !["formula", "rollup"].includes(field.type))
-          .map((field) => [field.apiName, formData[field.apiName]])
-      );
-      const createdRecord = await createRecord(objectDef.apiName, payload);
-      addToast("Registro creado", "success");
-      await onCreated?.(createdRecord);
-    } catch (error) {
-      console.error(error);
-      addToast(error?.response?.data?.error || "No se pudo crear el registro", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const renderFieldOrBlank = (item, index) => {
-    if (isBlankBlock(item)) {
-      return (
-        <div
-          key={`${item}-${index}`}
-          className="h-[72px] rounded-xl border-2 border-dashed"
-          style={{ borderColor: adminTheme.border, backgroundColor: adminTheme.surfaceAlt }}
-        />
-      );
-    }
-
-    const field = fields.find((currentField) => currentField.apiName === item);
-    if (!field) return null;
-
-    return (
-      <div key={field.apiName} className="mb-3">
-        {field.type !== "boolean" ? (
-          <label className="mb-1 block text-sm font-medium" style={{ color: adminTheme.text }}>
-            {field.label}
-            {field.required ? <span className="ml-1 text-red-500">*</span> : null}
-          </label>
-        ) : null}
-
-        {renderFieldInput(
-          field,
-          formData[field.apiName],
-          (value) => handleChange(field.apiName, value),
-          {
-            objectDef,
-            formData,
-            setFormData,
-          }
-        )}
-      </div>
-    );
-  };
-
-  const fieldSections = (activeLayout?.sections || []).filter(
-    (section) => section.type !== "relatedList"
-  );
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
-      <div
-        className="w-full max-w-5xl overflow-hidden rounded-2xl border shadow-2xl"
-        style={{ backgroundColor: adminTheme.surface, borderColor: adminTheme.border }}
-      >
-        <div
-          className="flex items-center justify-between border-b px-6 py-4"
-          style={{ borderColor: adminTheme.border }}
-        >
-          <div>
-            <h2 className="text-xl font-semibold" style={{ color: adminTheme.text }}>
-              Nuevo {objectDef.name}
-            </h2>
-            <p className="text-sm" style={{ color: adminTheme.muted }}>
-              Crea el registro sin salir del workspace.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border px-3 py-2 text-sm font-semibold"
-            style={{ borderColor: adminTheme.border, color: adminTheme.text }}
-          >
-            Cerrar
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="max-h-[75vh] overflow-y-auto px-6 py-5">
-            {fieldSections.length ? (
-              <div className="space-y-5">
-                {fieldSections.map((section, sectionIndex) => {
-                  const sectionFields = section.fields || [];
-                  const twoColumn = section.columns === 2;
-                  const { col1, col2 } = splitFieldsIntoColumns(sectionFields);
-
-                  return (
-                    <div key={`${section.label || "section"}-${sectionIndex}`}>
-                      {section.label ? (
-                        <div className="mb-4">
-                          <p
-                            className="text-xs uppercase tracking-[0.22em]"
-                            style={{ color: adminTheme.muted }}
-                          >
-                            {section.label}
-                          </p>
-                        </div>
-                      ) : null}
-
-                      {twoColumn ? (
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <div>{col1.map((item, index) => renderFieldOrBlank(item, index))}</div>
-                          <div>{col2.map((item, index) => renderFieldOrBlank(item, index + col1.length))}</div>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                          {sectionFields.map((item, index) => renderFieldOrBlank(item, index))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {fields.map((field, index) => renderFieldOrBlank(field.apiName, index))}
-              </div>
-            )}
-          </div>
-
-          <div
-            className="flex justify-end gap-3 border-t px-6 py-4"
-            style={{ borderColor: adminTheme.border }}
-          >
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border px-4 py-2 text-sm font-semibold"
-              style={{ borderColor: adminTheme.border, color: adminTheme.text }}
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-              style={{ backgroundColor: adminTheme.text }}
-            >
-              {saving ? "Guardando..." : "Crear registro"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function EditRecordPanel({ objectDef, recordId, onSaved, actions = null }) {
-  const { addToast } = useToast();
-  const fields = useMemo(() => getFormFields(objectDef), [objectDef]);
-  const activeLayout = objectDef?.layout?.[0];
-  const [formData, setFormData] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadRecord() {
-      try {
-        setLoading(true);
-        const record = await getRecordById(objectDef.apiName, recordId);
-        if (cancelled) return;
-
-        const nextState = Object.fromEntries(
-          fields.map((field) => [field.apiName, formatValueForInput(field, record?.[field.apiName])])
-        );
-        setFormData(nextState);
-      } catch (error) {
-        console.error(error);
-        if (!cancelled) {
-          setFormData({});
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadRecord();
-    return () => {
-      cancelled = true;
-    };
-  }, [fields, objectDef.apiName, recordId]);
-
-  const handleChange = (apiName, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [apiName]: value,
-    }));
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
-    for (const field of fields) {
-      const value = formData[field.apiName];
-      if (field.required && (value === undefined || value === null || value === "")) {
-        addToast(`${field.label} es requerido`, "warning");
-        return;
-      }
-    }
-
-    try {
-      setSaving(true);
-      const payload = Object.fromEntries(
-        fields
-          .filter((field) => !["formula", "rollup"].includes(field.type))
-          .map((field) => [field.apiName, formData[field.apiName]])
-      );
-      const updated = await updateRecord(objectDef.apiName, recordId, payload);
-      addToast("Registro actualizado", "success");
-      await onSaved?.(updated);
-    } catch (error) {
-      console.error(error);
-      addToast(error?.response?.data?.error || "No se pudo actualizar el registro", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const renderFieldOrBlank = (item, index) => {
-    if (isBlankBlock(item)) {
-      return (
-        <div
-          key={`${item}-${index}`}
-          className="h-[72px] rounded-xl border-2 border-dashed"
-          style={{ borderColor: adminTheme.border, backgroundColor: adminTheme.surfaceAlt }}
-        />
-      );
-    }
-
-    const field = fields.find((currentField) => currentField.apiName === item);
-    if (!field) return null;
-
-    return (
-      <div key={field.apiName} className="mb-3">
-        {field.type !== "boolean" ? (
-          <label className="mb-1 block text-sm font-medium" style={{ color: adminTheme.text }}>
-            {field.label}
-            {field.required ? <span className="ml-1 text-red-500">*</span> : null}
-          </label>
-        ) : null}
-
-        {renderFieldInput(
-          field,
-          formData[field.apiName],
-          (value) => handleChange(field.apiName, value),
-          {
-            objectDef,
-            formData,
-            setFormData,
-          }
-        )}
-      </div>
-    );
-  };
-
-  const fieldSections = (activeLayout?.sections || []).filter(
-    (section) => section.type !== "relatedList"
-  );
-
-  if (loading) {
-    return (
-      <div
-        className="rounded-2xl border p-5"
-        style={{ backgroundColor: adminTheme.surface, borderColor: adminTheme.border }}
-      >
-        <p style={{ color: adminTheme.muted }}>Cargando formulario...</p>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {actions ? actions({ saving }) : null}
-
-      {fieldSections.length ? (
-        <div className="space-y-5">
-          {fieldSections.map((section, sectionIndex) => {
-            const sectionFields = section.fields || [];
-            const twoColumn = section.columns === 2;
-            const { col1, col2 } = splitFieldsIntoColumns(sectionFields);
-
-            return (
-              <div key={`${section.label || "section"}-${sectionIndex}`}>
-                {section.label ? (
-                  <div className="mb-4">
-                    <p className="text-xs uppercase tracking-[0.22em]" style={{ color: adminTheme.muted }}>
-                      {section.label}
-                    </p>
-                  </div>
-                ) : null}
-
-                {twoColumn ? (
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>{col1.map((item, index) => renderFieldOrBlank(item, index))}</div>
-                    <div>{col2.map((item, index) => renderFieldOrBlank(item, index + col1.length))}</div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {sectionFields.map((item, index) => renderFieldOrBlank(item, index))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {fields.map((field, index) => renderFieldOrBlank(field.apiName, index))}
-        </div>
-      )}
-    </form>
-  );
-}
-
-function formatValueForInput(field, value) {
-  if (value === undefined || value === null || value === "") return "";
-
-  if (field.type === "boolean") {
-    return Boolean(value);
-  }
-
-  if (field.type === "date") {
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "";
-    return d.toISOString().slice(0, 10);
-  }
-
-  if (field.type === "datetime") {
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "";
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16);
-  }
-
-  return value;
-}
-
-function resolveDateDefaultValue(defaultValue) {
-  if (
-    defaultValue &&
-    typeof defaultValue === "object" &&
-    !Array.isArray(defaultValue) &&
-    defaultValue.mode === "relative"
-  ) {
-    const today = new Date();
-    const resolved = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate() + (Number(defaultValue.offsetDays) || 0)
-    );
-
-    return resolved.toISOString().slice(0, 10);
-  }
-
-  if (
-    defaultValue &&
-    typeof defaultValue === "object" &&
-    !Array.isArray(defaultValue)
-  ) {
-    return defaultValue.value || "";
-  }
-
-  return defaultValue;
-}
-
-function getFieldDefaultValue(field) {
-  if (field.defaultValue !== undefined && field.defaultValue !== null && field.defaultValue !== "") {
-    const defaultValue =
-      field.type === "date"
-        ? resolveDateDefaultValue(field.defaultValue)
-        : field.defaultValue;
-
-    return formatValueForInput(field, defaultValue);
-  }
-
-  if (field.type === "boolean") {
-    return false;
-  }
-
-  return "";
-}
-
-function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLookupRecord }) {
+function ListPanelLegacy({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLookupRecord }) {
   const { addToast } = useToast();
   const [records, setRecords] = useState([]);
   const [pagination, setPagination] = useState(null);
@@ -1801,7 +1244,7 @@ function RelatedPanel({
   );
 }
 
-function RecordDetailPanel({
+function RecordDetailPanelLegacy({
   objectDef,
   recordId,
   refreshKey = 0,
@@ -2044,49 +1487,12 @@ function currentActiveObjectApiResolver(currentObjectApi, nextTabs) {
   return fallbackTab?.objectApi || "";
 }
 
-export default function AdminWorkspaceLab() {
-  const { objects, loading, loaded } = useObjectMetadata();
-  const user = useAuthStore((state) => state.user);
+function workspaceReducer(state, action) {
+  switch (action.type) {
+    case "SYNC_OBJECTS": {
+      const { validApis, defaultObjectApi, homeTab, reportsTab, dashboardsTab } = action.payload;
 
-  const storageKey = useMemo(
-    () => `${STORAGE_PREFIX}:${user?._id || user?.email || "default"}`,
-    [user?._id, user?.email]
-  );
-
-  const persistedState = useMemo(() => readState(storageKey), [storageKey]);
-  const [activeObjectApi, setActiveObjectApi] = useState(
-    () => persistedState?.activeObjectApi || ""
-  );
-  const [activeTabId, setActiveTabId] = useState(
-    () => persistedState?.activeTabId || HOME_TAB_ID
-  );
-  const [workspaceTabs, setWorkspaceTabs] = useState(
-    () => persistedState?.tabs?.length ? persistedState.tabs : [makeHomeTab()]
-  );
-  const restored = true;
-
-  const objectTabs = useMemo(
-    () => objects.filter((obj) => obj.active !== false && obj.tabsEnabled !== false),
-    [objects]
-  );
-
-  const objectMap = useMemo(
-    () => new Map(objectTabs.map((objectDef) => [objectDef.apiName, objectDef])),
-    [objectTabs]
-  );
-
-  const homeTab = useMemo(() => makeHomeTab(), []);
-  const reportsTab = useMemo(() => makeReportsTab(), []);
-  const dashboardsTab = useMemo(() => makeDashboardsTab(), []);
-
-  useEffect(() => {
-    if (!restored || !objectTabs.length) return;
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setWorkspaceTabs((current) => {
-      const validApis = new Set(objectTabs.map((objectDef) => objectDef.apiName));
-
-      const nextTabs = [homeTab, ...current]
+      const nextTabs = [homeTab, ...state.workspaceTabs]
         .filter(
           (tab) =>
             tab.type === "home" ||
@@ -2095,18 +1501,9 @@ export default function AdminWorkspaceLab() {
             validApis.has(tab.objectApi)
         )
         .map((tab) => {
-          if (tab.type === "home") {
-            return homeTab;
-          }
-
-          if (tab.type === "reports") {
-            return reportsTab;
-          }
-
-          if (tab.type === "dashboards") {
-            return dashboardsTab;
-          }
-
+          if (tab.type === "home") return homeTab;
+          if (tab.type === "reports") return reportsTab;
+          if (tab.type === "dashboards") return dashboardsTab;
           if (tab.type !== "record") return tab;
 
           const nextSubtabs = (tab.subtabs || [])
@@ -2135,22 +1532,296 @@ export default function AdminWorkspaceLab() {
           (tab, index, tabs) => tabs.findIndex((candidate) => candidate.id === tab.id) === index
         );
 
-      const finalTabs = nextTabs.length ? nextTabs : [homeTab];
+      const workspaceTabs = nextTabs.length ? nextTabs : [homeTab];
 
-      setActiveTabId((currentActiveTabId) =>
-        finalTabs.some((tab) => tab.id === currentActiveTabId) ? currentActiveTabId : HOME_TAB_ID
-      );
+      return {
+        ...state,
+        workspaceTabs,
+        activeTabId: workspaceTabs.some((tab) => tab.id === state.activeTabId)
+          ? state.activeTabId
+          : HOME_TAB_ID,
+        activeObjectApi:
+          state.activeObjectApi && validApis.has(state.activeObjectApi)
+            ? state.activeObjectApi
+            : defaultObjectApi,
+      };
+    }
+    case "OPEN_LIST_TAB": {
+      const { objectDef } = action.payload;
+      const nextListTab = makeListTab(objectDef);
 
-      setActiveObjectApi((currentObjectApi) => {
-        if (currentObjectApi && objectMap.has(currentObjectApi)) {
-          return currentObjectApi;
-        }
-        return objectTabs[0]?.apiName || "";
-      });
+      return {
+        ...state,
+        activeObjectApi: objectDef.apiName,
+        activeTabId: nextListTab.id,
+        workspaceTabs: state.workspaceTabs.some((tab) => tab.id === nextListTab.id)
+          ? state.workspaceTabs
+          : [...state.workspaceTabs, nextListTab],
+      };
+    }
+    case "OPEN_SYSTEM_TAB": {
+      const { tab } = action.payload;
 
-      return finalTabs;
+      return {
+        ...state,
+        activeObjectApi: "",
+        activeTabId: tab.id,
+        workspaceTabs: state.workspaceTabs.some((currentTab) => currentTab.id === tab.id)
+          ? state.workspaceTabs
+          : [...state.workspaceTabs, tab],
+      };
+    }
+    case "OPEN_RECORD_TAB": {
+      const { objectApi, nextRecordTab, startInEdit = false } = action.payload;
+
+      if (!startInEdit) {
+        return {
+          ...state,
+          activeObjectApi: objectApi,
+          activeTabId: nextRecordTab.id,
+          workspaceTabs: state.workspaceTabs.some((tab) => tab.id === nextRecordTab.id)
+            ? state.workspaceTabs
+            : [...state.workspaceTabs, nextRecordTab],
+        };
+      }
+
+      const editSubtab = makeEditSubtab();
+      const existingTab = state.workspaceTabs.find((tab) => tab.id === nextRecordTab.id);
+
+      return {
+        ...state,
+        activeObjectApi: objectApi,
+        activeTabId: nextRecordTab.id,
+        workspaceTabs:
+          !existingTab || existingTab.type !== "record"
+            ? [
+                ...state.workspaceTabs,
+                {
+                  ...nextRecordTab,
+                  activeSubtabId: editSubtab.id,
+                  subtabs: [...nextRecordTab.subtabs, editSubtab],
+                },
+              ]
+            : state.workspaceTabs.map((tab) => {
+                if (tab.id !== nextRecordTab.id || tab.type !== "record") return tab;
+
+                const hasEditSubtab = tab.subtabs.some((subtab) => subtab.id === editSubtab.id);
+                return {
+                  ...tab,
+                  label: nextRecordTab.label,
+                  activeSubtabId: editSubtab.id,
+                  subtabs: hasEditSubtab ? tab.subtabs : [...tab.subtabs, editSubtab],
+                };
+              }),
+      };
+    }
+    case "START_EDIT": {
+      const { tabId } = action.payload;
+      const editSubtab = makeEditSubtab();
+
+      return {
+        ...state,
+        workspaceTabs: state.workspaceTabs.map((tab) => {
+          if (tab.id !== tabId || tab.type !== "record") return tab;
+
+          const hasEditSubtab = tab.subtabs.some((subtab) => subtab.id === editSubtab.id);
+          return {
+            ...tab,
+            activeSubtabId: editSubtab.id,
+            subtabs: hasEditSubtab ? tab.subtabs : [...tab.subtabs, editSubtab],
+          };
+        }),
+      };
+    }
+    case "CANCEL_EDIT": {
+      const { tabId } = action.payload;
+
+      return {
+        ...state,
+        workspaceTabs: state.workspaceTabs.map((tab) =>
+          tab.id === tabId && tab.type === "record"
+            ? { ...tab, activeSubtabId: "detail" }
+            : tab
+        ),
+      };
+    }
+    case "RECORD_SAVED": {
+      const { tabId, objectDef, updatedRecord } = action.payload;
+
+      return {
+        ...state,
+        workspaceTabs: state.workspaceTabs.map((tab) => {
+          if (tab.id !== tabId || tab.type !== "record") return tab;
+
+          return {
+            ...tab,
+            label: getRecordLabel(updatedRecord, objectDef),
+            refreshKey: (tab.refreshKey || 0) + 1,
+            activeSubtabId: "detail",
+          };
+        }),
+      };
+    }
+    case "REFRESH_RECORD": {
+      const { tabId } = action.payload;
+
+      return {
+        ...state,
+        workspaceTabs: state.workspaceTabs.map((tab) =>
+          tab.id === tabId && tab.type === "record"
+            ? { ...tab, refreshKey: (tab.refreshKey || 0) + 1 }
+            : tab
+        ),
+      };
+    }
+    case "FOCUS_TAB": {
+      const { tab } = action.payload;
+
+      return {
+        ...state,
+        activeTabId: tab.id,
+        activeObjectApi: tab.objectApi || state.activeObjectApi,
+      };
+    }
+    case "CLOSE_TAB": {
+      const { tabId, homeTab } = action.payload;
+      const closingTab = state.workspaceTabs.find((tab) => tab.id === tabId);
+
+      if (closingTab?.pinned) {
+        return state;
+      }
+
+      const nextTabs = state.workspaceTabs.filter((tab) => tab.id !== tabId);
+      const fallbackTab = nextTabs[nextTabs.length - 1] || homeTab;
+      const workspaceTabs = nextTabs.length ? nextTabs : [homeTab];
+
+      return {
+        ...state,
+        workspaceTabs,
+        activeTabId: state.activeTabId === tabId ? fallbackTab?.id || HOME_TAB_ID : state.activeTabId,
+        activeObjectApi: currentActiveObjectApiResolver(state.activeObjectApi, nextTabs),
+      };
+    }
+    case "OPEN_CHILD": {
+      const { tabId, record, childObjectDef } = action.payload;
+      const nextChildSubtab = makeChildSubtab(record, childObjectDef);
+
+      return {
+        ...state,
+        workspaceTabs: state.workspaceTabs.map((tab) => {
+          if (tab.id !== tabId || tab.type !== "record") return tab;
+
+          return {
+            ...tab,
+            activeSubtabId: nextChildSubtab.id,
+            subtabs: tab.subtabs.some((subtab) => subtab.id === nextChildSubtab.id)
+              ? tab.subtabs
+              : [...tab.subtabs, nextChildSubtab],
+          };
+        }),
+      };
+    }
+    case "ACTIVATE_SUBTAB": {
+      const { tabId, subtabId } = action.payload;
+
+      return {
+        ...state,
+        workspaceTabs: state.workspaceTabs.map((tab) =>
+          tab.id === tabId && tab.type === "record"
+            ? { ...tab, activeSubtabId: subtabId }
+            : tab
+        ),
+      };
+    }
+    case "CLOSE_SUBTAB": {
+      const { tabId, subtabId } = action.payload;
+
+      return {
+        ...state,
+        workspaceTabs: state.workspaceTabs.map((tab) => {
+          if (tab.id !== tabId || tab.type !== "record") return tab;
+
+          const nextSubtabs = tab.subtabs.filter((subtab) => subtab.id !== subtabId);
+          return {
+            ...tab,
+            subtabs: nextSubtabs.length
+              ? nextSubtabs
+              : [{ id: "detail", type: "detail", label: "Detalle", pinned: true }],
+            activeSubtabId:
+              tab.activeSubtabId === subtabId
+                ? nextSubtabs[nextSubtabs.length - 1]?.id || "detail"
+                : tab.activeSubtabId,
+          };
+        }),
+      };
+    }
+    case "RESET_WORKSPACE": {
+      const { homeTab, defaultObjectApi } = action.payload;
+
+      return {
+        activeObjectApi: defaultObjectApi,
+        activeTabId: homeTab.id,
+        workspaceTabs: [homeTab],
+      };
+    }
+    default:
+      return state;
+  }
+}
+
+export default function AdminWorkspaceLab() {
+  const { objects, loading, loaded } = useObjectMetadata();
+  const user = useAuthStore((state) => state.user);
+
+  const storageKey = useMemo(
+    () => `${STORAGE_PREFIX}:${user?._id || user?.email || "default"}`,
+    [user?._id, user?.email]
+  );
+
+  const persistedState = useMemo(() => readState(storageKey), [storageKey]);
+  const restored = true;
+
+  const objectTabs = useMemo(
+    () => objects.filter((obj) => obj.active !== false && obj.tabsEnabled !== false),
+    [objects]
+  );
+
+  const objectMap = useMemo(
+    () => new Map(objectTabs.map((objectDef) => [objectDef.apiName, objectDef])),
+    [objectTabs]
+  );
+
+  const homeTab = useMemo(() => makeHomeTab(), []);
+  const reportsTab = useMemo(() => makeReportsTab(), []);
+  const dashboardsTab = useMemo(() => makeDashboardsTab(), []);
+  const initialWorkspaceState = useMemo(
+    () => ({
+      activeObjectApi: persistedState?.activeObjectApi || "",
+      activeTabId: persistedState?.activeTabId || HOME_TAB_ID,
+      workspaceTabs: persistedState?.tabs?.length ? persistedState.tabs : [homeTab],
+    }),
+    [homeTab, persistedState]
+  );
+  const [workspaceState, dispatchWorkspace] = useReducer(
+    workspaceReducer,
+    initialWorkspaceState
+  );
+  const { activeObjectApi, activeTabId, workspaceTabs } = workspaceState;
+
+  useEffect(() => {
+    if (!restored || !objectTabs.length) return;
+
+    dispatchWorkspace({
+      type: "SYNC_OBJECTS",
+      payload: {
+        validApis: new Set(objectTabs.map((objectDef) => objectDef.apiName)),
+        defaultObjectApi: objectTabs[0]?.apiName || "",
+        homeTab,
+        reportsTab,
+        dashboardsTab,
+      },
     });
-  }, [dashboardsTab, homeTab, objectMap, objectTabs, reportsTab, restored]);
+  }, [dashboardsTab, homeTab, objectTabs, reportsTab, restored]);
 
   useEffect(() => {
     if (!restored) return;
@@ -2166,98 +1837,59 @@ export default function AdminWorkspaceLab() {
   const levelThreeAvailable = activeTab.type === "record";
 
   const handleObjectLaunch = useCallback((objectDef) => {
-    const nextListTab = makeListTab(objectDef);
-    setActiveObjectApi(objectDef.apiName);
-    setActiveTabId(nextListTab.id);
-    setWorkspaceTabs((current) =>
-      current.some((tab) => tab.id === nextListTab.id) ? current : [...current, nextListTab]
-    );
+    dispatchWorkspace({
+      type: "OPEN_LIST_TAB",
+      payload: { objectDef },
+    });
   }, []);
 
   const handleOpenReports = useCallback(() => {
-    setActiveObjectApi("");
-    setActiveTabId(reportsTab.id);
-    setWorkspaceTabs((current) =>
-      current.some((tab) => tab.id === reportsTab.id) ? current : [...current, reportsTab]
-    );
+    dispatchWorkspace({
+      type: "OPEN_SYSTEM_TAB",
+      payload: { tab: reportsTab },
+    });
   }, [reportsTab]);
 
   const handleOpenDashboards = useCallback(() => {
-    setActiveObjectApi("");
-    setActiveTabId(dashboardsTab.id);
-    setWorkspaceTabs((current) =>
-      current.some((tab) => tab.id === dashboardsTab.id) ? current : [...current, dashboardsTab]
-    );
+    dispatchWorkspace({
+      type: "OPEN_SYSTEM_TAB",
+      payload: { tab: dashboardsTab },
+    });
   }, [dashboardsTab]);
 
   const handleOpenRecord = useCallback((objectDef, record) => {
-    const nextRecordTab = makeRecordTab(record, objectDef);
-    setActiveObjectApi(objectDef.apiName);
-    setActiveTabId(nextRecordTab.id);
-    setWorkspaceTabs((current) =>
-      current.some((tab) => tab.id === nextRecordTab.id) ? current : [...current, nextRecordTab]
-    );
+    dispatchWorkspace({
+      type: "OPEN_RECORD_TAB",
+      payload: {
+        objectApi: objectDef.apiName,
+        nextRecordTab: makeRecordTab(record, objectDef),
+      },
+    });
   }, []);
 
   const handleOpenEditRecord = useCallback((objectDef, record) => {
-    const nextRecordTab = makeRecordTab(record, objectDef);
-    const editSubtab = makeEditSubtab();
-
-    setActiveObjectApi(objectDef.apiName);
-    setActiveTabId(nextRecordTab.id);
-    setWorkspaceTabs((current) => {
-      const existingTab = current.find((tab) => tab.id === nextRecordTab.id);
-      if (!existingTab || existingTab.type !== "record") {
-        return [
-          ...current,
-          {
-            ...nextRecordTab,
-            activeSubtabId: editSubtab.id,
-            subtabs: [...nextRecordTab.subtabs, editSubtab],
-          },
-        ];
-      }
-
-      return current.map((tab) => {
-        if (tab.id !== nextRecordTab.id || tab.type !== "record") return tab;
-
-        const hasEditSubtab = tab.subtabs.some((subtab) => subtab.id === editSubtab.id);
-        return {
-          ...tab,
-          label: nextRecordTab.label,
-          activeSubtabId: editSubtab.id,
-          subtabs: hasEditSubtab ? tab.subtabs : [...tab.subtabs, editSubtab],
-        };
-      });
+    dispatchWorkspace({
+      type: "OPEN_RECORD_TAB",
+      payload: {
+        objectApi: objectDef.apiName,
+        nextRecordTab: makeRecordTab(record, objectDef),
+        startInEdit: true,
+      },
     });
   }, []);
 
   const handleStartEdit = useCallback((tabId) => {
-    setWorkspaceTabs((current) =>
-      current.map((tab) => {
-        if (tab.id !== tabId || tab.type !== "record") return tab;
-
-        const editSubtab = makeEditSubtab();
-        const hasEditSubtab = tab.subtabs.some((subtab) => subtab.id === editSubtab.id);
-        return {
-          ...tab,
-          activeSubtabId: editSubtab.id,
-          subtabs: hasEditSubtab ? tab.subtabs : [...tab.subtabs, editSubtab],
-        };
-      })
-    );
+    dispatchWorkspace({
+      type: "START_EDIT",
+      payload: { tabId },
+    });
   }, []);
 
   const handleCancelEdit = useCallback((tabId) => {
-    setWorkspaceTabs((current) =>
-      current.map((tab) => {
-        if (tab.id !== tabId || tab.type !== "record") return tab;
-        return {
-          ...tab,
-          activeSubtabId: "detail",
-        };
-      })
-    );
+    dispatchWorkspace({
+      type: "CANCEL_EDIT",
+      payload: { tabId },
+    });
   }, []);
 
   const handleOpenLookupRecord = useCallback(
@@ -2274,68 +1906,42 @@ export default function AdminWorkspaceLab() {
         objectDef: targetObjectDef,
       });
 
-      setActiveObjectApi(targetObjectDef.apiName);
-      setActiveTabId(nextRecordTab.id);
-      setWorkspaceTabs((current) =>
-        current.some((tab) => tab.id === nextRecordTab.id) ? current : [...current, nextRecordTab]
-      );
+      dispatchWorkspace({
+        type: "OPEN_RECORD_TAB",
+        payload: {
+          objectApi: targetObjectDef.apiName,
+          nextRecordTab,
+        },
+      });
     },
     [objectMap]
   );
 
   const handleRecordSaved = useCallback((tabId, objectDef, updatedRecord) => {
-    setWorkspaceTabs((current) =>
-      current.map((tab) => {
-        if (tab.id !== tabId || tab.type !== "record") return tab;
-
-        return {
-          ...tab,
-          label: getRecordLabel(updatedRecord, objectDef),
-          refreshKey: (tab.refreshKey || 0) + 1,
-          activeSubtabId: "detail",
-        };
-      })
-    );
+    dispatchWorkspace({
+      type: "RECORD_SAVED",
+      payload: { tabId, objectDef, updatedRecord },
+    });
   }, []);
 
   const handleRefreshRecord = useCallback((tabId) => {
-    setWorkspaceTabs((current) =>
-      current.map((tab) => {
-        if (tab.id !== tabId || tab.type !== "record") return tab;
-        return {
-          ...tab,
-          refreshKey: (tab.refreshKey || 0) + 1,
-        };
-      })
-    );
+    dispatchWorkspace({
+      type: "REFRESH_RECORD",
+      payload: { tabId },
+    });
   }, []);
 
   const handleFocusTab = useCallback((tab) => {
-    setActiveTabId(tab.id);
-    if (tab.objectApi) {
-      setActiveObjectApi(tab.objectApi);
-    }
+    dispatchWorkspace({
+      type: "FOCUS_TAB",
+      payload: { tab },
+    });
   }, []);
 
   const handleCloseTab = useCallback((tabId) => {
-    setWorkspaceTabs((current) => {
-      const closingTab = current.find((tab) => tab.id === tabId);
-      if (closingTab?.pinned) {
-        return current;
-      }
-
-      const nextTabs = current.filter((tab) => tab.id !== tabId);
-      const fallbackTab = nextTabs[nextTabs.length - 1] || homeTab;
-
-      setActiveTabId((currentActive) =>
-        currentActive === tabId ? fallbackTab?.id || HOME_TAB_ID : currentActive
-      );
-
-      setActiveObjectApi((currentObjectApi) =>
-        currentActiveObjectApiResolver(currentObjectApi, nextTabs)
-      );
-
-      return nextTabs.length ? nextTabs : [homeTab];
+    dispatchWorkspace({
+      type: "CLOSE_TAB",
+      payload: { tabId, homeTab },
     });
   }, [homeTab]);
 
@@ -2343,21 +1949,14 @@ export default function AdminWorkspaceLab() {
     (record, childObjectDef) => {
       if (!activeTab || activeTab.type !== "record") return;
 
-      const nextChildSubtab = makeChildSubtab(record, childObjectDef);
-
-      setWorkspaceTabs((current) =>
-        current.map((tab) => {
-          if (tab.id !== activeTab.id || tab.type !== "record") return tab;
-
-          return {
-            ...tab,
-            activeSubtabId: nextChildSubtab.id,
-            subtabs: tab.subtabs.some((subtab) => subtab.id === nextChildSubtab.id)
-              ? tab.subtabs
-              : [...tab.subtabs, nextChildSubtab],
-          };
-        })
-      );
+      dispatchWorkspace({
+        type: "OPEN_CHILD",
+        payload: {
+          tabId: activeTab.id,
+          record,
+          childObjectDef,
+        },
+      });
     },
     [activeTab]
   );
@@ -2366,13 +1965,10 @@ export default function AdminWorkspaceLab() {
     (subtabId) => {
       if (!activeTab || activeTab.type !== "record") return;
 
-      setWorkspaceTabs((current) =>
-        current.map((tab) =>
-          tab.id === activeTab.id && tab.type === "record"
-            ? { ...tab, activeSubtabId: subtabId }
-            : tab
-        )
-      );
+      dispatchWorkspace({
+        type: "ACTIVATE_SUBTAB",
+        payload: { tabId: activeTab.id, subtabId },
+      });
     },
     [activeTab]
   );
@@ -2381,23 +1977,10 @@ export default function AdminWorkspaceLab() {
     (subtabId) => {
       if (!activeTab || activeTab.type !== "record") return;
 
-      setWorkspaceTabs((current) =>
-        current.map((tab) => {
-          if (tab.id !== activeTab.id || tab.type !== "record") return tab;
-
-          const nextSubtabs = tab.subtabs.filter((subtab) => subtab.id !== subtabId);
-          return {
-            ...tab,
-            subtabs: nextSubtabs.length
-              ? nextSubtabs
-              : [{ id: "detail", type: "detail", label: "Detalle", pinned: true }],
-            activeSubtabId:
-              tab.activeSubtabId === subtabId
-                ? nextSubtabs[nextSubtabs.length - 1]?.id || "detail"
-                : tab.activeSubtabId,
-          };
-        })
-      );
+      dispatchWorkspace({
+        type: "CLOSE_SUBTAB",
+        payload: { tabId: activeTab.id, subtabId },
+      });
     },
     [activeTab]
   );
@@ -2409,9 +1992,13 @@ export default function AdminWorkspaceLab() {
       activeTabId: initialHomeTab.id,
       tabs: [initialHomeTab],
     });
-    setActiveObjectApi(objectTabs[0]?.apiName || "");
-    setActiveTabId(initialHomeTab.id);
-    setWorkspaceTabs([initialHomeTab]);
+    dispatchWorkspace({
+      type: "RESET_WORKSPACE",
+      payload: {
+        homeTab: initialHomeTab,
+        defaultObjectApi: objectTabs[0]?.apiName || "",
+      },
+    });
   }, [objectTabs, storageKey]);
 
   if (!restored || !loaded || loading) {
