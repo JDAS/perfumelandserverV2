@@ -1,7 +1,7 @@
 const { getCustomRecordModel } = require("../models/CustomRecord");
 const {
   resolveSupplierCatalogCsvPath,
-  loadSupplierCatalogFromCsv,
+  loadSupplierCatalog,
   buildSupplierCatalogIndex,
   matchSupplierEntryToProduct,
 } = require("./supplierCatalogService");
@@ -77,7 +77,7 @@ function buildSupplierReferencePayload(product, matchResult) {
 
 async function loadSupplierIndex() {
   const csvPath = resolveSupplierCatalogCsvPath();
-  const entries = await loadSupplierCatalogFromCsv(csvPath);
+  const entries = await loadSupplierCatalog(csvPath);
   return {
     csvPath,
     entries,

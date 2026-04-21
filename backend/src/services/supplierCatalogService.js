@@ -1,6 +1,10 @@
 const fs = require("fs/promises");
 const path = require("path");
 
+function isRemoteCatalogSource(value) {
+  return /^https?:\/\//i.test(String(value || "").trim());
+}
+
 function normalizeText(value) {
   return String(value || "")
     .normalize("NFD")
@@ -127,18 +131,38 @@ async function loadSupplierCatalogFromCsv(filePath) {
   return parseSupplierCatalogCsv(csvText);
 }
 
+async function loadSupplierCatalogFromUrl(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`No se pudo descargar el CSV del proveedor: ${response.status} ${response.statusText}`);
+  }
+
+  const csvText = await response.text();
+  return parseSupplierCatalogCsv(csvText);
+}
+
 function resolveSupplierCatalogCsvPath(inputPath) {
   if (inputPath) {
-    return path.resolve(process.cwd(), inputPath);
+    return isRemoteCatalogSource(inputPath)
+      ? String(inputPath).trim()
+      : path.resolve(process.cwd(), inputPath);
   }
 
   if (process.env.SUPPLIER_CATALOG_CSV_PATH) {
-    return path.resolve(process.cwd(), process.env.SUPPLIER_CATALOG_CSV_PATH);
+    return isRemoteCatalogSource(process.env.SUPPLIER_CATALOG_CSV_PATH)
+      ? String(process.env.SUPPLIER_CATALOG_CSV_PATH).trim()
+      : path.resolve(process.cwd(), process.env.SUPPLIER_CATALOG_CSV_PATH);
   }
 
   throw new Error(
     "Configura SUPPLIER_CATALOG_CSV_PATH o indica la ruta del CSV del proveedor"
   );
+}
+
+async function loadSupplierCatalog(source) {
+  return isRemoteCatalogSource(source)
+    ? loadSupplierCatalogFromUrl(source)
+    : loadSupplierCatalogFromCsv(source);
 }
 
 function addCandidate(set, value) {
@@ -270,7 +294,10 @@ module.exports = {
   parseSupplierPrice,
   parseSupplierCatalogCsv,
   loadSupplierCatalogFromCsv,
+  loadSupplierCatalogFromUrl,
+  loadSupplierCatalog,
   resolveSupplierCatalogCsvPath,
+  isRemoteCatalogSource,
   buildProductSupplierKeys,
   buildSupplierCatalogIndex,
   matchSupplierEntryToProduct,

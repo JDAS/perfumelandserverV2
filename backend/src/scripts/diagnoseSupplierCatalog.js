@@ -5,17 +5,23 @@ const mongoose = require("mongoose");
 const { getCustomRecordModel } = require("../models/CustomRecord");
 const {
   loadSupplierCatalogFromCsv,
+  loadSupplierCatalog,
   buildSupplierCatalogIndex,
   matchSupplierEntryToProduct,
+  isRemoteCatalogSource,
 } = require("../services/supplierCatalogService");
 
 function resolveCsvPath(inputPath) {
   if (inputPath) {
-    return path.resolve(process.cwd(), inputPath);
+    return isRemoteCatalogSource(inputPath)
+      ? String(inputPath).trim()
+      : path.resolve(process.cwd(), inputPath);
   }
 
   if (process.env.SUPPLIER_CATALOG_CSV_PATH) {
-    return path.resolve(process.cwd(), process.env.SUPPLIER_CATALOG_CSV_PATH);
+    return isRemoteCatalogSource(process.env.SUPPLIER_CATALOG_CSV_PATH)
+      ? String(process.env.SUPPLIER_CATALOG_CSV_PATH).trim()
+      : path.resolve(process.cwd(), process.env.SUPPLIER_CATALOG_CSV_PATH);
   }
 
   throw new Error(
@@ -27,7 +33,7 @@ async function main() {
   const csvPath = resolveCsvPath(process.argv[2]);
   const dbName = process.env.MIGRATION_TARGET_DB || "test";
 
-  const supplierEntries = await loadSupplierCatalogFromCsv(csvPath);
+  const supplierEntries = await loadSupplierCatalog(csvPath);
   const supplierIndex = buildSupplierCatalogIndex(supplierEntries);
 
   await mongoose.connect(process.env.MONGO_URI, { dbName });
