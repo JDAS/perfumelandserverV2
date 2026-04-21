@@ -11,6 +11,7 @@ import {
   LauncherChip,
   WorkspaceHeader,
 } from "../components/admin/workspaceLab/WorkspaceChrome";
+import { HomePanel } from "../components/admin/workspaceLab/HomePanel";
 import { ListPanel } from "../components/admin/workspaceLab/ListPanel";
 import { RecordWorkspace } from "../components/admin/workspaceLab/RecordWorkspace";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
@@ -828,7 +829,10 @@ export default function AdminWorkspaceLab() {
             <WorkspaceHeader activeTab={activeTab} levelThreeAvailable={levelThreeAvailable} />
 
             {activeTab.type === "home" ? (
-              <ReportsViewer />
+              <HomePanel
+                salesObjectDef={objectMap.get("sales") || null}
+                onOpenSaleRecord={handleOpenRecord}
+              />
             ) : activeTab.type === "reports" ? (
               <ReportsViewer />
             ) : activeTab.type === "dashboards" ? (

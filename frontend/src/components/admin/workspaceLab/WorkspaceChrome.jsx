@@ -132,7 +132,7 @@ export function WorkspaceHeader({ activeTab, levelThreeAvailable }) {
 
   const description =
     activeTab?.type === "home"
-      ? "Tab fijo de arranque. Por ahora muestra el reporte financiero."
+      ? "Tablero operativo con cobros proximos y borradores pendientes de completar."
       : activeTab?.type === "list"
         ? "La lista vive en nivel 2 y desde aqui puedes abrir registros de cualquier objeto."
         : "Los relacionados del registro activo viven como badges en nivel 3 dentro del mismo contexto.";
