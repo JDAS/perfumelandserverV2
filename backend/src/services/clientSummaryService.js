@@ -221,6 +221,29 @@ function buildQuoteWhatsappText(summary, payments) {
   return `${parts.join(" ")}.${buildDiscountSentence()}`.replace(/\s+\./g, ".");
 }
 
+function formatProductNamesForMessage(products = []) {
+  const names = products
+    .map((product) => String(product.name || "").trim())
+    .filter(Boolean);
+
+  if (!names.length) return "su compra";
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} y ${names[1]}`;
+
+  const head = names.slice(0, -1).join(", ");
+  const tail = names[names.length - 1];
+  return `${head} y ${tail}`;
+}
+
+function buildCampaignSaleWhatsappText(summary) {
+  const productLabel = formatProductNamesForMessage(summary.products);
+  const campaignName = String(summary.campaignName || "la campaña").trim();
+  const numbers = Array.isArray(summary.numbers) ? summary.numbers : [];
+  const numberLabel = numbers.join(", ");
+
+  return `Hola, para informarle los números asignados por su compra de ${productLabel} para ${campaignName}: ${numberLabel}.`;
+}
+
 async function buildSalesClientSummary(recordId) {
   const SalesModel = getCustomRecordModel("sales");
   const SaleItemModel = getCustomRecordModel("sale_item");
@@ -422,6 +445,85 @@ async function buildQuoteClientSummary(recordId) {
   return summary;
 }
 
+async function buildCampaignSaleLinkSummary(recordId) {
+  const CampaignSaleLinkModel = getCustomRecordModel("campaign_sale_link");
+  const CampaignEntryModel = getCustomRecordModel("campaign_entry");
+  const CampaignModel = getCustomRecordModel("campaign");
+  const SalesModel = getCustomRecordModel("sales");
+  const SaleItemModel = getCustomRecordModel("sale_item");
+
+  const link = await CampaignSaleLinkModel.findById(recordId).lean();
+  if (!link) {
+    const error = new Error("Venta vinculada a campaña no encontrada");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const [campaign, sale, entries, saleItems] = await Promise.all([
+    link.campaign_id ? CampaignModel.findById(link.campaign_id).lean() : null,
+    link.sale_id ? SalesModel.findById(link.sale_id).lean() : null,
+    CampaignEntryModel.find({
+      campaign_id: String(link.campaign_id || ""),
+      sale_id: String(link.sale_id || ""),
+      status: "Activa",
+    }).lean(),
+    SaleItemModel.find({ sale: String(link.sale_id || "") }).lean(),
+  ]);
+
+  const lookups = await loadLookupNames({
+    product: saleItems.map((item) => item.product),
+  });
+  const productNames = lookups.product || new Map();
+
+  const products = saleItems.map((item) => {
+    const quantity = toNumber(item.quantity) || 1;
+    const lineTotal = toNumber(item.total);
+    const originalPrice = toNumber(item.list_price) * quantity || lineTotal;
+
+    return {
+      id: String(item._id),
+      name: productNames.get(String(item.product)) || "Perfume",
+      quantity,
+      originalPrice,
+      originalPriceFormatted: formatCRC(originalPrice),
+      salePrice: lineTotal,
+      discountAmount: Math.max(originalPrice - lineTotal, 0),
+      discountAmountFormatted: formatCRC(Math.max(originalPrice - lineTotal, 0)),
+    };
+  });
+
+  const numbers = entries
+    .map((entry) => String(entry.entry_number || "").trim())
+    .filter(Boolean)
+    .sort((left, right) => {
+      const leftNumber = Number(left);
+      const rightNumber = Number(right);
+      if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+        return leftNumber - rightNumber;
+      }
+      return left.localeCompare(right);
+    });
+
+  const totalSale = toNumber(link.sale_amount_snapshot || sale?.total);
+
+  const summary = {
+    type: "campaign_sale_link",
+    title: `Numeros asignados - ${campaign?.name || "Campaña"}`,
+    campaignName: campaign?.name || "la campaña",
+    recordId: String(link._id),
+    customerName: link.participant_name || sale?.name || "",
+    products,
+    numbers,
+    numbersCount: numbers.length,
+    totalSale,
+    totalSaleFormatted: formatCRC(totalSale),
+    whatsappText: "",
+  };
+
+  summary.whatsappText = buildCampaignSaleWhatsappText(summary);
+  return summary;
+}
+
 async function buildClientSummary(objectApiName, recordId) {
   if (objectApiName === "sales") {
     return buildSalesClientSummary(recordId);
@@ -429,6 +531,10 @@ async function buildClientSummary(objectApiName, recordId) {
 
   if (objectApiName === "quote") {
     return buildQuoteClientSummary(recordId);
+  }
+
+  if (objectApiName === "campaign_sale_link") {
+    return buildCampaignSaleLinkSummary(recordId);
   }
 
   const error = new Error("Resumen no soportado para este objeto");

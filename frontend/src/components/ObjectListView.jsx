@@ -135,7 +135,9 @@ function ObjectListView({ objectDef }) {
 
   const backToListQuery = getBackToListSearch(searchParams, objectDef.apiName);
   const supportsClientSummary =
-    objectDef.apiName === "sales" || objectDef.apiName === "quote";
+    objectDef.apiName === "sales" ||
+    objectDef.apiName === "quote" ||
+    objectDef.apiName === "campaign_sale_link";
 
   useEffect(() => {
     setSearchInput(listState.search || "");

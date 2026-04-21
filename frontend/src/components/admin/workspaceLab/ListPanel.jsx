@@ -181,7 +181,9 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
   };
 
   const supportsClientSummary =
-    objectDef.apiName === "sales" || objectDef.apiName === "quote";
+    objectDef.apiName === "sales" ||
+    objectDef.apiName === "quote" ||
+    objectDef.apiName === "campaign_sale_link";
 
   const handleConvertQuote = async (record) => {
     if (!record?._id || record.status === "Convertida") return;

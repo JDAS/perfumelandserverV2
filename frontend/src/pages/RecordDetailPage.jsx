@@ -148,7 +148,8 @@ function RecordDetailPage() {
   const relatedSections = (activeLayout?.sections || []).filter(
     (section) => section.type === "relatedList"
   );
-  const supportsClientSummary = object === "sales" || object === "quote";
+  const supportsClientSummary =
+    object === "sales" || object === "quote" || object === "campaign_sale_link";
   const supportsQuoteConversion = object === "quote";
   const supportsCampaignSync = object === "sales";
   const supportsCommissionQuickAction =
@@ -297,7 +298,7 @@ function RecordDetailPage() {
               onClick={handleOpenSummary}
               className="bg-emerald-600 px-4 py-2 rounded text-white"
             >
-              Resumen cliente
+              {object === "campaign_sale_link" ? "Resumen numeros" : "Resumen cliente"}
             </button>
           ) : null}
           {supportsCampaignSync ? (

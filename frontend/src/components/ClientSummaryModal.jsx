@@ -49,6 +49,14 @@ export default function ClientSummaryModal({
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
+            {summary.numbers?.length ? (
+              <div className="rounded-xl border p-4 md:col-span-2">
+                <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Numeros</p>
+                <p className="mt-2 text-lg font-semibold text-gray-900">
+                  {summary.numbers.join(", ")}
+                </p>
+              </div>
+            ) : null}
             {summary.totalOriginalFormatted ? (
               <div className="rounded-xl border p-4">
                 <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Total</p>
