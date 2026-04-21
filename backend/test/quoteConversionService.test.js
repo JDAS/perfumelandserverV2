@@ -125,3 +125,120 @@ test("convertQuoteToSale blocks conversion when quote references inactive produc
     }
   );
 });
+
+test("convertQuoteToSale syncs campaigns after creating the sale", async () => {
+  const campaignCalls = [];
+  const createdSaleItems = [];
+
+  const QuoteModel = {
+    findById: () => ({
+      lean: async () => ({
+        _id: "quote-3",
+        name: "Cliente demo",
+        status: "Borrador",
+        seller_id: "seller-1",
+        type: "Contado",
+        quote_date: "2026-04-21",
+        credittype: "Normal",
+        quotes: 1,
+      }),
+    }),
+  };
+
+  const QuoteItemModel = {
+    find: () => ({
+      lean: async () => [
+        {
+          _id: "item-3",
+          product: "product-3",
+          quantity: 1,
+          price: 24000,
+          list_price: 24000,
+          discount: 0,
+          discount_scope: "Sin descuento",
+        },
+      ],
+    }),
+  };
+
+  const ProductModel = {
+    find: () => ({
+      lean: async () => [{ _id: "product-3", name: "Producto activo", isactive: true }],
+    }),
+  };
+
+  const SaleItemModel = {
+    create: async (payload) => {
+      createdSaleItems.push(payload);
+      return {
+        ...payload,
+        _id: "sale-item-1",
+        toObject() {
+          return { ...this };
+        },
+      };
+    },
+  };
+
+  const saveCalls = [];
+
+  const service = loadWithMocks("src/services/quoteConversionService.js", {
+    "../models/CustomRecord": {
+      getCustomRecordModel: (apiName) => {
+        if (apiName === "quote") return QuoteModel;
+        if (apiName === "quote_item") return QuoteItemModel;
+        if (apiName === "product") return ProductModel;
+        if (apiName === "sale_item") return SaleItemModel;
+        if (apiName === "stock") {
+          return {
+            findOne: () => ({
+              sort: () => ({
+                lean: async () => null,
+              }),
+            }),
+          };
+        }
+        return {};
+      },
+    },
+    "../utils/rollupEngine": {
+      recalculateParentRollupsFromChild: async () => {},
+    },
+    "./customRecordService": {
+      saveRecord: async (payload) => {
+        saveCalls.push(payload);
+        if (payload.objectApiName === "sales") {
+          return {
+            record: {
+              _id: "sale-3",
+              status: "Borrador",
+              toObject() {
+                return { _id: "sale-3", status: "Borrador" };
+              },
+            },
+          };
+        }
+
+        return {
+          record: {
+            _id: payload.recordId,
+          },
+        };
+      },
+    },
+    "./campaignSyncService": {
+      syncSaleCampaigns: async (payload) => {
+        campaignCalls.push(payload);
+      },
+    },
+  });
+
+  const result = await service.convertQuoteToSale({
+    quoteId: "quote-3",
+    user: { _id: "user-3" },
+  });
+
+  assert.equal(result.saleId, "sale-3");
+  assert.equal(createdSaleItems.length, 1);
+  assert.deepEqual(campaignCalls, [{ saleId: "sale-3", user: { _id: "user-3" } }]);
+});

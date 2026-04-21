@@ -1,6 +1,7 @@
 const { getCustomRecordModel } = require("../models/CustomRecord");
 const { recalculateParentRollupsFromChild } = require("../utils/rollupEngine");
 const { saveRecord } = require("./customRecordService");
+const { syncSaleCampaigns } = require("./campaignSyncService");
 
 function normalizeDiscountScope(value = "", discount = 0) {
   if (
@@ -176,6 +177,11 @@ async function convertQuoteToSale({ quoteId, user = null }) {
     payload: {
       status: "Convertida",
     },
+    user,
+  });
+
+  await syncSaleCampaigns({
+    saleId: String(saleRecord._id),
     user,
   });
 

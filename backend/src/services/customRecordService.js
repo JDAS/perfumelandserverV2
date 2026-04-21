@@ -5,6 +5,8 @@ const { recalculateParentRollupsFromChild } = require("../utils/rollupEngine");
 const { buildDefaultPayload, validateRecordPayload } = require("./recordValidationService");
 const { runTriggers } = require("./triggerMotor");
 const { syncInventoryForProducts } = require("./inventorySyncService");
+const { syncSaleCampaigns } = require("./campaignSyncService");
+const { shouldSyncCampaignsForSale } = require("./campaignSyncHooks");
 const {
   resolveLookupData,
   listRecords: listRecordsWithMetadata,
@@ -175,6 +177,20 @@ async function saveRecord({ objectApiName, recordId = null, payload = {}, user =
       previousRecord?.product,
       plainRecord?.product,
     ]);
+  }
+
+  if (
+    objectApiName === "sales" &&
+    shouldSyncCampaignsForSale({
+      mode: isUpdate ? "update" : "create",
+      previousRecord,
+      record: plainRecord,
+    })
+  ) {
+    await syncSaleCampaigns({
+      saleId: String(plainRecord._id),
+      user,
+    });
   }
 
   return {

@@ -6,6 +6,7 @@ test("saveRecord creates a record, runs triggers, and returns blocked fields", a
   const triggerCalls = [];
   const rollupCalls = [];
   const inventoryCalls = [];
+  const campaignCalls = [];
 
   const createdRecords = [];
 
@@ -67,6 +68,14 @@ test("saveRecord creates a record, runs triggers, and returns blocked fields", a
         inventoryCalls.push(payload);
       },
     },
+    "./campaignSyncService": {
+      syncSaleCampaigns: async (payload) => {
+        campaignCalls.push(payload);
+      },
+    },
+    "./campaignSyncHooks": {
+      shouldSyncCampaignsForSale: () => false,
+    },
     "./customRecordQueryService": {
       resolveLookupData: async (records) => records,
       listRecords: async () => {
@@ -95,4 +104,101 @@ test("saveRecord creates a record, runs triggers, and returns blocked fields", a
   assert.deepEqual(result.blockedFields, ["createdAt"]);
   assert.equal(rollupCalls.length, 1);
   assert.equal(inventoryCalls.length, 0);
+  assert.equal(campaignCalls.length, 0);
+});
+
+test("saveRecord syncs campaigns automatically for sales when sensitive fields change", async () => {
+  const campaignCalls = [];
+
+  const existingRecord = {
+    _id: "sale-1",
+    status: "Borrador",
+    total: 12000,
+    saledate: "2026-04-20",
+    client_id: "client-1",
+    name: "Venta demo",
+    set(payload) {
+      Object.assign(this, payload);
+    },
+    markModified() {},
+    async save() {
+      return {
+        ...this,
+        toObject() {
+          return { ...this };
+        },
+      };
+    },
+    toObject() {
+      return { ...this };
+    },
+  };
+
+  const service = loadWithMocks("src/services/customRecordService.js", {
+    "../models/CustomObject": {
+      findOne: () => ({
+        lean: async () => ({
+          apiName: "sales",
+          fields: [{ apiName: "status", type: "text" }],
+          listViews: [],
+          automationTriggers: [],
+        }),
+      }),
+    },
+    "../models/CustomRecord": {
+      getCustomRecordModel: () => ({
+        findById: async () => existingRecord,
+      }),
+    },
+    "../utils/formulaEngine": {
+      applyFormulaFields: (_fields, record) => record,
+    },
+    "../utils/rollupEngine": {
+      recalculateParentRollupsFromChild: async () => {},
+    },
+    "./recordValidationService": {
+      buildDefaultPayload: () => ({}),
+      validateRecordPayload: async () => ({
+        sanitizedPayload: { status: "Completada" },
+        errors: [],
+        invalidFields: [],
+        blockedFields: [],
+      }),
+    },
+    "./triggerMotor": {
+      runTriggers: async (payload) => payload.record,
+    },
+    "./inventorySyncService": {
+      syncInventoryForProducts: async () => {},
+    },
+    "./campaignSyncService": {
+      syncSaleCampaigns: async (payload) => {
+        campaignCalls.push(payload);
+      },
+    },
+    "./campaignSyncHooks": {
+      shouldSyncCampaignsForSale: () => true,
+    },
+    "./customRecordQueryService": {
+      resolveLookupData: async (records) => records,
+      listRecords: async () => {
+        throw new Error("not used");
+      },
+      getRecordByIdEnriched: async () => {
+        throw new Error("not used");
+      },
+      getRelatedRecords: async () => {
+        throw new Error("not used");
+      },
+    },
+  });
+
+  await service.saveRecord({
+    objectApiName: "sales",
+    recordId: "sale-1",
+    payload: { status: "Completada" },
+    user: { _id: "user-2" },
+  });
+
+  assert.deepEqual(campaignCalls, [{ saleId: "sale-1", user: { _id: "user-2" } }]);
 });
