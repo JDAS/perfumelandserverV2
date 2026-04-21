@@ -1,6 +1,6 @@
-const Product = require("../models/Product");
 const CustomObject = require("../models/CustomObject");
 const { getCustomRecordModel } = require("../models/CustomRecord");
+const { saveRecord } = require("../services/customRecordService");
 const { applyFormulaFields } = require("../utils/formulaEngine");
 const { createHttpError } = require("../utils/httpError");
 
@@ -13,26 +13,6 @@ const DYNAMIC_PRODUCT_CATALOG_FILTER = {
     { catalog_status: "" },
   ],
 };
-
-function normalizeLegacyProduct(product) {
-  return {
-    _id: product._id,
-    name: product.name || "",
-    brand: product.brand || "",
-    price: Number(product.price) || 0,
-    description: product.description || "",
-    image: product.image || "",
-    gallery: product.image ? [product.image] : [],
-    category: product.category || "",
-    short_description: product.short_description || "",
-    featured: Boolean(product.featured),
-    sort_order: Number(product.sort_order) || 0,
-    volume: product.volume || null,
-    gender: product.gender || "",
-    aliases: product.aliases || "",
-    source: "legacy",
-  };
-}
 
 function normalizeDynamicProduct(product) {
   return {
@@ -307,22 +287,20 @@ async function loadDynamicProducts() {
 
 // Crear producto
 exports.createProduct = async (req, res) => {
-  const product = await Product.create(req.body);
-  res.status(201).json(product);
+  const result = await saveRecord({
+    objectApiName: "product",
+    payload: req.body,
+    user: req.user || null,
+  });
+
+  const createdProduct = await loadDynamicProductById(String(result.record?._id || ""));
+  res.status(201).json(createdProduct || result.record);
 };
 
 // Obtener todos
 exports.getProducts = async (req, res) => {
-  const [legacyProducts, dynamicProducts] = await Promise.all([
-    Product.find().sort({ createdAt: -1, _id: -1 }).lean(),
-    loadDynamicProducts(),
-  ]);
-
-  if (dynamicProducts.length > 0) {
-    return res.json(dynamicProducts);
-  }
-
-  return res.json(legacyProducts.map(normalizeLegacyProduct));
+  const dynamicProducts = await loadDynamicProducts();
+  return res.json(dynamicProducts);
 };
 
 exports.getProductById = async (req, res) => {
@@ -331,11 +309,6 @@ exports.getProductById = async (req, res) => {
   const dynamicProduct = await loadDynamicProductById(id);
   if (dynamicProduct) {
     return res.json(dynamicProduct);
-  }
-
-  const legacyProduct = await Product.findById(id).lean();
-  if (legacyProduct) {
-    return res.json(normalizeLegacyProduct(legacyProduct));
   }
 
   throw createHttpError(404, "Producto no encontrado");
@@ -349,12 +322,6 @@ exports.getProductSharePage = async (req, res) => {
     if (dynamicProduct) {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       return res.send(buildSharePage(dynamicProduct, req));
-    }
-
-    const legacyProduct = await Product.findById(id).lean();
-    if (legacyProduct) {
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      return res.send(buildSharePage(normalizeLegacyProduct(legacyProduct), req));
     }
 
     return res.status(404).send("Producto no encontrado");
