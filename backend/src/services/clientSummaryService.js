@@ -310,7 +310,11 @@ async function buildQuoteClientSummary(recordId) {
   const products = items.map((item) => {
     const quantity = toNumber(item.quantity) || 1;
     const lineTotal = toNumber(item.total);
-    const productMeta = productMap.get(String(item.product)) || { name: "Perfume", price: 0 };
+    const manualName = String(item.manual_product_name || "").trim();
+    const productMeta = productMap.get(String(item.product)) || {
+      name: manualName || "Perfume",
+      price: 0,
+    };
     const cashUnitPrice = productMeta.price || toNumber(item.list_price) || toNumber(item.price);
     const creditUnitPrice = toNumber(item.price) || cashUnitPrice;
     const cashLineSubtotal = cashUnitPrice * quantity;
@@ -334,6 +338,8 @@ async function buildQuoteClientSummary(recordId) {
     return {
       id: String(item._id),
       name: productMeta.name,
+      pendingCatalogCompletion:
+        item.pending_catalog_completion === true || (!item.product && Boolean(manualName)),
       quantity,
       cashUnitPrice,
       cashUnitPriceFormatted: formatCRC(cashUnitPrice),

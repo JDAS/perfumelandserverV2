@@ -17,8 +17,11 @@ import { calculatePayments, formatCRC } from "../utils/paymentCalculator";
 function defaultItem() {
   return {
     _id: "",
+    entry_mode: "catalog",
     product: "",
     product_name: "",
+    manual_product_name: "",
+    pending_catalog_completion: false,
     quantity: 1,
     price: 0,
     list_price: 0,
@@ -129,8 +132,14 @@ export default function QuoteBuilderWorkspace({
 
           const nextItems = (relatedItems.records || []).map((item) => ({
             _id: item._id,
+            entry_mode:
+              !item.product && String(item.manual_product_name || "").trim() ? "manual" : "catalog",
             product: item.product || "",
             product_name: item._lookup?.product?.label || item.product_name || "",
+            manual_product_name: item.manual_product_name || "",
+            pending_catalog_completion:
+              item.pending_catalog_completion === true ||
+              (!item.product && Boolean(String(item.manual_product_name || "").trim())),
             quantity: Number(item.quantity) || 1,
             price: Number(item.price) || 0,
             list_price: Number(item.list_price) || 0,
@@ -183,6 +192,16 @@ export default function QuoteBuilderWorkspace({
         const total = Math.max(subtotal - getDiscountForScope(discountScope, discount, quote.type), 0);
         return {
           ...item,
+          entry_mode:
+            item.entry_mode === "manual" ||
+            (!item.product && String(item.manual_product_name || "").trim())
+              ? "manual"
+              : "catalog",
+          manual_product_name: String(item.manual_product_name || "").trim(),
+          pending_catalog_completion:
+            item.entry_mode === "manual" ||
+            item.pending_catalog_completion === true ||
+            (!item.product && String(item.manual_product_name || "").trim()),
           quantity,
           price,
           list_price: listPrice,
@@ -238,6 +257,31 @@ export default function QuoteBuilderWorkspace({
     );
   };
 
+  const setItemMode = (index, mode) => {
+    setItems((prev) =>
+      prev.map((item, itemIndex) => {
+        if (itemIndex !== index) return item;
+
+        if (mode === "manual") {
+          return {
+            ...item,
+            entry_mode: "manual",
+            product: "",
+            product_name: "",
+            pending_catalog_completion: true,
+          };
+        }
+
+        return {
+          ...item,
+          entry_mode: "catalog",
+          manual_product_name: "",
+          pending_catalog_completion: false,
+        };
+      })
+    );
+  };
+
   const handleProductChange = (index, selectedProduct) => {
     const basePrice = Number(selectedProduct?.price) || 0;
     const adjustedPrice = selectedProduct
@@ -245,8 +289,11 @@ export default function QuoteBuilderWorkspace({
       : basePrice;
 
     updateItem(index, {
+      entry_mode: "catalog",
       product: selectedProduct?._id || "",
       product_name: selectedProduct?.name || "",
+      manual_product_name: "",
+      pending_catalog_completion: false,
       list_price: basePrice,
       price: adjustedPrice,
     });
@@ -269,7 +316,9 @@ export default function QuoteBuilderWorkspace({
     setItems((prev) => (prev.length === 1 ? prev : prev.filter((_, itemIndex) => itemIndex !== index)));
 
   const handleSave = async () => {
-    const validItems = computedItems.filter((item) => item.product);
+    const validItems = computedItems.filter(
+      (item) => item.product || String(item.manual_product_name || "").trim()
+    );
     if (!validItems.length) {
       addToast("Agrega al menos un perfume a la cotizacion", "warning");
       return;
@@ -313,9 +362,13 @@ export default function QuoteBuilderWorkspace({
 
       await Promise.all(
         validItems.map((item) => {
+          const manualName = String(item.manual_product_name || "").trim();
+          const isManualItem = !item.product && Boolean(manualName);
           const payload = {
             quote: nextQuoteId,
-            product: item.product,
+            product: item.product || "",
+            manual_product_name: isManualItem ? manualName : "",
+            pending_catalog_completion: isManualItem,
             quantity: item.quantity,
             price: item.price,
             list_price: item.list_price || item.price,
@@ -542,27 +595,77 @@ export default function QuoteBuilderWorkspace({
 
             {computedItems.map((item, index) => (
               <div key={`quote-item-${item._id || index}`} className="rounded-xl border p-4">
-                <div className="grid gap-3 md:grid-cols-[1.6fr_0.75fr_0.75fr_0.75fr_1fr_1.2fr_auto]">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
+                    Tipo de item
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setItemMode(index, "catalog")}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                      item.entry_mode !== "manual"
+                        ? "bg-slate-900 text-white"
+                        : "border bg-white text-slate-700"
+                    }`}
+                  >
+                    Catalogo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setItemMode(index, "manual")}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                      item.entry_mode === "manual"
+                        ? "bg-amber-600 text-white"
+                        : "border bg-white text-slate-700"
+                    }`}
+                  >
+                    Manual
+                  </button>
+                  {item.entry_mode === "manual" ? (
+                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                      Pendiente de catalogo
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="grid gap-3 xl:grid-cols-[minmax(0,2.2fr)_0.85fr_0.95fr_auto]">
                   <div>
-                    <label className="mb-1 block text-sm font-medium">Producto</label>
-                    <LookupField
-                      field={{
-                        apiName: "product",
-                        label: "Producto",
-                        type: "lookup",
-                        referenceTo: "product",
-                        lookupFilters: [{ field: "isactive", operator: "eq", value: true }],
-                      }}
-                      value={item.product}
-                      onChange={(productId) =>
-                        updateItem(index, {
-                          product: productId,
-                          product_name: productId ? item.product_name : "",
-                        })
-                      }
-                      onSelect={(selectedProduct) => handleProductChange(index, selectedProduct)}
-                      formData={{}}
-                    />
+                    <label className="mb-1 block text-sm font-medium">
+                      {item.entry_mode === "manual" ? "Nombre del perfume" : "Producto"}
+                    </label>
+                    {item.entry_mode === "manual" ? (
+                      <input
+                        type="text"
+                        className="w-full rounded-lg border p-3"
+                        value={item.manual_product_name || ""}
+                        placeholder="Ej. Baccarat Rouge 540"
+                        onChange={(event) =>
+                          updateItem(index, {
+                            manual_product_name: event.target.value,
+                            pending_catalog_completion: Boolean(event.target.value.trim()),
+                          })
+                        }
+                      />
+                    ) : (
+                      <LookupField
+                        field={{
+                          apiName: "product",
+                          label: "Producto",
+                          type: "lookup",
+                          referenceTo: "product",
+                          lookupFilters: [{ field: "isactive", operator: "eq", value: true }],
+                        }}
+                        value={item.product}
+                        onChange={(productId) =>
+                          updateItem(index, {
+                            product: productId,
+                            product_name: productId ? item.product_name : "",
+                          })
+                        }
+                        onSelect={(selectedProduct) => handleProductChange(index, selectedProduct)}
+                        formData={{}}
+                      />
+                    )}
                   </div>
 
                   <div>
@@ -581,17 +684,42 @@ export default function QuoteBuilderWorkspace({
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-sm font-medium">Precio</label>
+                    <label className="mb-1 block text-sm font-medium">
+                      {item.entry_mode === "manual" ? "Precio contado" : "Precio"}
+                    </label>
                     <input
                       type="number"
                       className="w-full rounded-lg border p-3"
-                      value={item.price}
+                      value={item.entry_mode === "manual" ? item.list_price : item.price}
                       onChange={(event) =>
-                        updateItem(index, { price: Number(event.target.value) || 0 })
+                        item.entry_mode === "manual"
+                          ? updateItem(index, {
+                              list_price: Number(event.target.value) || 0,
+                              price:
+                                quote.type === "Credito"
+                                  ? getCreditAdjustedPrice(
+                                      Number(event.target.value) || 0,
+                                      "Credito"
+                                    )
+                                  : Number(event.target.value) || 0,
+                            })
+                          : updateItem(index, { price: Number(event.target.value) || 0 })
                       }
                     />
                   </div>
 
+                  <div className="flex items-end xl:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveItem(index)}
+                      className="w-full rounded bg-red-600 px-4 py-3 text-white xl:w-auto"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid gap-3 xl:grid-cols-[0.9fr_1fr_minmax(0,1.5fr)]">
                   <div>
                     <label className="mb-1 block text-sm font-medium">Descuento</label>
                     <input
@@ -632,16 +760,6 @@ export default function QuoteBuilderWorkspace({
                       }
                     />
                   </div>
-
-                  <div className="flex items-end">
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(index)}
-                      className="w-full rounded bg-red-600 px-4 py-3 text-white"
-                    >
-                      Quitar
-                    </button>
-                  </div>
                 </div>
 
                 <div className="mt-3 grid gap-3 md:grid-cols-3">
@@ -676,6 +794,13 @@ export default function QuoteBuilderWorkspace({
                               ? "contado"
                               : "credito"
                         }${item.discount_reason ? ` por ${item.discount_reason}.` : "."}`}
+                  </p>
+                ) : null}
+
+                {item.entry_mode === "manual" ? (
+                  <p className="mt-3 text-sm text-amber-700">
+                    Este perfume se guardara como pendiente de catalogo. La cotizacion podra
+                    resumirse, pero no convertirse en venta hasta vincularlo a un producto activo.
                   </p>
                 ) : null}
               </div>

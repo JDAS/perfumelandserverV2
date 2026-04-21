@@ -48,6 +48,7 @@ async function convertQuoteToSale({ quoteId, user = null }) {
   const QuoteModel = getCustomRecordModel("quote");
   const QuoteItemModel = getCustomRecordModel("quote_item");
   const SaleItemModel = getCustomRecordModel("sale_item");
+  const ProductModel = getCustomRecordModel("product");
 
   const quote = await QuoteModel.findById(quoteId).lean();
 
@@ -73,6 +74,43 @@ async function convertQuoteToSale({ quoteId, user = null }) {
 
   if (!quoteItems.length) {
     const error = new Error("La cotizacion no tiene perfumes para convertir");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const unresolvedManualItems = quoteItems.filter(
+    (item) =>
+      item.pending_catalog_completion === true ||
+      (!item.product && String(item.manual_product_name || "").trim())
+  );
+
+  if (unresolvedManualItems.length > 0) {
+    const error = new Error(
+      "Esta cotizacion tiene productos pendientes de catalogar. Debes vincularlos a productos activos antes de convertirla en venta"
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const productIds = [...new Set(quoteItems.map((item) => String(item.product || "")).filter(Boolean))];
+  const productDocs = productIds.length
+    ? await ProductModel.find({ _id: { $in: productIds } }, { isactive: 1, name: 1 }).lean()
+    : [];
+  const productMap = new Map(productDocs.map((product) => [String(product._id), product]));
+  const inactiveProducts = quoteItems.filter((item) => {
+    const product = productMap.get(String(item.product || ""));
+    return !product || product.isactive === false;
+  });
+
+  if (inactiveProducts.length > 0) {
+    const firstProduct = productMap.get(String(inactiveProducts[0].product || ""));
+    const label =
+      firstProduct?.name ||
+      String(inactiveProducts[0].manual_product_name || "").trim() ||
+      "producto";
+    const error = new Error(
+      `No se puede convertir la cotizacion porque ${label} no esta activo en catalogo`
+    );
     error.statusCode = 400;
     throw error;
   }

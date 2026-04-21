@@ -24,7 +24,8 @@
     "sync:tiered-credit-pricing": "node src/scripts/syncTieredCreditPricingMetadata.js",
     "sync:payments-by-day-report": "node src/scripts/syncPaymentsByDayReport.js",
     "sync:perfumes-stock-report": "node src/scripts/syncPerfumesWithStockReport.js",
-    "sync:quote-discount-scope": "node src/scripts/syncQuoteDiscountScopeMetadata.js"
+    "sync:quote-discount-scope": "node src/scripts/syncQuoteDiscountScopeMetadata.js",
+    "sync:quote-manual-items": "node src/scripts/syncQuoteManualItemMetadata.js"
   },
   "keywords": [],
   "author": "",
