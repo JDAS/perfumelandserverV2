@@ -10,6 +10,7 @@ const {
   getClientSummary,
   convertQuoteToSale,
   syncSaleCampaigns,
+  syncProductSupplierReference,
   updateRecord,
   deleteRecord,
 } = require('../controllers/customRecordController');
@@ -20,6 +21,7 @@ router.post('/:object', createRecord);
 router.get('/:object', getRecords);
 router.post('/:object/:id/convert-to-sale', convertQuoteToSale);
 router.post('/:object/:id/sync-campaigns', syncSaleCampaigns);
+router.post('/:object/:id/sync-supplier-reference', syncProductSupplierReference);
 router.get('/:object/:id/client-summary', getClientSummary);
 router.get('/:object/:id/related/:relatedObject/:relatedField', getRelatedRecords);
 router.get('/:object/:id', getRecordById);

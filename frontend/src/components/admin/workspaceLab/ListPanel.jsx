@@ -26,6 +26,7 @@ import {
   getClientSummary,
   getRecords,
   syncSaleCampaigns,
+  syncProductSupplierReference,
   updateRecord,
 } from "../../../services/customService";
 import { adminTheme } from "../../../theme/adminTheme";
@@ -67,6 +68,7 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
   const [showQuoteBuilderModal, setShowQuoteBuilderModal] = useState(false);
   const [convertingQuoteId, setConvertingQuoteId] = useState(null);
   const [syncingCampaignId, setSyncingCampaignId] = useState(null);
+  const [syncingSupplierId, setSyncingSupplierId] = useState(null);
   const [markingCommissionId, setMarkingCommissionId] = useState(null);
   const [summary, setSummary] = useState(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -216,6 +218,23 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
     } catch (error) {
       console.error(error);
       addToast(error?.response?.data?.error || "No se pudo eliminar el registro", "error");
+    }
+  };
+
+  const handleSyncSupplierReference = async (recordId) => {
+    try {
+      setSyncingSupplierId(recordId);
+      await syncProductSupplierReference(recordId);
+      addToast("Referencia del proveedor actualizada", "success");
+      await loadRecords();
+    } catch (error) {
+      console.error(error);
+      addToast(
+        error?.response?.data?.error || "No se pudo actualizar la referencia del proveedor",
+        "error"
+      );
+    } finally {
+      setSyncingSupplierId(null);
     }
   };
 
@@ -546,6 +565,25 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
                                 : convertingQuoteId === record._id
                                   ? "Convirtiendo..."
                                   : "Convertir"
+                            }
+                            style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+                          />
+                        ) : null}
+
+                        {objectDef.apiName === "product" ? (
+                          <QuickActionButton
+                            onClick={() => handleSyncSupplierReference(record._id)}
+                            disabled={syncingSupplierId === record._id}
+                            icon={Sparkles}
+                            title={
+                              syncingSupplierId === record._id
+                                ? "Refrescando proveedor..."
+                                : "Refrescar proveedor"
+                            }
+                            aria-label={
+                              syncingSupplierId === record._id
+                                ? "Refrescando proveedor..."
+                                : "Refrescar proveedor"
                             }
                             style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                           />

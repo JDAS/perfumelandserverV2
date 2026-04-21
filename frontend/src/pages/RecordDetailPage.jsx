@@ -5,6 +5,7 @@ import {
   getClientSummary,
   getRecordById,
   syncSaleCampaigns,
+  syncProductSupplierReference,
   updateRecord,
 } from "../services/customService";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
@@ -33,11 +34,13 @@ function RecordDetailPage() {
   const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
   const [converting, setConverting] = useState(false);
   const [syncingCampaigns, setSyncingCampaigns] = useState(false);
+  const [syncingSupplierReference, setSyncingSupplierReference] = useState(false);
   const [markingCommissionPaid, setMarkingCommissionPaid] = useState(false);
   const { addToast } = useToast();
 
   const objectDef = getObjectByApiNameFromCache(object);
   const backToListQuery = getBackToListSearch(searchParams, object);
+  const supportsProductSupplierSync = objectDef?.apiName === "product";
 
   useEffect(() => {
     async function loadData() {
@@ -100,6 +103,24 @@ function RecordDetailPage() {
         </div>
       </div>
     );
+  };
+
+  const handleSyncSupplierReference = async () => {
+    try {
+      setSyncingSupplierReference(true);
+      await syncProductSupplierReference(id);
+      addToast("Referencia del proveedor actualizada", "success");
+      const refreshedRecord = await getRecordById(object, id);
+      setRecord(refreshedRecord);
+    } catch (error) {
+      console.error(error);
+      addToast(
+        error?.response?.data?.error || "No se pudo actualizar la referencia del proveedor",
+        "error"
+      );
+    } finally {
+      setSyncingSupplierReference(false);
+    }
   };
 
   if (loading) return <div className="p-10">Cargando...</div>;
@@ -287,6 +308,18 @@ function RecordDetailPage() {
               className="bg-amber-600 px-4 py-2 rounded text-white disabled:opacity-60"
             >
               {syncingCampaigns ? "Evaluando promo..." : "Evaluar promo"}
+            </button>
+          ) : null}
+          {supportsProductSupplierSync ? (
+            <button
+              type="button"
+              onClick={handleSyncSupplierReference}
+              disabled={syncingSupplierReference}
+              className="bg-sky-600 px-4 py-2 rounded text-white disabled:opacity-60"
+            >
+              {syncingSupplierReference
+                ? "Refrescando proveedor..."
+                : "Refrescar proveedor"}
             </button>
           ) : null}
           {supportsCommissionQuickAction ? (

@@ -8,6 +8,7 @@ const {
 const { buildClientSummary } = require("../services/clientSummaryService");
 const { convertQuoteToSale } = require("../services/quoteConversionService");
 const { syncSaleCampaigns } = require("../services/campaignSyncService");
+const { refreshProductSupplierReference } = require("../services/supplierCatalogSyncService");
 const { createHttpError } = require("../utils/httpError");
 
 exports.createRecord = async (req, res) => {
@@ -91,6 +92,21 @@ exports.syncSaleCampaigns = async (req, res) => {
 
   const result = await syncSaleCampaigns({
     saleId: id,
+    user: req.user || null,
+  });
+
+  res.json(result);
+};
+
+exports.syncProductSupplierReference = async (req, res) => {
+  const { object, id } = req.params;
+
+  if (object !== "product") {
+    throw createHttpError(400, "Esta accion solo aplica a productos");
+  }
+
+  const result = await refreshProductSupplierReference({
+    productId: id,
     user: req.user || null,
   });
 

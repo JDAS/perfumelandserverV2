@@ -6,6 +6,7 @@ import {
   getClientSummary,
   getRecords,
   syncSaleCampaigns,
+  syncProductSupplierReference,
   updateRecord,
 } from "../services/customService";
 import { buildListQuery, buildRecordListRequest } from "../engine/listEngine";
@@ -124,6 +125,7 @@ function ObjectListView({ objectDef }) {
   const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
   const [convertingQuoteId, setConvertingQuoteId] = useState(null);
   const [syncingCampaignId, setSyncingCampaignId] = useState(null);
+  const [syncingSupplierId, setSyncingSupplierId] = useState(null);
   const [markingCommissionId, setMarkingCommissionId] = useState(null);
 
   const listState = useMemo(
@@ -197,6 +199,23 @@ function ObjectListView({ objectDef }) {
     } catch (error) {
       console.error(error);
       addToast(error?.response?.data?.error || "Error eliminando el registro", "error");
+    }
+  };
+
+  const handleSyncSupplierReference = async (recordId) => {
+    try {
+      setSyncingSupplierId(recordId);
+      await syncProductSupplierReference(recordId);
+      addToast("Referencia del proveedor actualizada", "success");
+      await loadRecords();
+    } catch (error) {
+      console.error(error);
+      addToast(
+        error?.response?.data?.error || "No se pudo actualizar la referencia del proveedor",
+        "error"
+      );
+    } finally {
+      setSyncingSupplierId(null);
     }
   };
 
@@ -529,6 +548,22 @@ function ObjectListView({ objectDef }) {
                               </IconButton>
                             ) : null}
                           </>
+                        ) : null}
+
+                        {objectDef.apiName === "product" ? (
+                          <IconButton
+                            type="button"
+                            onClick={() => handleSyncSupplierReference(record._id)}
+                            disabled={syncingSupplierId === record._id}
+                            label={
+                              syncingSupplierId === record._id
+                                ? "Refrescando proveedor..."
+                                : "Refrescar proveedor"
+                            }
+                            className="bg-sky-600"
+                          >
+                            <RefreshIcon />
+                          </IconButton>
                         ) : null}
 
                         {objectDef.apiName === "quote" ? (

@@ -145,6 +145,11 @@ export const syncSaleCampaigns = async (id) => {
   return res.data;
 };
 
+export const syncProductSupplierReference = async (id) => {
+  const res = await apiClient.post(`/api/custom-records/product/${id}/sync-supplier-reference`);
+  return res.data;
+};
+
 export const createRecord = async (object, payload) => {
   const res = await apiClient.post(`/api/custom-records/${object}`, payload);
   return res.data;
