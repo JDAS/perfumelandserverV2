@@ -27,7 +27,8 @@
     "sync:quote-discount-scope": "node src/scripts/syncQuoteDiscountScopeMetadata.js",
     "sync:quote-manual-items": "node src/scripts/syncQuoteManualItemMetadata.js",
     "diagnose:supplier-catalog": "node src/scripts/diagnoseSupplierCatalog.js",
-    "sync:supplier-reference-metadata": "node src/scripts/syncSupplierReferenceMetadata.js"
+    "sync:supplier-reference-metadata": "node src/scripts/syncSupplierReferenceMetadata.js",
+    "sync:price-review-report": "node src/scripts/syncPriceReviewReport.js"
   },
   "keywords": [],
   "author": "",

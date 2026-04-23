@@ -96,6 +96,80 @@ function PaymentsByDayTable({ preview }) {
   );
 }
 
+function PriceReviewTable({ preview }) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-2xl border bg-white p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Productos</p>
+          <p className="mt-2 text-lg font-semibold text-gray-900">
+            {preview.summary?.products_count || 0}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-rose-50 p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-rose-500">Riesgo contado</p>
+          <p className="mt-2 text-lg font-semibold text-rose-900">
+            {preview.summary?.cash_risk_count || 0}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-amber-50 p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-amber-600">Cambio proveedor</p>
+          <p className="mt-2 text-lg font-semibold text-amber-900">
+            {preview.summary?.supplier_change_count || 0}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-emerald-50 p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-emerald-600">Ofertas</p>
+          <p className="mt-2 text-lg font-semibold text-emerald-900">
+            {preview.summary?.supplier_offer_count || 0}
+          </p>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border bg-white">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-gray-50 text-left">
+              {(preview.columns || []).map((column) => (
+                <th key={column.id} className="border-b p-3 font-semibold text-gray-700">
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {(preview.rows || []).map((row) => (
+              <tr key={row.product_id} className="hover:bg-gray-50">
+                {(preview.columns || []).map((column) => {
+                  const value = row[column.id] || "-";
+                  const highlight =
+                    column.id === "review_reason" && row.cash_price_risk_alert
+                      ? "font-semibold text-rose-700"
+                      : column.id === "review_reason" && row.supplier_change_alert
+                        ? "font-semibold text-amber-700"
+                        : "text-gray-700";
+
+                  return (
+                    <td key={column.id} className={`border-b p-3 ${highlight}`}>
+                      {value}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {!preview.rows?.length ? (
+        <div className="rounded-2xl border bg-emerald-50 p-4 text-sm text-emerald-900">
+          No hay productos que coincidan con este filtro de revision.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ReportResultsTable({ preview }) {
   if (!preview) {
     return (
@@ -111,6 +185,10 @@ function ReportResultsTable({ preview }) {
 
   if (preview.viewType === "payments_by_day") {
     return <PaymentsByDayTable preview={preview} />;
+  }
+
+  if (preview.viewType === "price_review") {
+    return <PriceReviewTable preview={preview} />;
   }
 
   return (
@@ -175,6 +253,7 @@ export default function ReportsViewer() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [filterDate, setFilterDate] = useState(getTodayDateInput());
+  const [priceReviewMode, setPriceReviewMode] = useState("alerts");
 
   useEffect(() => {
     let cancelled = false;
@@ -220,7 +299,11 @@ export default function ReportsViewer() {
           (report) => String(report._id) === String(selectedId)
         );
         const params =
-          selectedReport?.engine === "payments_by_day" ? { date: filterDate } : {};
+          selectedReport?.engine === "payments_by_day"
+            ? { date: filterDate }
+            : selectedReport?.engine === "price_review"
+              ? { mode: priceReviewMode }
+              : {};
         const data = await runReport(selectedId, params);
         if (!cancelled) {
           setPreview(data);
@@ -241,7 +324,7 @@ export default function ReportsViewer() {
     return () => {
       cancelled = true;
     };
-  }, [selectedId, reports, filterDate]);
+  }, [selectedId, reports, filterDate, priceReviewMode]);
 
   const selectedReport = (reports || []).find(
     (report) => String(report._id) === String(selectedId)
@@ -303,6 +386,27 @@ export default function ReportsViewer() {
               </div>
               <p className="text-sm text-gray-500">
                 El reporte se recalcula segun la fecha seleccionada.
+              </p>
+            </div>
+          ) : null}
+          {selectedReport?.engine === "price_review" ? (
+            <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border bg-slate-50 p-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Filtro</label>
+                <select
+                  className="rounded-lg border p-2"
+                  value={priceReviewMode}
+                  onChange={(event) => setPriceReviewMode(event.target.value)}
+                >
+                  <option value="alerts">Alertas activas</option>
+                  <option value="risk">Solo riesgo contado</option>
+                  <option value="change">Solo cambio proveedor</option>
+                  <option value="offer">Solo ofertas proveedor</option>
+                  <option value="all">Todos los productos</option>
+                </select>
+              </div>
+              <p className="text-sm text-gray-500">
+                El reporte usa el mayorista proveedor y el precio detalle actual del producto.
               </p>
             </div>
           ) : null}

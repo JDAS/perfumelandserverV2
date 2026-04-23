@@ -3,6 +3,7 @@ const { executeReportDefinition } = require("../services/reportEngine");
 const { executeFinancialSummaryReport } = require("../services/financialSummaryService");
 const { executeSellerYearPerformanceReport } = require("../services/sellerYearPerformanceService");
 const { executePaymentsByDayReport } = require("../services/paymentsByDayReportService");
+const { executePriceReviewReport } = require("../services/priceReviewReportService");
 const { createHttpError } = require("../utils/httpError");
 
 function normalizeApiName(value = "") {
@@ -78,6 +79,8 @@ exports.runReport = async (req, res) => {
     data = await executeSellerYearPerformanceReport(report, req.query || {});
   } else if (report.engine === "payments_by_day") {
     data = await executePaymentsByDayReport(report, req.query || {});
+  } else if (report.engine === "price_review") {
+    data = await executePriceReviewReport(report, req.query || {});
   } else {
     data = await executeReportDefinition(report);
   }
