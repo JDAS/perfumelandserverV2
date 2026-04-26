@@ -710,11 +710,13 @@ export function RecordDetailPanel({
           />
         ) : null}
 
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs uppercase tracking-[0.22em]" style={{ color: adminTheme.muted }}>
-            {mode === "edit" ? "Editando" : "Detalles"}
-          </p>
-        </div>
+        {mode === "edit" ? (
+          <div className="mb-4">
+            <p className="text-xs uppercase tracking-[0.22em]" style={{ color: adminTheme.muted }}>
+              Editando
+            </p>
+          </div>
+        ) : null}
 
         {mode === "edit" ? (
           <div className="space-y-4">
