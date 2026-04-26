@@ -42,6 +42,10 @@ function normalizeId(value) {
   return String(value);
 }
 
+function getLookupRecord(record, fieldApiName) {
+  return record?._lookup?.[fieldApiName]?.record || null;
+}
+
 function openWhatsappText(text) {
   const encoded = encodeURIComponent(text || "");
   window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
@@ -232,15 +236,20 @@ export function HomePanel({ salesObjectDef, onOpenSaleRecord }) {
         }),
         getRecords("sales", {
           page: 1,
-          limit: 500,
+          limit: 100,
           sortBy: "saledate",
           sortOrder: "desc",
+          filters: JSON.stringify([{ field: "status", operator: "eq", value: "Borrador" }]),
         }),
         getRecords("payment_plan", {
           page: 1,
-          limit: 500,
+          limit: 100,
           sortBy: "due_date",
           sortOrder: "asc",
+          filters: JSON.stringify([
+            { field: "status", operator: "ne", value: "Paid" },
+            { field: "remaining_amount", operator: "gt", value: 0 },
+          ]),
         }),
         getRecords("sale_item", {
           page: 1,
@@ -257,7 +266,6 @@ export function HomePanel({ salesObjectDef, onOpenSaleRecord }) {
         saleItems: saleItemData?.records || [],
         partial: Boolean(
           (salesData?.pagination?.total || 0) > (salesData?.records || []).length ||
-            (paymentPlanData?.pagination?.total || 0) > (paymentPlanData?.records || []).length ||
             (saleItemData?.pagination?.total || 0) > (saleItemData?.records || []).length
         ),
       });
@@ -297,14 +305,19 @@ export function HomePanel({ salesObjectDef, onOpenSaleRecord }) {
     return (dataset.paymentPlans || [])
       .map((plan) => {
         const saleId = normalizeId(plan.sale_id);
-        const sale = salesById.get(saleId);
+        const sale = salesById.get(saleId) || getLookupRecord(plan, "sale_id");
         if (!sale) return null;
 
         const sellerId = normalizeId(sale.seller_id);
         if (sellerFilter && sellerId !== sellerFilter) return null;
 
         const dueDate = parseDate(plan.due_date);
-        const remainingAmount = Number(plan.remaining_amount ?? plan.planned_amount ?? 0);
+        const saleTotal = Number(sale.total || 0);
+        const salePaid = Number(sale.total_paid || 0);
+        const remainingAmount = Math.min(
+          Number(plan.remaining_amount ?? plan.planned_amount ?? 0),
+          saleTotal > 0 ? Math.max(saleTotal - salePaid, 0) : Number(plan.remaining_amount ?? plan.planned_amount ?? 0)
+        );
         if (!dueDate || remainingAmount <= 0) return null;
         if (String(plan.status || "").toLowerCase() === "paid") return null;
 
@@ -323,6 +336,7 @@ export function HomePanel({ salesObjectDef, onOpenSaleRecord }) {
           saleName: sale.name || `Venta ${String(saleId).slice(-6)}`,
           clientName: sale.client_id__label || sale.client_name || "Sin cliente",
           sellerName: sale.seller_id__label || "Sin vendedor",
+          saleRecord: sale,
         };
       })
       .filter(Boolean)
@@ -379,6 +393,7 @@ export function HomePanel({ salesObjectDef, onOpenSaleRecord }) {
           firstExpectedAmount,
           firstRemainingAmount: itemsCount > 0 ? firstRemainingAmount : 0,
           draftState,
+          saleRecord: sale,
         };
       })
       .filter(Boolean)
@@ -483,11 +498,14 @@ export function HomePanel({ salesObjectDef, onOpenSaleRecord }) {
   const openSale = useCallback(
     (saleId) => {
       if (!onOpenSaleRecord || !salesObjectDef) return;
-      const sale = salesById.get(String(saleId));
+      const sale =
+        salesById.get(String(saleId)) ||
+        upcomingPayments.find((row) => row.saleId === String(saleId))?.saleRecord ||
+        draftPendingRows.find((row) => row.saleId === String(saleId))?.saleRecord;
       if (!sale) return;
       onOpenSaleRecord(salesObjectDef, sale);
     },
-    [onOpenSaleRecord, salesById, salesObjectDef]
+    [draftPendingRows, onOpenSaleRecord, salesById, salesObjectDef, upcomingPayments]
   );
 
   const paymentColumns = useMemo(
