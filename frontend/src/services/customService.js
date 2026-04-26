@@ -90,6 +90,31 @@ export const getDashboards = async () => {
   return res.data;
 };
 
+export const getAutomationFlows = async (params = {}) => {
+  const res = await apiClient.get("/api/automation-flows", { params });
+  return res.data;
+};
+
+export const getAutomationFlowById = async (id) => {
+  const res = await apiClient.get(`/api/automation-flows/${id}`);
+  return res.data;
+};
+
+export const createAutomationFlow = async (payload) => {
+  const res = await apiClient.post("/api/automation-flows", payload);
+  return res.data;
+};
+
+export const updateAutomationFlow = async (id, payload) => {
+  const res = await apiClient.put(`/api/automation-flows/${id}`, payload);
+  return res.data;
+};
+
+export const deleteAutomationFlow = async (id) => {
+  const res = await apiClient.delete(`/api/automation-flows/${id}`);
+  return res.data;
+};
+
 export const getDashboardById = async (id) => {
   const res = await apiClient.get(`/api/dashboards/${id}`);
   return res.data;

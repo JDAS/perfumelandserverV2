@@ -1,5 +1,8 @@
 require("./triggerMotor.test");
+require("./triggerMotorFlows.test");
 require("./customRecordQueryService.test");
+require("./automationFlowService.test");
+require("./automationFlowCrud.test");
 require("./customRecordService.test");
 require("./quoteConversionService.test");
 require("./rollupEngine.test");

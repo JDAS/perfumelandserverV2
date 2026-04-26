@@ -1,6 +1,7 @@
 const { getCustomRecordModel } = require("../models/CustomRecord");
 const { calculatePayments } = require("../utils/paymentEngine");
 const CustomObject = require("../models/CustomObject");
+const { listExecutableFlows } = require("./automationFlowService");
 
 function getValueByPath(obj, path) {
     if (!obj || !path) return undefined;
@@ -836,7 +837,9 @@ async function runTriggers({
     previousRecord = null,
     logger = console,
 }) {
-    const triggers = (objectDefinition?.automationTriggers || [])
+    const flowTriggers = await listExecutableFlows({ objectApiName, when });
+
+    const triggers = [...(objectDefinition?.automationTriggers || []), ...flowTriggers]
         .filter((trigger) => trigger?.isActive && trigger?.when === when)
         .sort((a, b) => (a.runOrder || 0) - (b.runOrder || 0));
 

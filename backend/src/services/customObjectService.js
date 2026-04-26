@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const CustomObject = require("../models/CustomObject");
 const ReportDefinition = require("../models/ReportDefinition");
+const AutomationFlow = require("../models/AutomationFlow");
 const { getCustomRecordModel } = require("../models/CustomRecord");
 const { createHttpError } = require("../utils/httpError");
 const {
@@ -32,7 +33,8 @@ function hasBlockingDependencies(dependencies) {
     dependencies.rollupReferences.length > 0 ||
     dependencies.relatedListReferences.length > 0 ||
     dependencies.reportReferences.length > 0 ||
-    dependencies.triggerReferences.length > 0
+    dependencies.triggerReferences.length > 0 ||
+    dependencies.flowReferences.length > 0
   );
 }
 
@@ -99,6 +101,16 @@ function buildDeletionBlockedMessage(targetObject, dependencies) {
         dependencies.triggerReferences.length,
         "trigger",
         "triggers"
+      )}`
+    );
+  }
+
+  if (dependencies.flowReferences.length > 0) {
+    summaryParts.push(
+      `${dependencies.flowReferences.length} ${pluralize(
+        dependencies.flowReferences.length,
+        "flow",
+        "flows"
       )}`
     );
   }
@@ -191,11 +203,16 @@ function collectObjectReferences(objectDefinition, targetApiName) {
 async function collectObjectDeletionDependencies(targetObject) {
   const targetApiName = normalizeObjectApiName(targetObject.apiName);
 
-  const [recordCount, siblingObjects, reportReferences] = await Promise.all([
+  const [recordCount, siblingObjects, reportReferences, flowReferences] = await Promise.all([
     countObjectRecords(targetApiName),
     CustomObject.find({ apiName: { $ne: targetApiName } }).lean(),
     ReportDefinition.find({ sourceObject: targetApiName })
       .select("name apiName")
+      .lean(),
+    AutomationFlow.find({
+      $or: [{ objectApiName: targetApiName }, { "actions.config.object": targetApiName }],
+    })
+      .select("name apiName objectApiName when actions")
       .lean(),
   ]);
 
@@ -208,6 +225,13 @@ async function collectObjectDeletionDependencies(targetObject) {
       id: String(report._id),
       apiName: report.apiName,
       name: report.name,
+    })),
+    flowReferences: flowReferences.map((flow) => ({
+      id: String(flow._id),
+      apiName: flow.apiName || "",
+      name: flow.name,
+      objectApiName: flow.objectApiName,
+      when: flow.when,
     })),
     triggerReferences: [],
   };

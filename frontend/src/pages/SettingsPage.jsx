@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AdminThemeSettings from "../components/admin/AdminThemeSettings";
+import AutomationFlowsAdmin from "../components/admin/AutomationFlowsAdmin";
 import DashboardsAdmin from "../components/admin/DashboardsAdmin";
 import ReportsAdmin from "../components/admin/ReportsAdmin";
 import UsersAdmin from "../components/admin/UsersAdmin";
@@ -237,6 +238,17 @@ function SettingsPage() {
               onClick={() => setActiveSection("dashboards")}
             >
               Dashboards
+            </button>
+            <button
+              className="block w-full text-left px-3 py-2 rounded-xl"
+              style={
+                activeSection === "flows"
+                  ? { background: adminGradient(), color: "#fff" }
+                  : { backgroundColor: adminTheme.surfaceAlt, color: adminTheme.text }
+              }
+              onClick={() => setActiveSection("flows")}
+            >
+              Flows
             </button>
             <button
               className="block w-full text-left px-3 py-2 rounded-xl"
@@ -795,6 +807,18 @@ function SettingsPage() {
               </p>
             </div>
             <DashboardsAdmin />
+          </div>
+        )}
+
+        {activeSection === "flows" && (
+          <div className="bg-white rounded-xl shadow p-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold">Configuración de flows</h2>
+              <p className="text-sm text-gray-500">
+                Define automatizaciones estructuradas sobre el motor actual sin editar metadata a mano.
+              </p>
+            </div>
+            <AutomationFlowsAdmin objects={objects} />
           </div>
         )}
 

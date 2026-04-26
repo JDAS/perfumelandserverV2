@@ -11,6 +11,7 @@ const uploadRoutes = require("./routes/uploadRoutes");
 const storefrontSettingsRoutes = require("./routes/storefrontSettingsRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const automationFlowRoutes = require("./routes/automationFlowRoutes");
 const { createCorsOptions } = require("./config/cors");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 const { applySecurityHeaders } = require("./middleware/securityHeaders");
@@ -31,6 +32,7 @@ app.use("/api/uploads", uploadRoutes);
 app.use("/api/storefront-settings", storefrontSettingsRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/dashboards", dashboardRoutes);
+app.use("/api/automation-flows", automationFlowRoutes);
 
 app.get("/api/test", (_req, res) => {
   res.json({ message: "API funcionando" });
