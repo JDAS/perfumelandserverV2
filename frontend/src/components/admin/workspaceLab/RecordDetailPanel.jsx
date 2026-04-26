@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye } from "lucide-react";
+import {
+  BadgeCheck,
+  ChartColumn,
+  CreditCard,
+  Eye,
+  FileText,
+  Pencil,
+  Sparkles,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import ClientSummaryModal from "../../ClientSummaryModal";
 import { useToast } from "../../ui/ToastContext";
 import { useObjectMetadata } from "../../../context/ObjectMetadataContext";
 import {
@@ -8,7 +18,15 @@ import {
   isBlankBlock,
   splitFieldsIntoColumns,
 } from "../../../engine/metadataEngine";
-import { getRecordById, getRelatedRecords } from "../../../services/customService";
+import {
+  convertQuoteToSale,
+  getClientSummary,
+  getRecordById,
+  getRelatedRecords,
+  syncProductSupplierReference,
+  syncSaleCampaigns,
+  updateRecord,
+} from "../../../services/customService";
 import { adminTheme } from "../../../theme/adminTheme";
 import { CreateRecordModal, EditRecordPanel } from "./RecordForms";
 import { QuickActionButton } from "./WorkspaceChrome";
@@ -393,6 +411,204 @@ function RelatedPanel({
   );
 }
 
+function RecordActionsBar({
+  objectDef,
+  record,
+  onOpenLookupRecord,
+  onRefresh,
+  onStartEdit,
+}) {
+  const { addToast } = useToast();
+  const [busyAction, setBusyAction] = useState("");
+  const [summary, setSummary] = useState(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
+  const objectApiName = objectDef?.apiName;
+
+  const supportsSummary =
+    objectApiName === "sales" ||
+    objectApiName === "quote" ||
+    objectApiName === "campaign_sale_link";
+
+  const runAction = async (actionKey, handler) => {
+    try {
+      setBusyAction(actionKey);
+      await handler();
+    } catch (error) {
+      console.error(error);
+      addToast(error?.response?.data?.error || "No se pudo completar la accion", "error");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const handleConvertQuote = () =>
+    runAction("convertQuote", async () => {
+      const result = await convertQuoteToSale(record._id);
+      addToast("Cotizacion convertida en venta", "success");
+      if (result?.saleId) {
+        onOpenLookupRecord?.({
+          objectApi: "sales",
+          recordId: result.saleId,
+          label: "Venta convertida",
+          isLinkable: true,
+        });
+      }
+      onRefresh?.();
+    });
+
+  const handleSyncCampaigns = () =>
+    runAction("syncCampaigns", async () => {
+      await syncSaleCampaigns(record._id);
+      addToast("Promo evaluada", "success");
+      onRefresh?.();
+    });
+
+  const handleSyncSupplier = () =>
+    runAction("syncSupplier", async () => {
+      await syncProductSupplierReference(record._id);
+      addToast("Referencia del proveedor actualizada", "success");
+      onRefresh?.();
+    });
+
+  const handleMarkCommissionPaid = () =>
+    runAction("commissionPaid", async () => {
+      await updateRecord(objectApiName, record._id, { commission_paid: true });
+      addToast("Comision marcada como pagada", "success");
+      onRefresh?.();
+    });
+
+  const handleOpenSummary = () =>
+    runAction("summary", async () => {
+      const data = await getClientSummary(objectApiName, record._id);
+      setSummary(data);
+      setSummaryOpen(true);
+    });
+
+  const handleCopySummary = async () => {
+    if (!summary?.whatsappText) return;
+
+    try {
+      setCopying(true);
+      await navigator.clipboard.writeText(summary.whatsappText);
+      addToast("Resumen copiado al portapapeles", "success");
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudo copiar el resumen", "error");
+    } finally {
+      setCopying(false);
+    }
+  };
+
+  const handleOpenWhatsApp = async () => {
+    if (!summary?.whatsappText) return;
+
+    try {
+      setOpeningWhatsApp(true);
+      window.open(
+        `https://wa.me/?text=${encodeURIComponent(summary.whatsappText)}`,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudo abrir WhatsApp", "error");
+    } finally {
+      setOpeningWhatsApp(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <QuickActionButton
+          onClick={onStartEdit}
+          icon={Pencil}
+          title="Editar"
+          aria-label="Editar"
+          style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+        />
+
+        {objectApiName === "sales" ? (
+          <>
+            <Link
+              to={`/admin/payment/new?tab=payment&prefill_sale_id=${record._id}`}
+              title="Registrar pago"
+              aria-label="Registrar pago"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold"
+              style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+            >
+              <CreditCard className="h-4 w-4" strokeWidth={2} />
+            </Link>
+            <QuickActionButton
+              onClick={handleSyncCampaigns}
+              disabled={busyAction === "syncCampaigns"}
+              icon={Sparkles}
+              title="Evaluar promo"
+              aria-label="Evaluar promo"
+              style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+            />
+            {!record.commission_paid && Number(record.commission_amount || 0) > 0 ? (
+              <QuickActionButton
+                onClick={handleMarkCommissionPaid}
+                disabled={busyAction === "commissionPaid"}
+                icon={BadgeCheck}
+                title="Comision pagada"
+                aria-label="Comision pagada"
+                style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+              />
+            ) : null}
+          </>
+        ) : null}
+
+        {objectApiName === "quote" ? (
+          <QuickActionButton
+            onClick={handleConvertQuote}
+            disabled={busyAction === "convertQuote" || record.status === "Convertida"}
+            icon={ChartColumn}
+            title="Convertir a venta"
+            aria-label="Convertir a venta"
+            style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+          />
+        ) : null}
+
+        {objectApiName === "product" ? (
+          <QuickActionButton
+            onClick={handleSyncSupplier}
+            disabled={busyAction === "syncSupplier"}
+            icon={Sparkles}
+            title="Refrescar proveedor"
+            aria-label="Refrescar proveedor"
+            style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+          />
+        ) : null}
+
+        {supportsSummary ? (
+          <QuickActionButton
+            onClick={handleOpenSummary}
+            disabled={busyAction === "summary"}
+            icon={FileText}
+            title="Resumen"
+            aria-label="Resumen"
+            style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+          />
+        ) : null}
+      </div>
+
+      <ClientSummaryModal
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        summary={summary}
+        onCopy={handleCopySummary}
+        onOpenWhatsApp={handleOpenWhatsApp}
+        copying={copying}
+        openingWhatsApp={openingWhatsApp}
+      />
+    </>
+  );
+}
+
 export function RecordDetailPanel({
   objectDef,
   recordId,
@@ -484,21 +700,20 @@ export function RecordDetailPanel({
           </span>
         </div>
 
+        {mode === "view" ? (
+          <RecordActionsBar
+            objectDef={objectDef}
+            record={record}
+            onOpenLookupRecord={onOpenLookupRecord}
+            onRefresh={onParentRefresh}
+            onStartEdit={onStartEdit}
+          />
+        ) : null}
+
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs uppercase tracking-[0.22em]" style={{ color: adminTheme.muted }}>
             {mode === "edit" ? "Editando" : "Detalles"}
           </p>
-
-          {mode === "view" ? (
-            <button
-              type="button"
-              onClick={onStartEdit}
-              className="rounded-xl border px-3 py-2 text-sm font-semibold"
-              style={{ borderColor: adminTheme.border, color: adminTheme.text }}
-            >
-              Editar
-            </button>
-          ) : null}
         </div>
 
         {mode === "edit" ? (
