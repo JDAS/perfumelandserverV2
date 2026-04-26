@@ -28,6 +28,7 @@ const STORAGE_PREFIX = "admin-workspace-lab2-v1";
 const HOME_TAB_ID = "system:home";
 const REPORTS_TAB_ID = "system:reports";
 const DASHBOARDS_TAB_ID = "system:dashboards";
+const PRICE_REVIEW_TAB_ID = "report:price_review";
 
 const AREAS = [
   {
@@ -112,6 +113,15 @@ function childSubtabId(objectApi, recordId) {
 }
 
 function makeSystemTab(type) {
+  if (type === "priceReview") {
+    return {
+      id: PRICE_REVIEW_TAB_ID,
+      type: "priceReview",
+      objectApi: "",
+      label: "Revision de precios",
+    };
+  }
+
   if (type === "reports") {
     return { id: REPORTS_TAB_ID, type: "reports", objectApi: "", label: "Reportes" };
   }
@@ -195,7 +205,14 @@ function workspaceReducer(state, action) {
     case "SYNC": {
       const { validApis, homeTab } = action.payload;
       const tabs = [homeTab, ...state.tabs]
-        .filter((tab) => tab.type === "home" || tab.type === "reports" || tab.type === "dashboards" || validApis.has(tab.objectApi))
+        .filter(
+          (tab) =>
+            tab.type === "home" ||
+            tab.type === "reports" ||
+            tab.type === "dashboards" ||
+            tab.type === "priceReview" ||
+            validApis.has(tab.objectApi)
+        )
         .filter((tab, index, allTabs) => allTabs.findIndex((candidate) => candidate.id === tab.id) === index);
 
       return {
@@ -622,6 +639,16 @@ export default function AdminWorkspaceLab2() {
               >
                 <ChartColumn className="h-4 w-4" /> Reportes
               </button>
+              {activeArea.id === "catalog" ? (
+                <button
+                  type="button"
+                  onClick={() => dispatch({ type: "OPEN_SYSTEM", payload: { type: "priceReview" } })}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium"
+                  style={{ color: adminTheme.text }}
+                >
+                  <BadgeDollarSign className="h-4 w-4" /> Revision precios
+                </button>
+              ) : null}
               <Link
                 to="/admin/settings"
                 className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium"
@@ -701,6 +728,8 @@ export default function AdminWorkspaceLab2() {
                 />
               ) : activeTab?.type === "reports" ? (
                 <ReportsViewer />
+              ) : activeTab?.type === "priceReview" ? (
+                <ReportsViewer initialReportApiName="price_review" />
               ) : activeTab?.type === "dashboards" ? (
                 <DashboardsViewer />
               ) : activeTab?.type === "list" ? (

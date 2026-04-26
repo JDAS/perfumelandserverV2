@@ -246,7 +246,7 @@ function ReportResultsTable({ preview }) {
   );
 }
 
-export default function ReportsViewer() {
+export default function ReportsViewer({ initialReportApiName = "" }) {
   const [reports, setReports] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [preview, setPreview] = useState(null);
@@ -265,8 +265,13 @@ export default function ReportsViewer() {
         if (!cancelled) {
           const activeReports = (data || []).filter((report) => report.isActive !== false);
           setReports(activeReports);
-          if (activeReports[0]) {
-            setSelectedId(String(activeReports[0]._id));
+          const preferredReport = initialReportApiName
+            ? activeReports.find((report) => report.apiName === initialReportApiName)
+            : null;
+          const nextReport = preferredReport || activeReports[0];
+
+          if (nextReport) {
+            setSelectedId(String(nextReport._id));
           }
         }
       } catch (error) {
@@ -282,7 +287,7 @@ export default function ReportsViewer() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialReportApiName]);
 
   useEffect(() => {
     if (!selectedId) {
