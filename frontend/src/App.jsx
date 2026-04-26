@@ -13,6 +13,7 @@ const ProductDetailPage = lazy(() => import("./pages/ProductDetailPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AdminWorkspaceLab = lazy(() => import("./pages/AdminWorkspaceLab"));
+const AdminWorkspaceLab2 = lazy(() => import("./pages/AdminWorkspaceLab2"));
 const DynamicForm = lazy(() => import("./pages/DynamicForm"));
 const Builder = lazy(() => import("./pages/Builder"));
 const ObjectMetadataPage = lazy(() => import("./pages/ObjectMetadataPage"));
@@ -54,6 +55,10 @@ function App() {
                 <Route
                   path="/admin/workspace-lab"
                   element={<AdminRoute><AdminLayout><AdminWorkspaceLab /></AdminLayout></AdminRoute>}
+                />
+                <Route
+                  path="/admin/workspace-lab-2"
+                  element={<AdminRoute><AdminLayout><AdminWorkspaceLab2 /></AdminLayout></AdminRoute>}
                 />
                 <Route
                   path="/admin/object/:apiName"
