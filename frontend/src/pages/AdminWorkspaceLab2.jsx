@@ -16,7 +16,7 @@ import {
 import { Link } from "react-router-dom";
 import DashboardsViewer from "../components/admin/DashboardsViewer";
 import ReportsViewer from "../components/admin/ReportsViewer";
-import { HomePanel } from "../components/admin/workspaceLab/HomePanel";
+import { AreaHomePanel } from "../components/admin/workspaceLab/AreaHomePanel";
 import { ListPanel } from "../components/admin/workspaceLab/ListPanel";
 import { RecordWorkspace } from "../components/admin/workspaceLab/RecordWorkspace";
 import { useObjectMetadata } from "../context/ObjectMetadataContext";
@@ -223,7 +223,7 @@ function workspaceReducer(state, action) {
     }
 
     case "SET_AREA":
-      return { ...state, activeAreaId: action.payload.areaId };
+      return { ...state, activeAreaId: action.payload.areaId, activeTabId: HOME_TAB_ID };
 
     case "OPEN_SYSTEM": {
       const tab = makeSystemTab(action.payload.type);
@@ -722,9 +722,11 @@ export default function AdminWorkspaceLab2() {
           <div className="flex min-h-0 flex-1">
             <section className="min-w-0 flex-1 overflow-y-auto p-5">
               {activeTab?.type === "home" ? (
-                <HomePanel
+                <AreaHomePanel
+                  areaId={activeArea.id}
                   salesObjectDef={objectMap.get("sales") || null}
                   onOpenSaleRecord={openRecord}
+                  onOpenSystemTool={(type) => dispatch({ type: "OPEN_SYSTEM", payload: { type } })}
                 />
               ) : activeTab?.type === "reports" ? (
                 <ReportsViewer />

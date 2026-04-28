@@ -67,6 +67,8 @@ const reportDefinitionSchema = new mongoose.Schema(
         "seller_year_performance",
         "payments_by_day",
         "price_review",
+        "upcoming_payments",
+        "street_investment",
       ],
       default: "standard",
     },

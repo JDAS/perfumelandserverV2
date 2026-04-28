@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getReports, runReport } from "../../services/customService";
+import { getRecords, getReports, runReport } from "../../services/customService";
 
 function getTodayDateInput() {
   const now = new Date();
@@ -92,6 +92,177 @@ function PaymentsByDayTable({ preview }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function copyText(text) {
+  if (!text) return;
+  navigator.clipboard?.writeText(text).catch((error) => {
+    console.error(error);
+  });
+}
+
+function openWhatsappText(text) {
+  if (!text) return;
+  const encoded = encodeURIComponent(text);
+  window.open(`https://wa.me/?text=${encoded}`, "_blank", "noopener,noreferrer");
+}
+
+function UpcomingPaymentsTable({ preview }) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-2xl border bg-rose-50 p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-rose-500">Vencidos</p>
+          <p className="mt-2 text-lg font-semibold text-rose-900">
+            {preview.summary?.overdue_count || 0}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-sky-50 p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-sky-600">Esta semana</p>
+          <p className="mt-2 text-lg font-semibold text-sky-900">
+            {preview.summary?.week_count || 0}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-white p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Proximos</p>
+          <p className="mt-2 text-lg font-semibold text-gray-900">
+            {preview.summary?.upcoming_count || 0}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-white p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Pendiente</p>
+          <p className="mt-2 text-lg font-semibold text-gray-900">
+            {preview.summary?.pending_total_formatted || "-"}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => copyText(preview.summary?.whatsapp_text)}
+          className="rounded-xl border px-3 py-2 text-sm font-semibold"
+        >
+          Copiar resumen
+        </button>
+        <button
+          type="button"
+          onClick={() => openWhatsappText(preview.summary?.whatsapp_text)}
+          className="rounded-xl border px-3 py-2 text-sm font-semibold"
+        >
+          WhatsApp
+        </button>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border bg-white">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-gray-50 text-left">
+              {(preview.columns || []).map((column) => (
+                <th key={column.id} className="border-b p-3 font-semibold text-gray-700">
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {(preview.rows || []).map((row) => (
+              <tr key={row.payment_plan_id} className="hover:bg-gray-50">
+                {(preview.columns || []).map((column) => {
+                  const danger = column.id === "status_label" && row.status_bucket === "overdue";
+                  const warning = column.id === "status_label" && row.status_bucket === "week";
+                  return (
+                    <td
+                      key={column.id}
+                      className={`border-b p-3 ${
+                        danger
+                          ? "font-semibold text-rose-700"
+                          : warning
+                            ? "font-semibold text-amber-700"
+                            : "text-gray-700"
+                      }`}
+                    >
+                      {row[column.id] || "-"}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {!preview.rows?.length ? (
+        <div className="rounded-2xl border bg-slate-50 p-4 text-sm text-gray-600">
+          No hay pagos pendientes para este filtro.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function StreetInvestmentTable({ preview }) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-2xl border bg-white p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Unidades en calle</p>
+          <p className="mt-2 text-lg font-semibold text-gray-900">
+            {preview.summary?.units_in_street || 0}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-white p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Valor en calle</p>
+          <p className="mt-2 text-lg font-semibold text-gray-900">
+            {preview.summary?.street_sale_value_formatted || "-"}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-amber-50 p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-amber-600">Inversion</p>
+          <p className="mt-2 text-lg font-semibold text-amber-900">
+            {preview.summary?.investment_value_formatted || "-"}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-rose-50 p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-rose-500">Pendiente</p>
+          <p className="mt-2 text-lg font-semibold text-rose-900">
+            {preview.summary?.street_balance_formatted || "-"}
+          </p>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border bg-white">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-gray-50 text-left">
+              {(preview.columns || []).map((column) => (
+                <th key={column.id} className="border-b p-3 font-semibold text-gray-700">
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {(preview.rows || []).map((row) => (
+              <tr key={`${row.product_id}-${row.seller_id}`} className="hover:bg-gray-50">
+                {(preview.columns || []).map((column) => (
+                  <td key={column.id} className="border-b p-3 text-gray-700">
+                    {row[column.id] || "-"}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {!preview.rows?.length ? (
+        <div className="rounded-2xl border bg-slate-50 p-4 text-sm text-gray-600">
+          No hay productos en calle para este filtro.
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -191,6 +362,14 @@ function ReportResultsTable({ preview }) {
     return <PriceReviewTable preview={preview} />;
   }
 
+  if (preview.viewType === "upcoming_payments") {
+    return <UpcomingPaymentsTable preview={preview} />;
+  }
+
+  if (preview.viewType === "street_investment") {
+    return <StreetInvestmentTable preview={preview} />;
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-3">
@@ -254,6 +433,11 @@ export default function ReportsViewer({ initialReportApiName = "" }) {
   const [running, setRunning] = useState(false);
   const [filterDate, setFilterDate] = useState(getTodayDateInput());
   const [priceReviewMode, setPriceReviewMode] = useState("alerts");
+  const [sellerOptions, setSellerOptions] = useState([]);
+  const [sellerFilter, setSellerFilter] = useState("");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
+  const [paymentDateFrom, setPaymentDateFrom] = useState("");
+  const [paymentDateTo, setPaymentDateTo] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -290,6 +474,32 @@ export default function ReportsViewer({ initialReportApiName = "" }) {
   }, [initialReportApiName]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function loadSellerOptions() {
+      try {
+        const data = await getRecords("seller", {
+          page: 1,
+          limit: 100,
+          sortBy: "name",
+          sortOrder: "asc",
+          filters: JSON.stringify([{ field: "isactive", operator: "eq", value: true }]),
+        });
+        if (!cancelled) {
+          setSellerOptions(data?.records || []);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    loadSellerOptions();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!selectedId) {
       setPreview(null);
       return;
@@ -308,6 +518,15 @@ export default function ReportsViewer({ initialReportApiName = "" }) {
             ? { date: filterDate }
             : selectedReport?.engine === "price_review"
               ? { mode: priceReviewMode }
+              : selectedReport?.engine === "upcoming_payments"
+                ? {
+                    sellerId: sellerFilter,
+                    status: paymentStatusFilter,
+                    dateFrom: paymentDateFrom,
+                    dateTo: paymentDateTo,
+                  }
+                : selectedReport?.engine === "street_investment"
+                  ? { sellerId: sellerFilter }
               : {};
         const data = await runReport(selectedId, params);
         if (!cancelled) {
@@ -329,7 +548,16 @@ export default function ReportsViewer({ initialReportApiName = "" }) {
     return () => {
       cancelled = true;
     };
-  }, [selectedId, reports, filterDate, priceReviewMode]);
+  }, [
+    selectedId,
+    reports,
+    filterDate,
+    priceReviewMode,
+    sellerFilter,
+    paymentStatusFilter,
+    paymentDateFrom,
+    paymentDateTo,
+  ]);
 
   const selectedReport = (reports || []).find(
     (report) => String(report._id) === String(selectedId)
@@ -412,6 +640,78 @@ export default function ReportsViewer({ initialReportApiName = "" }) {
               </div>
               <p className="text-sm text-gray-500">
                 El reporte usa el mayorista proveedor y el precio detalle actual del producto.
+              </p>
+            </div>
+          ) : null}
+          {selectedReport?.engine === "upcoming_payments" ? (
+            <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border bg-slate-50 p-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Vendedor</label>
+                <select
+                  className="rounded-lg border p-2"
+                  value={sellerFilter}
+                  onChange={(event) => setSellerFilter(event.target.value)}
+                >
+                  <option value="">Todos</option>
+                  {sellerOptions.map((seller) => (
+                    <option key={seller._id} value={seller._id}>
+                      {seller.name || seller._id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Estado</label>
+                <select
+                  className="rounded-lg border p-2"
+                  value={paymentStatusFilter}
+                  onChange={(event) => setPaymentStatusFilter(event.target.value)}
+                >
+                  <option value="all">Todos</option>
+                  <option value="overdue">Vencidos</option>
+                  <option value="week">Esta semana</option>
+                  <option value="upcoming">Proximos</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Desde</label>
+                <input
+                  type="date"
+                  className="rounded-lg border p-2"
+                  value={paymentDateFrom}
+                  onChange={(event) => setPaymentDateFrom(event.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Hasta</label>
+                <input
+                  type="date"
+                  className="rounded-lg border p-2"
+                  value={paymentDateTo}
+                  onChange={(event) => setPaymentDateTo(event.target.value)}
+                />
+              </div>
+            </div>
+          ) : null}
+          {selectedReport?.engine === "street_investment" ? (
+            <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border bg-slate-50 p-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Vendedor</label>
+                <select
+                  className="rounded-lg border p-2"
+                  value={sellerFilter}
+                  onChange={(event) => setSellerFilter(event.target.value)}
+                >
+                  <option value="">Todos</option>
+                  {sellerOptions.map((seller) => (
+                    <option key={seller._id} value={seller._id}>
+                      {seller.name || seller._id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-sm text-gray-500">
+                Se calcula con ventas con saldo pendiente y el costo guardado en cada item de venta.
               </p>
             </div>
           ) : null}
