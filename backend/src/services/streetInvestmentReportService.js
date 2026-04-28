@@ -25,6 +25,10 @@ function formatPercent(value) {
   return `${numeric.toFixed(1)}%`;
 }
 
+function getComputedAvailable(product) {
+  return Math.max(toNumber(product?.purchaseditems) - toNumber(product?.sold), 0);
+}
+
 async function executeStreetInvestmentReport(reportDefinition, options = {}) {
   const SalesModel = getCustomRecordModel("sales");
   const SaleItemModel = getCustomRecordModel("sale_item");
@@ -79,7 +83,9 @@ async function executeStreetInvestmentReport(reportDefinition, options = {}) {
 
   const [products, sellers] = await Promise.all([
     productIds.length
-      ? ProductModel.find({ _id: { $in: productIds } }).select("name brand price available").lean()
+      ? ProductModel.find({ _id: { $in: productIds } })
+          .select("name brand price available purchaseditems sold")
+          .lean()
       : [],
     sellerIds.length ? SellerModel.find({ _id: { $in: sellerIds } }).select("name").lean() : [],
   ]);
@@ -93,7 +99,7 @@ async function executeStreetInvestmentReport(reportDefinition, options = {}) {
     const productId = normalizeId(stock.product);
     if (!productId) continue;
     const product = productMap.get(productId);
-    const availableUnits = Math.max(toNumber(product?.available), 0);
+    const availableUnits = getComputedAvailable(product);
     if (availableUnits <= 0) continue;
 
     if (!groups.has(productId)) {
@@ -159,9 +165,9 @@ async function executeStreetInvestmentReport(reportDefinition, options = {}) {
         street_balance: 0,
         stock_purchased_units: 0,
         stock_purchased_investment: 0,
-        inventory_units: Math.max(toNumber(product?.available), 0),
+        inventory_units: getComputedAvailable(product),
         inventory_investment_value: 0,
-        inventory_potential_value: Math.max(toNumber(product?.available), 0) * toNumber(product?.price),
+        inventory_potential_value: getComputedAvailable(product) * toNumber(product?.price),
       });
     }
 
