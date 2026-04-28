@@ -94,6 +94,13 @@ async function executeStreetInvestmentReport(reportDefinition, options = {}) {
   const sellerMap = new Map(sellers.map((seller) => [String(seller._id), seller.name || "Sin vendedor"]));
   const selectedSellerName = sellerId ? sellerMap.get(sellerId) || "" : "";
   const groups = new Map();
+  const latestStockCostByProduct = new Map();
+
+  for (const stock of stockRows) {
+    const productId = normalizeId(stock.product);
+    if (!productId) continue;
+    latestStockCostByProduct.set(productId, toNumber(stock.wholesaleprice));
+  }
 
   for (const stock of stockRows) {
     const productId = normalizeId(stock.product);
@@ -117,7 +124,7 @@ async function executeStreetInvestmentReport(reportDefinition, options = {}) {
         stock_purchased_units: 0,
         stock_purchased_investment: 0,
         inventory_units: availableUnits,
-        inventory_investment_value: 0,
+        inventory_investment_value: availableUnits * (latestStockCostByProduct.get(productId) || 0),
         inventory_potential_value: availableUnits * toNumber(product?.price),
       });
     }
@@ -125,14 +132,6 @@ async function executeStreetInvestmentReport(reportDefinition, options = {}) {
     const group = groups.get(productId);
     group.stock_purchased_units += toNumber(stock.purchased);
     group.stock_purchased_investment += toNumber(stock.wholesaleprice) * toNumber(stock.purchased);
-  }
-
-  for (const group of groups.values()) {
-    const averageStockCost =
-      group.stock_purchased_units > 0
-        ? group.stock_purchased_investment / group.stock_purchased_units
-        : 0;
-    group.inventory_investment_value = group.inventory_units * averageStockCost;
   }
 
   for (const item of saleItems) {
@@ -166,7 +165,7 @@ async function executeStreetInvestmentReport(reportDefinition, options = {}) {
         stock_purchased_units: 0,
         stock_purchased_investment: 0,
         inventory_units: getComputedAvailable(product),
-        inventory_investment_value: 0,
+        inventory_investment_value: getComputedAvailable(product) * (latestStockCostByProduct.get(productId) || 0),
         inventory_potential_value: getComputedAvailable(product) * toNumber(product?.price),
       });
     }
@@ -183,7 +182,7 @@ async function executeStreetInvestmentReport(reportDefinition, options = {}) {
   const rows = [...groups.values()]
     .map((group) => {
       const investmentValue = group.street_investment_value + group.inventory_investment_value;
-      const potentialValue = group.street_sale_value + group.inventory_potential_value;
+      const potentialValue = group.street_balance + group.inventory_potential_value;
       const expectedProfit = potentialValue - investmentValue;
       const recoveryPercent =
         group.street_sale_value > 0 ? (group.collected_value / group.street_sale_value) * 100 : 0;
