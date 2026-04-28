@@ -220,15 +220,42 @@ function StreetInvestmentTable({ preview }) {
           </p>
         </div>
         <div className="rounded-2xl border bg-amber-50 p-4">
-          <p className="text-xs uppercase tracking-[0.24em] text-amber-600">Inversion</p>
+          <p className="text-xs uppercase tracking-[0.24em] text-amber-600">Inventario</p>
           <p className="mt-2 text-lg font-semibold text-amber-900">
-            {preview.summary?.investment_value_formatted || "-"}
+            {preview.summary?.inventory_investment_value_formatted || "-"}
           </p>
         </div>
         <div className="rounded-2xl border bg-rose-50 p-4">
           <p className="text-xs uppercase tracking-[0.24em] text-rose-500">Pendiente</p>
           <p className="mt-2 text-lg font-semibold text-rose-900">
             {preview.summary?.street_balance_formatted || "-"}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-2xl border bg-white p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Unidades inventario</p>
+          <p className="mt-2 text-lg font-semibold text-gray-900">
+            {preview.summary?.inventory_units || 0}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-white p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Inversion total</p>
+          <p className="mt-2 text-lg font-semibold text-gray-900">
+            {preview.summary?.investment_value_formatted || "-"}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-emerald-50 p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-emerald-600">Potencial total</p>
+          <p className="mt-2 text-lg font-semibold text-emerald-900">
+            {preview.summary?.potential_value_formatted || "-"}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-sky-50 p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-sky-600">Utilidad esperada</p>
+          <p className="mt-2 text-lg font-semibold text-sky-900">
+            {preview.summary?.expected_profit_formatted || "-"}
           </p>
         </div>
       </div>
@@ -711,7 +738,7 @@ export default function ReportsViewer({ initialReportApiName = "" }) {
                 </select>
               </div>
               <p className="text-sm text-gray-500">
-                Se calcula con ventas con saldo pendiente y el costo guardado en cada item de venta.
+                Se calcula con ventas con saldo pendiente, costo guardado en cada item y stock disponible no vendido.
               </p>
             </div>
           ) : null}
