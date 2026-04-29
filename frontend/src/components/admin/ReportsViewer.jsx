@@ -220,13 +220,13 @@ function StreetInvestmentTable({ preview }) {
           </p>
         </div>
         <div className="rounded-2xl border bg-amber-50 p-4">
-          <p className="text-xs uppercase tracking-[0.24em] text-amber-600">Inventario</p>
+          <p className="text-xs uppercase tracking-[0.24em] text-amber-600">Costo inventario</p>
           <p className="mt-2 text-lg font-semibold text-amber-900">
             {preview.summary?.inventory_investment_value_formatted || "-"}
           </p>
         </div>
         <div className="rounded-2xl border bg-rose-50 p-4">
-          <p className="text-xs uppercase tracking-[0.24em] text-rose-500">Pendiente</p>
+          <p className="text-xs uppercase tracking-[0.24em] text-rose-500">Por cobrar</p>
           <p className="mt-2 text-lg font-semibold text-rose-900">
             {preview.summary?.street_balance_formatted || "-"}
           </p>
@@ -241,7 +241,7 @@ function StreetInvestmentTable({ preview }) {
           </p>
         </div>
         <div className="rounded-2xl border bg-white p-4">
-          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Inversion total</p>
+          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Capital expuesto</p>
           <p className="mt-2 text-lg font-semibold text-gray-900">
             {preview.summary?.investment_value_formatted || "-"}
           </p>
@@ -256,6 +256,33 @@ function StreetInvestmentTable({ preview }) {
           <p className="text-xs uppercase tracking-[0.24em] text-sky-600">Utilidad esperada</p>
           <p className="mt-2 text-lg font-semibold text-sky-900">
             {preview.summary?.expected_profit_formatted || "-"}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-2xl border bg-white p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Costo en calle</p>
+          <p className="mt-2 text-lg font-semibold text-gray-900">
+            {preview.summary?.street_cost_value_formatted || "-"}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-rose-50 p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-rose-500">Costo no recuperado</p>
+          <p className="mt-2 text-lg font-semibold text-rose-900">
+            {preview.summary?.street_unrecovered_cost_formatted || "-"}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-emerald-50 p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-emerald-600">Costo recuperado</p>
+          <p className="mt-2 text-lg font-semibold text-emerald-900">
+            {preview.summary?.recovered_cost_value_formatted || "-"}
+          </p>
+        </div>
+        <div className="rounded-2xl border bg-white p-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">% costo recuperado</p>
+          <p className="mt-2 text-lg font-semibold text-gray-900">
+            {preview.summary?.cost_recovery_percent_formatted || "-"}
           </p>
         </div>
       </div>
