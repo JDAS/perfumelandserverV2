@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const { test } = require("./helpers/testHarness");
+const { loadWithMocks } = require("./helpers/loadWithMocks");
 
 const {
   applyTemplateValue,
@@ -90,4 +91,78 @@ test("runTriggers executes active triggers in order and mutates record through a
   assert.equal(result.status, "draft");
   assert.equal(result.message, "Estado draft");
   assert.equal(logs[0][1].message, "Trigger draft");
+});
+
+test("syncSaleItemStatus recalculates parent rollups after syncing sale items", async () => {
+  let updatedSaleItems = null;
+  let productBulkOps = null;
+  let rollupRequest = null;
+
+  const SaleItemModel = {
+    find: () => ({
+      lean: async () => [{ _id: "item-1", product: "product-1", quantity: 1 }],
+    }),
+    updateMany: async (query, update) => {
+      updatedSaleItems = { query, update };
+    },
+    aggregate: async () => [{ _id: "product-1", totalQuantity: 1 }],
+  };
+
+  const ProductModel = {
+    bulkWrite: async (ops) => {
+      productBulkOps = ops;
+    },
+  };
+
+  const { runTriggers: runTriggersWithMocks } = loadWithMocks("src/services/triggerMotor.js", {
+    "../models/CustomRecord": {
+      getCustomRecordModel: (apiName) =>
+        apiName === "sale_item" ? SaleItemModel : ProductModel,
+    },
+    "../models/CustomObject": {
+      findOne: () => ({ lean: async () => null }),
+    },
+    "./automationFlowService": {
+      listExecutableFlows: async () => [],
+    },
+  });
+
+  await runTriggersWithMocks({
+    objectDefinition: {
+      automationTriggers: [
+        {
+          name: "Sincronizar estado de lineas",
+          isActive: true,
+          when: "afterUpdate",
+          stopOnError: true,
+          actions: [
+            {
+              type: "syncSaleItemStatus",
+              config: {
+                targetObject: "sale_item",
+                productObject: "product",
+              },
+            },
+          ],
+        },
+      ],
+    },
+    when: "afterUpdate",
+    objectApiName: "sales",
+    record: { _id: "sale-1", status: "Completada" },
+    previousRecord: { _id: "sale-1", status: "Borrador" },
+    recalculateRollupsForParent: async (request) => {
+      rollupRequest = request;
+    },
+  });
+
+  assert.deepEqual(updatedSaleItems, {
+    query: { sale: "sale-1" },
+    update: { $set: { sale_status: "Completada" } },
+  });
+  assert.equal(productBulkOps[0].updateOne.filter._id, "product-1");
+  assert.deepEqual(rollupRequest, {
+    parentObjectApiName: "sales",
+    parentRecordId: "sale-1",
+  });
 });

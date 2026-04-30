@@ -46,8 +46,11 @@ function buildWhatsappText(summary) {
     `Total: ${summary.totalSaleFormatted}`,
     `Pagado: ${summary.totalPaidFormatted}`,
     `Pendiente: ${summary.balanceDueFormatted}`,
-    `En mora: ${summary.overdueTotalFormatted}`,
   ];
+
+  if (summary.overdueTotal > 0) {
+    lines.push(`En mora: ${summary.overdueTotalFormatted}`);
+  }
 
   if (summary.overduePayments.length) {
     lines.push("", "Cuotas vencidas:");

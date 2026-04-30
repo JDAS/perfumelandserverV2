@@ -561,7 +561,7 @@ async function setSalePaymentStatus(config = {}, context) {
 }
 
 async function syncSaleItemStatus(config = {}, context) {
-    const { record } = context;
+    const { objectApiName, record, recalculateRollupsForParent: recalculateRollupsForParentFromContext } = context;
     const {
         saleIdField = "_id",
         saleStatusField = "status",
@@ -641,7 +641,9 @@ async function syncSaleItemStatus(config = {}, context) {
         await ProductModel.bulkWrite(bulkOps);
     }
 
-    const { recalculateRollupsForParent } = require("../utils/rollupEngine");
+    const recalculateRollupsForParent =
+        recalculateRollupsForParentFromContext ||
+        require("../utils/rollupEngine").recalculateRollupsForParent;
     await recalculateRollupsForParent({
         parentObjectApiName: objectApiName,
         parentRecordId: saleId,
@@ -842,6 +844,7 @@ async function runTriggers({
     record,
     previousRecord = null,
     logger = console,
+    recalculateRollupsForParent = null,
 }) {
     const flowTriggers = await listExecutableFlows({ objectApiName, when });
 
@@ -868,6 +871,7 @@ async function runTriggers({
                     record: workingRecord,
                     previousRecord,
                     logger,
+                    recalculateRollupsForParent,
                 });
             }
         } catch (error) {

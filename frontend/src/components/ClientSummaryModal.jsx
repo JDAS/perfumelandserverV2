@@ -93,7 +93,7 @@ export default function ClientSummaryModal({
                 <p className="mt-2 text-lg font-semibold text-gray-900">{summary.balanceDueFormatted}</p>
               </div>
             ) : null}
-            {summary.overdueTotalFormatted ? (
+            {summary.overdueTotal > 0 ? (
               <div className="rounded-xl border p-4">
                 <p className="text-xs uppercase tracking-[0.24em] text-rose-500">En mora</p>
                 <p className="mt-2 text-lg font-semibold text-rose-700">{summary.overdueTotalFormatted}</p>
