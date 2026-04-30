@@ -438,3 +438,223 @@ test("deleteRecord detaches optional lookup children by default", async () => {
   ]);
   assert.deepEqual(deleted, ["client:client-1"]);
 });
+
+test("deleteRecord restricts deletion when lookup policy is restrict", async () => {
+  const objectDefinitions = {
+    client: {
+      apiName: "client",
+      fields: [{ apiName: "name", type: "text" }],
+      automationTriggers: [],
+    },
+    sales: {
+      apiName: "sales",
+      fields: [
+        {
+          apiName: "client_id",
+          label: "Cliente",
+          type: "lookup",
+          referenceTo: "client",
+          required: false,
+          onParentDelete: "restrict",
+        },
+      ],
+      automationTriggers: [],
+    },
+  };
+
+  const service = loadWithMocks("src/services/customRecordService.js", {
+    "../models/CustomObject": {
+      findOne: ({ apiName }) => ({
+        lean: async () => objectDefinitions[apiName],
+      }),
+      find: (query) => ({
+        lean: async () => {
+          const referenceTo = query.fields.$elemMatch.referenceTo;
+          return Object.values(objectDefinitions).filter((definition) =>
+            (definition.fields || []).some(
+              (field) => field.type === "lookup" && field.referenceTo === referenceTo
+            )
+          );
+        },
+      }),
+    },
+    "../models/CustomRecord": {
+      getCustomRecordModel: (apiName) =>
+        apiName === "client"
+          ? {
+              findById: async () => ({
+                _id: "client-1",
+                toObject() {
+                  return { _id: "client-1" };
+                },
+              }),
+              findByIdAndDelete: async () => {
+                throw new Error("should not delete parent");
+              },
+            }
+          : {
+              countDocuments: async () => 1,
+            },
+    },
+    "../utils/formulaEngine": {
+      applyFormulaFields: (_fields, record) => record,
+    },
+    "../utils/rollupEngine": {
+      recalculateParentRollupsFromChild: async () => {},
+    },
+    "./recordValidationService": {
+      buildDefaultPayload: () => ({}),
+      validateRecordPayload: async () => ({
+        sanitizedPayload: {},
+        errors: [],
+        invalidFields: [],
+        blockedFields: [],
+      }),
+    },
+    "./triggerMotor": {
+      runTriggers: async (payload) => payload.record,
+    },
+    "./inventorySyncService": {
+      syncInventoryForProducts: async () => {},
+    },
+    "./campaignSyncService": {
+      syncSaleCampaigns: async () => {},
+    },
+    "./campaignSyncHooks": {
+      shouldSyncCampaignsForSale: () => false,
+    },
+    "./customRecordQueryService": {
+      resolveLookupData: async (records) => records,
+      listRecords: async () => {
+        throw new Error("not used");
+      },
+      getRecordByIdEnriched: async () => {
+        throw new Error("not used");
+      },
+      getRelatedRecords: async () => {
+        throw new Error("not used");
+      },
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.deleteRecordWithTriggers({
+        objectApiName: "client",
+        recordId: "client-1",
+      }),
+    (error) => error.statusCode === 409 && /registros relacionados/.test(error.message)
+  );
+});
+
+test("deleteRecord ignores children when lookup policy is ignore", async () => {
+  const updates = [];
+  const deleted = [];
+  const objectDefinitions = {
+    client: {
+      apiName: "client",
+      fields: [{ apiName: "name", type: "text" }],
+      automationTriggers: [],
+    },
+    sales: {
+      apiName: "sales",
+      fields: [
+        {
+          apiName: "client_id",
+          label: "Cliente",
+          type: "lookup",
+          referenceTo: "client",
+          required: false,
+          onParentDelete: "ignore",
+        },
+      ],
+      automationTriggers: [],
+    },
+  };
+
+  const service = loadWithMocks("src/services/customRecordService.js", {
+    "../models/CustomObject": {
+      findOne: ({ apiName }) => ({
+        lean: async () => objectDefinitions[apiName],
+      }),
+      find: (query) => ({
+        lean: async () => {
+          const referenceTo = query.fields.$elemMatch.referenceTo;
+          return Object.values(objectDefinitions).filter((definition) =>
+            (definition.fields || []).some(
+              (field) => field.type === "lookup" && field.referenceTo === referenceTo
+            )
+          );
+        },
+      }),
+    },
+    "../models/CustomRecord": {
+      getCustomRecordModel: (apiName) =>
+        apiName === "client"
+          ? {
+              findById: async () => ({
+                _id: "client-1",
+                toObject() {
+                  return { _id: "client-1" };
+                },
+              }),
+              findByIdAndDelete: async (id) => {
+                deleted.push(`client:${id}`);
+              },
+            }
+          : {
+              countDocuments: async () => 1,
+              updateMany: async (query, update) => {
+                updates.push({ query, update });
+              },
+            },
+    },
+    "../utils/formulaEngine": {
+      applyFormulaFields: (_fields, record) => record,
+    },
+    "../utils/rollupEngine": {
+      recalculateParentRollupsFromChild: async () => {},
+    },
+    "./recordValidationService": {
+      buildDefaultPayload: () => ({}),
+      validateRecordPayload: async () => ({
+        sanitizedPayload: {},
+        errors: [],
+        invalidFields: [],
+        blockedFields: [],
+      }),
+    },
+    "./triggerMotor": {
+      runTriggers: async (payload) => payload.record,
+    },
+    "./inventorySyncService": {
+      syncInventoryForProducts: async () => {},
+    },
+    "./campaignSyncService": {
+      syncSaleCampaigns: async () => {},
+    },
+    "./campaignSyncHooks": {
+      shouldSyncCampaignsForSale: () => false,
+    },
+    "./customRecordQueryService": {
+      resolveLookupData: async (records) => records,
+      listRecords: async () => {
+        throw new Error("not used");
+      },
+      getRecordByIdEnriched: async () => {
+        throw new Error("not used");
+      },
+      getRelatedRecords: async () => {
+        throw new Error("not used");
+      },
+    },
+  });
+
+  await service.deleteRecordWithTriggers({
+    objectApiName: "client",
+    recordId: "client-1",
+  });
+
+  assert.deepEqual(updates, []);
+  assert.deepEqual(deleted, ["client:client-1"]);
+});

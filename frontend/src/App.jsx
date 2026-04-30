@@ -20,6 +20,7 @@ const ObjectMetadataPage = lazy(() => import("./pages/ObjectMetadataPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const QuoteBuilderPage = lazy(() => import("./pages/QuoteBuilderPage"));
 const RecordDetailPage = lazy(() => import("./pages/RecordDetailPage"));
+const MobileOpsPage = lazy(() => import("./pages/MobileOpsPage"));
 
 function RouteFallback() {
   return (
@@ -59,6 +60,10 @@ function App() {
                 <Route
                   path="/admin/workspace-lab-2"
                   element={<AdminRoute><AdminLayout><AdminWorkspaceLab2 /></AdminLayout></AdminRoute>}
+                />
+                <Route
+                  path="/admin/mobile"
+                  element={<AdminRoute><AdminLayout><MobileOpsPage /></AdminLayout></AdminRoute>}
                 />
                 <Route
                   path="/admin/object/:apiName"
