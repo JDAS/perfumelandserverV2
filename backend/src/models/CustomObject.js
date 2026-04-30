@@ -9,6 +9,11 @@ const fieldSchema = new mongoose.Schema(
     options: [String],
     defaultValue: mongoose.Schema.Types.Mixed,
     referenceTo: String,
+    onParentDelete: {
+      type: String,
+      enum: ["", "cascade", "restrict", "detach", "ignore"],
+      default: "",
+    },
     lookupFilters: [
       {
         field: String,

@@ -55,6 +55,7 @@ function createEmptyField() {
     options: [],
     defaultValue: "",
     referenceTo: "",
+    onParentDelete: "",
     visibleInList: true,
     visibleInDetail: true,
     visibleInForm: true,
@@ -108,6 +109,7 @@ function buildObjectFormState(initialData) {
           : currentField.defaultValue ??
             (currentField.type === "boolean" ? false : ""),
       referenceTo: currentField.referenceTo || "",
+      onParentDelete: currentField.onParentDelete || "",
       formula: {
         expression: currentField.formula?.expression || "",
         returnType: currentField.formula?.returnType || "text",
@@ -365,6 +367,10 @@ function ObjectFormContent({ initialData = null, onSave, saving = false }) {
         field.type === "lookup"
           ? normalizeApiName(field.referenceTo)
           : "",
+      onParentDelete:
+        field.type === "lookup"
+          ? field.onParentDelete || ""
+          : "",
       visibleInForm:
         field.type === "rollup"
           ? false
@@ -574,6 +580,8 @@ function ObjectFormContent({ initialData = null, onSave, saving = false }) {
                 options: e.target.value === "select" ? field.options || [] : [],
                 referenceTo:
                   e.target.value === "lookup" ? field.referenceTo || "" : "",
+                onParentDelete:
+                  e.target.value === "lookup" ? field.onParentDelete || "" : "",
                 visibleInForm:
                   e.target.value === "rollup"
                     ? false
@@ -683,6 +691,30 @@ function ObjectFormContent({ initialData = null, onSave, saving = false }) {
               <p className="text-xs text-gray-500 md:col-span-2">
                 Los filtros de lookup aceptan plantillas dinamicas como <code>{"{{sellerName}}"}</code> o <code>{"{{saleId}}"}</code>.
               </p>
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-medium">
+                  Al borrar el registro padre
+                </label>
+                <select
+                  className="w-full rounded border p-2"
+                  value={field.onParentDelete || ""}
+                  onChange={(e) =>
+                    setField({
+                      ...field,
+                      onParentDelete: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">Automatico: requerido=cascada, opcional=limpiar</option>
+                  <option value="cascade">Borrar este hijo en cascada</option>
+                  <option value="restrict">Bloquear borrado del padre</option>
+                  <option value="detach">Limpiar este lookup</option>
+                  <option value="ignore">No hacer nada</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Si el lookup es requerido, el automatico borra el hijo porque no puede vivir sin su padre.
+                </p>
+              </div>
             </>
           )}
 
@@ -955,7 +987,8 @@ function ObjectFormContent({ initialData = null, onSave, saving = false }) {
                           ? normalizeDateDefaultValue(currentField.defaultValue)
                           : currentField.defaultValue ??
                             (currentField.type === "boolean" ? false : ""),
-                      referenceTo: currentField.referenceTo || "",
+                  referenceTo: currentField.referenceTo || "",
+                  onParentDelete: currentField.onParentDelete || "",
                       formula: {
                         expression: currentField.formula?.expression || "",
                         returnType: currentField.formula?.returnType || "text",

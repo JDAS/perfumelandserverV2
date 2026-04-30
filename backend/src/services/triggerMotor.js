@@ -641,6 +641,12 @@ async function syncSaleItemStatus(config = {}, context) {
         await ProductModel.bulkWrite(bulkOps);
     }
 
+    const { recalculateRollupsForParent } = require("../utils/rollupEngine");
+    await recalculateRollupsForParent({
+        parentObjectApiName: objectApiName,
+        parentRecordId: saleId,
+    });
+
     return record;
 }
 

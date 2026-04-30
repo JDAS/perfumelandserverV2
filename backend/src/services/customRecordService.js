@@ -35,6 +35,66 @@ async function getRecordOrThrow(objectApiName, recordId) {
   return record;
 }
 
+function resolveDeletePolicy(field = {}) {
+  if (["cascade", "restrict", "detach", "ignore"].includes(field.onParentDelete)) {
+    return field.onParentDelete;
+  }
+
+  return field.required ? "cascade" : "detach";
+}
+
+async function applyChildDeletePolicies({ parentObjectApiName, parentId }) {
+  const childObjectDefinitions = await CustomObject.find({
+    fields: {
+      $elemMatch: {
+        type: "lookup",
+        referenceTo: parentObjectApiName,
+      },
+    },
+  }).lean();
+
+  for (const childObjectDefinition of childObjectDefinitions) {
+    const ChildModel = getCustomRecordModel(childObjectDefinition.apiName);
+    const lookupFields = (childObjectDefinition.fields || []).filter(
+      (field) => field.type === "lookup" && field.referenceTo === parentObjectApiName
+    );
+
+    for (const field of lookupFields) {
+      const policy = resolveDeletePolicy(field);
+      if (policy === "ignore") continue;
+
+      const query = { [field.apiName]: String(parentId) };
+      const childCount = await ChildModel.countDocuments(query);
+      if (childCount === 0) continue;
+
+      if (policy === "restrict") {
+        const error = new Error(
+          `No se puede borrar porque existen ${childCount} registros relacionados en ${childObjectDefinition.name || childObjectDefinition.apiName}.${field.label || field.apiName}`
+        );
+        error.statusCode = 409;
+        throw error;
+      }
+
+      if (policy === "detach") {
+        await ChildModel.updateMany(query, {
+          $unset: { [field.apiName]: "" },
+        });
+        continue;
+      }
+
+      if (policy === "cascade") {
+        const children = await ChildModel.find(query).select("_id").lean();
+        for (const child of children) {
+          await deleteRecordWithTriggers({
+            objectApiName: childObjectDefinition.apiName,
+            recordId: child._id,
+          });
+        }
+      }
+    }
+  }
+}
+
 async function listRecords(apiName, params = {}) {
   const objectDefinition = await getObjectOrThrow(apiName);
   return listRecordsWithMetadata({ objectDefinition, params });
@@ -223,6 +283,11 @@ async function deleteRecordWithTriggers({ objectApiName, recordId }) {
     objectApiName,
     record: previousRecord,
     previousRecord,
+  });
+
+  await applyChildDeletePolicies({
+    parentObjectApiName: objectApiName,
+    parentId: recordId,
   });
 
   await RecordModel.findByIdAndDelete(recordId);

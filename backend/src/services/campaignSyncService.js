@@ -1,4 +1,5 @@
 const { getCustomRecordModel } = require("../models/CustomRecord");
+const { recalculateRollupsForParent } = require("../utils/rollupEngine");
 
 function toNumber(value) {
   const numericValue = Number(value);
@@ -407,6 +408,11 @@ async function syncSaleCampaigns({ saleId, user = null }) {
         ...result,
       });
     }
+
+    await recalculateRollupsForParent({
+      parentObjectApiName: "campaign",
+      parentRecordId: campaign._id,
+    });
   }
 
   return {

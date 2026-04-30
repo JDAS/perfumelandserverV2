@@ -2,6 +2,7 @@ const { validateAllFormulaFields } = require('../services/formulaValidator');
 
 const RESERVED_FIELD_NAMES = ["_id", "createdAt", "updatedAt", "__v"];
 const FILTER_OPERATORS = ["eq", "ne", "gt", "gte", "lt", "lte", "contains"];
+const DELETE_POLICIES = ["cascade", "restrict", "detach", "ignore"];
 
 const FIELD_TYPES = [
   "text",
@@ -37,6 +38,7 @@ function createDefaultField() {
     options: [],
     defaultValue: "",
     referenceTo: "",
+    onParentDelete: "",
     visibleInList: true,
     visibleInDetail: true,
     visibleInForm: true,
@@ -193,6 +195,11 @@ function sanitizeField(rawField = {}, index = 0) {
     referenceTo:
       type === "lookup"
         ? normalizeApiName(rawField.referenceTo || "")
+        : "",
+
+    onParentDelete:
+      type === "lookup" && DELETE_POLICIES.includes(rawField.onParentDelete)
+        ? rawField.onParentDelete
         : "",
 
     lookupFilters:
@@ -466,6 +473,12 @@ function validateObjectMetadata(payload = {}) {
         errors.push(`El campo lookup ${field.apiName} debe tener referenceTo`);
       }
 
+      if (field.onParentDelete && !DELETE_POLICIES.includes(field.onParentDelete)) {
+        errors.push(
+          `El campo lookup ${field.apiName} tiene onParentDelete inválido: ${field.onParentDelete}`
+        );
+      }
+
       if (field.lookupFilters && !Array.isArray(field.lookupFilters)) {
         errors.push(`El campo lookup ${field.apiName} tiene lookupFilters inválido`);
       }
@@ -639,6 +652,7 @@ module.exports = {
   RESERVED_FIELD_NAMES,
   FIELD_TYPES,
   FILTER_OPERATORS,
+  DELETE_POLICIES,
   normalizeApiName,
   sanitizeObjectPayload,
   validateObjectMetadata,
