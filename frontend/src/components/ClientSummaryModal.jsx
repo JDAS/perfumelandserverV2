@@ -93,6 +93,12 @@ export default function ClientSummaryModal({
                 <p className="mt-2 text-lg font-semibold text-gray-900">{summary.balanceDueFormatted}</p>
               </div>
             ) : null}
+            {summary.overdueTotalFormatted ? (
+              <div className="rounded-xl border p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-rose-500">En mora</p>
+                <p className="mt-2 text-lg font-semibold text-rose-700">{summary.overdueTotalFormatted}</p>
+              </div>
+            ) : null}
             {summary.creditPreviewTotalFormatted ? (
               <div className="rounded-xl border p-4">
                 <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Credito</p>
@@ -100,6 +106,32 @@ export default function ClientSummaryModal({
               </div>
             ) : null}
           </div>
+
+          {summary.overduePayments?.length || summary.nextPayment ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {summary.overduePayments?.length ? (
+                <div className="rounded-2xl border bg-rose-50 p-4">
+                  <p className="text-xs uppercase tracking-[0.24em] text-rose-500">Cuotas vencidas</p>
+                  <ul className="mt-3 space-y-2 text-sm text-rose-900">
+                    {summary.overduePayments.map((payment) => (
+                      <li key={payment.id}>
+                        Cuota #{payment.number} / {payment.dueDate}, monto: {payment.pendingAmountFormatted}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {summary.nextPayment ? (
+                <div className="rounded-2xl border bg-emerald-50 p-4">
+                  <p className="text-xs uppercase tracking-[0.24em] text-emerald-600">Proximo pago</p>
+                  <p className="mt-3 text-sm font-semibold text-emerald-900">
+                    Cuota #{summary.nextPayment.number} / {summary.nextPayment.dueDate}, monto: {summary.nextPayment.pendingAmountFormatted}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {summary.payments?.length ? (
             <div className="rounded-2xl border bg-white">

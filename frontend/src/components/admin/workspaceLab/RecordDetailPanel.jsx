@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   BadgeCheck,
+  CalendarClock,
   ChartColumn,
   CreditCard,
   Eye,
@@ -21,6 +22,7 @@ import {
 import {
   convertQuoteToSale,
   getClientSummary,
+  getSalePaymentSummary,
   getRecordById,
   getRelatedRecords,
   syncProductSupplierReference,
@@ -486,6 +488,13 @@ function RecordActionsBar({
       setSummaryOpen(true);
     });
 
+  const handleOpenPaymentSummary = () =>
+    runAction("paymentSummary", async () => {
+      const data = await getSalePaymentSummary(record._id);
+      setSummary(data);
+      setSummaryOpen(true);
+    });
+
   const handleCopySummary = async () => {
     if (!summary?.whatsappText) return;
 
@@ -547,6 +556,14 @@ function RecordActionsBar({
               icon={Sparkles}
               title="Evaluar promo"
               aria-label="Evaluar promo"
+              style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+            />
+            <QuickActionButton
+              onClick={handleOpenPaymentSummary}
+              disabled={busyAction === "paymentSummary"}
+              icon={CalendarClock}
+              title="Resumen de pagos"
+              aria-label="Resumen de pagos"
               style={{ borderColor: adminTheme.border, color: adminTheme.text }}
             />
             {!record.commission_paid && Number(record.commission_amount || 0) > 0 ? (

@@ -9,6 +9,8 @@ require("./rollupEngine.test");
 require("./supplierCatalogService.test");
 require("./supplierCatalogSyncService.test");
 require("./clientSummaryService.test");
+require("./salePaymentSummaryService.test");
+require("./salesPaymentHighlightService.test");
 require("./priceReviewReportService.test");
 
 const { run } = require("./helpers/testHarness");

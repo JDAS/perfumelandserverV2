@@ -160,6 +160,18 @@ export const getClientSummary = async (object, id) => {
   return res.data;
 };
 
+export const getSalePaymentSummary = async (id) => {
+  const res = await apiClient.get(`/api/custom-records/sales/${id}/payment-summary`);
+  return res.data;
+};
+
+export const getSalesPaymentHighlights = async (ids = []) => {
+  const res = await apiClient.get("/api/custom-records/sales/payment-highlights", {
+    params: { ids: ids.join(",") },
+  });
+  return res.data;
+};
+
 export const convertQuoteToSale = async (id) => {
   const res = await apiClient.post(`/api/custom-records/quote/${id}/convert-to-sale`);
   return res.data;

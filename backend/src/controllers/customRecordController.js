@@ -6,6 +6,8 @@ const {
   deleteRecordWithTriggers,
 } = require("../services/customRecordService");
 const { buildClientSummary } = require("../services/clientSummaryService");
+const { buildSalePaymentSummary } = require("../services/salePaymentSummaryService");
+const { buildSalesPaymentHighlights } = require("../services/salesPaymentHighlightService");
 const { convertQuoteToSale } = require("../services/quoteConversionService");
 const { syncSaleCampaigns } = require("../services/campaignSyncService");
 const { refreshProductSupplierReference } = require("../services/supplierCatalogSyncService");
@@ -66,6 +68,22 @@ exports.getClientSummary = async (req, res) => {
   const { object, id } = req.params;
   const summary = await buildClientSummary(object, id);
   res.json(summary);
+};
+
+exports.getSalePaymentSummary = async (req, res) => {
+  const { object, id } = req.params;
+
+  if (object !== "sales") {
+    throw createHttpError(400, "Esta accion solo aplica a ventas");
+  }
+
+  const summary = await buildSalePaymentSummary(id);
+  res.json(summary);
+};
+
+exports.getSalesPaymentHighlights = async (req, res) => {
+  const highlights = await buildSalesPaymentHighlights(req.query.ids || "");
+  res.json({ highlights });
 };
 
 exports.convertQuoteToSale = async (req, res) => {

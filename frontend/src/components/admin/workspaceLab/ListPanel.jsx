@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BadgeCheck,
+  CalendarClock,
   ChartColumn,
   CreditCard,
   Eye,
@@ -24,6 +25,8 @@ import {
   convertQuoteToSale,
   deleteRecord,
   getClientSummary,
+  getSalePaymentSummary,
+  getSalesPaymentHighlights,
   getRecords,
   syncSaleCampaigns,
   syncProductSupplierReference,
@@ -32,6 +35,26 @@ import {
 import { adminTheme } from "../../../theme/adminTheme";
 import { CreateRecordModal } from "./RecordForms";
 import { QuickActionButton } from "./WorkspaceChrome";
+
+const PAGE_LIMIT = 20;
+
+const SALES_PAYMENT_STYLES = {
+  paid: {
+    background: "#ecfdf5",
+    border: "#86efac",
+    text: "#166534",
+  },
+  due_soon: {
+    background: "#fffbeb",
+    border: "#fbbf24",
+    text: "#92400e",
+  },
+  overdue: {
+    background: "#fff1f2",
+    border: "#fb7185",
+    text: "#9f1239",
+  },
+};
 
 function formatFilterLabel(filter, objectDef) {
   if (!filter?.field) return "Filtro";
@@ -70,6 +93,7 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
   const [syncingCampaignId, setSyncingCampaignId] = useState(null);
   const [syncingSupplierId, setSyncingSupplierId] = useState(null);
   const [markingCommissionId, setMarkingCommissionId] = useState(null);
+  const [paymentHighlights, setPaymentHighlights] = useState({});
   const [summary, setSummary] = useState(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryLoadingId, setSummaryLoadingId] = useState(null);
@@ -104,7 +128,7 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
       setLoading(true);
       const data = await getRecords(objectDef.apiName, {
         page,
-        limit: 12,
+        limit: PAGE_LIMIT,
         search: searchTerm,
         sortBy: sortBy || "createdAt",
         sortOrder: sortOrder || "desc",
@@ -116,7 +140,7 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
           page: data?.page || page,
           pages: data?.pages || 1,
           total: data?.total || 0,
-          limit: data?.limit || 12,
+          limit: data?.limit || PAGE_LIMIT,
         }
       );
     } catch {
@@ -135,7 +159,7 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
         setLoading(true);
         const data = await getRecords(objectDef.apiName, {
           page,
-          limit: 12,
+          limit: PAGE_LIMIT,
           search: searchTerm,
           sortBy: sortBy || "createdAt",
           sortOrder: sortOrder || "desc",
@@ -148,7 +172,7 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
             page: data?.page || page,
             pages: data?.pages || 1,
             total: data?.total || 0,
-            limit: data?.limit || 12,
+            limit: data?.limit || PAGE_LIMIT,
           }
         );
       } catch {
@@ -167,6 +191,35 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
       cancelled = true;
     };
   }, [activeFilters, objectDef.apiName, page, searchTerm, sortBy, sortOrder]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPaymentHighlights() {
+      if (objectDef.apiName !== "sales" || records.length === 0) {
+        setPaymentHighlights({});
+        return;
+      }
+
+      try {
+        const ids = records.map((record) => record._id).filter(Boolean);
+        const data = await getSalesPaymentHighlights(ids);
+        if (!cancelled) {
+          setPaymentHighlights(data?.highlights || {});
+        }
+      } catch (error) {
+        console.error(error);
+        if (!cancelled) {
+          setPaymentHighlights({});
+        }
+      }
+    }
+
+    loadPaymentHighlights();
+    return () => {
+      cancelled = true;
+    };
+  }, [objectDef.apiName, records]);
 
   const handleApplySearch = () => {
     setPage(1);
@@ -256,6 +309,22 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
     }
   };
 
+  const handleOpenPaymentSummary = async (recordId) => {
+    if (!recordId) return;
+
+    try {
+      setSummaryLoadingId(recordId);
+      const data = await getSalePaymentSummary(recordId);
+      setSummary(data);
+      setSummaryOpen(true);
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudo generar el resumen de pagos", "error");
+    } finally {
+      setSummaryLoadingId(null);
+    }
+  };
+
   const handleCopySummary = async () => {
     if (!summary?.whatsappText) return;
 
@@ -335,6 +404,34 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
     }
 
     return formatFieldValue(field, record[field.apiName], record);
+  };
+
+  const getSalesRowStyle = (record) => {
+    if (objectDef.apiName !== "sales") return {};
+    const highlight = paymentHighlights[String(record._id || "")];
+    const style = SALES_PAYMENT_STYLES[highlight?.status];
+    if (!style) return {};
+
+    return {
+      backgroundColor: style.background,
+      boxShadow: `inset 4px 0 0 ${style.border}`,
+    };
+  };
+
+  const getSalesPaymentBadge = (record) => {
+    if (objectDef.apiName !== "sales") return null;
+    const highlight = paymentHighlights[String(record._id || "")];
+    const style = SALES_PAYMENT_STYLES[highlight?.status];
+    if (!highlight || !style) return null;
+
+    return (
+      <span
+        className="inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold"
+        style={{ backgroundColor: style.border, color: style.text }}
+      >
+        {highlight.label}
+      </span>
+    );
   };
 
   return (
@@ -483,7 +580,7 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
               </thead>
               <tbody>
                 {records.map((record) => (
-                  <tr key={record._id}>
+                  <tr key={record._id} style={getSalesRowStyle(record)}>
                     {columns.map((field) => (
                       <td
                         key={field.apiName}
@@ -494,6 +591,9 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
                       </td>
                     ))}
                     <td className="border-b p-3" style={{ borderColor: adminTheme.border }}>
+                      {getSalesPaymentBadge(record) ? (
+                        <div className="mb-2">{getSalesPaymentBadge(record)}</div>
+                      ) : null}
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
@@ -534,6 +634,14 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
                               icon={Sparkles}
                               title={syncingCampaignId === record._id ? "Evaluando promo..." : "Evaluar promo"}
                               aria-label={syncingCampaignId === record._id ? "Evaluando promo..." : "Evaluar promo"}
+                              style={{ borderColor: adminTheme.border, color: adminTheme.text }}
+                            />
+                            <QuickActionButton
+                              onClick={() => handleOpenPaymentSummary(record._id)}
+                              disabled={summaryLoadingId === record._id}
+                              icon={CalendarClock}
+                              title={summaryLoadingId === record._id ? "Generando resumen..." : "Resumen de pagos"}
+                              aria-label={summaryLoadingId === record._id ? "Generando resumen..." : "Resumen de pagos"}
                               style={{ borderColor: adminTheme.border, color: adminTheme.text }}
                             />
                             {!record.commission_paid && Number(record.commission_amount || 0) > 0 ? (
@@ -636,7 +744,7 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
               setLoading(true);
               const data = await getRecords(objectDef.apiName, {
                 page: 1,
-                limit: 12,
+                limit: PAGE_LIMIT,
                 search: searchTerm,
                 sortBy: sortBy || "createdAt",
                 sortOrder: sortOrder || "desc",
@@ -648,7 +756,7 @@ export function ListPanel({ objectDef, onOpenRecord, onOpenEditRecord, onOpenLoo
                   page: data?.page || 1,
                   pages: data?.pages || 1,
                   total: data?.total || 0,
-                  limit: data?.limit || 12,
+                  limit: data?.limit || PAGE_LIMIT,
                 }
               );
             } catch (error) {
