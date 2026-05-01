@@ -72,6 +72,7 @@ export default function QuoteBuilderWorkspace({
   onCancel,
   onSaved,
   onConverted,
+  compact = false,
 }) {
   const { addToast } = useToast();
   const isEditMode = Boolean(quoteId);
@@ -486,13 +487,19 @@ export default function QuoteBuilderWorkspace({
 
   return (
     <>
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <section className="space-y-6 rounded-2xl border bg-white p-6 shadow-sm">
-          <div className="grid gap-4 md:grid-cols-2">
+      <div className={compact ? "space-y-4" : "grid gap-6 xl:grid-cols-[1.2fr_0.8fr]"}>
+        <section
+          className={
+            compact
+              ? "space-y-4 bg-white"
+              : "space-y-6 rounded-2xl border bg-white p-6 shadow-sm"
+          }
+        >
+          <div className={compact ? "grid gap-3" : "grid gap-4 md:grid-cols-2"}>
             <div>
               <label className="mb-1 block text-sm font-medium">Cliente</label>
               <input
-                className="w-full rounded-lg border p-3"
+                className={`w-full rounded-lg border ${compact ? "p-2.5" : "p-3"}`}
                 value={quote.name}
                 onChange={(event) =>
                   setQuote((prev) => ({ ...prev, name: event.target.value }))
@@ -504,7 +511,7 @@ export default function QuoteBuilderWorkspace({
               <label className="mb-1 block text-sm font-medium">Fecha</label>
               <input
                 type="date"
-                className="w-full rounded-lg border p-3"
+                className={`w-full rounded-lg border ${compact ? "p-2.5" : "p-3"}`}
                 value={quote.quote_date}
                 onChange={(event) =>
                   setQuote((prev) => ({ ...prev, quote_date: event.target.value }))
@@ -515,7 +522,7 @@ export default function QuoteBuilderWorkspace({
             <div>
               <label className="mb-1 block text-sm font-medium">Tipo</label>
               <select
-                className="w-full rounded-lg border p-3"
+                className={`w-full rounded-lg border ${compact ? "p-2.5" : "p-3"}`}
                 value={quote.type}
                 onChange={(event) =>
                   setQuote((prev) => ({ ...prev, type: event.target.value }))
@@ -529,7 +536,7 @@ export default function QuoteBuilderWorkspace({
             <div>
               <label className="mb-1 block text-sm font-medium">Vendedor</label>
               <select
-                className="w-full rounded-lg border p-3"
+                className={`w-full rounded-lg border ${compact ? "p-2.5" : "p-3"}`}
                 value={quote.seller_id}
                 onChange={(event) =>
                   setQuote((prev) => ({ ...prev, seller_id: event.target.value }))
@@ -549,7 +556,7 @@ export default function QuoteBuilderWorkspace({
                 <div>
                   <label className="mb-1 block text-sm font-medium">Tipo de credito</label>
                   <select
-                    className="w-full rounded-lg border p-3"
+                    className={`w-full rounded-lg border ${compact ? "p-2.5" : "p-3"}`}
                     value={quote.credittype}
                     onChange={(event) =>
                       setQuote((prev) => ({ ...prev, credittype: event.target.value }))
@@ -567,7 +574,7 @@ export default function QuoteBuilderWorkspace({
                   <input
                     type="number"
                     min={1}
-                    className="w-full rounded-lg border p-3"
+                    className={`w-full rounded-lg border ${compact ? "p-2.5" : "p-3"}`}
                     value={quote.quotes}
                     onChange={(event) =>
                       setQuote((prev) => ({
@@ -581,22 +588,29 @@ export default function QuoteBuilderWorkspace({
             ) : null}
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">Perfumes</h2>
+          <div className={compact ? "space-y-3" : "space-y-4"}>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className={compact ? "text-lg font-black" : "text-xl font-bold"}>Perfumes</h2>
               <button
                 type="button"
                 onClick={handleAddItem}
-                className="rounded bg-black px-4 py-2 text-white"
+                className={
+                  compact
+                    ? "rounded-xl bg-black px-3 py-2 text-sm font-semibold text-white"
+                    : "rounded bg-black px-4 py-2 text-white"
+                }
               >
-                Agregar perfume
+                {compact ? "Agregar" : "Agregar perfume"}
               </button>
             </div>
 
             {computedItems.map((item, index) => (
-              <div key={`quote-item-${item._id || index}`} className="rounded-xl border p-4">
+              <div
+                key={`quote-item-${item._id || index}`}
+                className={compact ? "rounded-2xl border p-3" : "rounded-xl border p-4"}
+              >
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
+                  <span className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-gray-500">
                     Tipo de item
                   </span>
                   <button
@@ -628,7 +642,7 @@ export default function QuoteBuilderWorkspace({
                   ) : null}
                 </div>
 
-                <div className="grid gap-3 xl:grid-cols-[minmax(0,2.2fr)_0.85fr_0.95fr_auto]">
+                <div className={compact ? "grid gap-3" : "grid gap-3 xl:grid-cols-[minmax(0,2.2fr)_0.85fr_0.95fr_auto]"}>
                   <div>
                     <label className="mb-1 block text-sm font-medium">
                       {item.entry_mode === "manual" ? "Nombre del perfume" : "Producto"}
@@ -636,7 +650,7 @@ export default function QuoteBuilderWorkspace({
                     {item.entry_mode === "manual" ? (
                       <input
                         type="text"
-                        className="w-full rounded-lg border p-3"
+                        className={`w-full rounded-lg border ${compact ? "p-2.5" : "p-3"}`}
                         value={item.manual_product_name || ""}
                         placeholder="Ej. Baccarat Rouge 540"
                         onChange={(event) =>
@@ -673,7 +687,7 @@ export default function QuoteBuilderWorkspace({
                     <input
                       type="number"
                       min={1}
-                      className="w-full rounded-lg border p-3"
+                      className={`w-full rounded-lg border ${compact ? "p-2.5" : "p-3"}`}
                       value={item.quantity}
                       onChange={(event) =>
                         updateItem(index, {
@@ -689,7 +703,7 @@ export default function QuoteBuilderWorkspace({
                     </label>
                     <input
                       type="number"
-                      className="w-full rounded-lg border p-3"
+                      className={`w-full rounded-lg border ${compact ? "p-2.5" : "p-3"}`}
                       value={item.entry_mode === "manual" ? item.list_price : item.price}
                       onChange={(event) =>
                         item.entry_mode === "manual"
@@ -709,22 +723,24 @@ export default function QuoteBuilderWorkspace({
                   </div>
 
                   <div className="flex items-end xl:justify-end">
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(index)}
-                      className="w-full rounded bg-red-600 px-4 py-3 text-white xl:w-auto"
-                    >
-                      Quitar
-                    </button>
+                    {!compact ? (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItem(index)}
+                        className="w-full rounded bg-red-600 px-4 py-3 text-white xl:w-auto"
+                      >
+                        Quitar
+                      </button>
+                    ) : null}
                   </div>
                 </div>
 
-                <div className="mt-3 grid gap-3 xl:grid-cols-[0.9fr_1fr_minmax(0,1.5fr)]">
+                <div className={compact ? "mt-3 grid gap-3" : "mt-3 grid gap-3 xl:grid-cols-[0.9fr_1fr_minmax(0,1.5fr)]"}>
                   <div>
                     <label className="mb-1 block text-sm font-medium">Descuento</label>
                     <input
                       type="number"
-                      className="w-full rounded-lg border p-3"
+                      className={`w-full rounded-lg border ${compact ? "p-2.5" : "p-3"}`}
                       value={item.discount}
                       onChange={(event) =>
                         updateItem(index, { discount: Number(event.target.value) || 0 })
@@ -735,7 +751,7 @@ export default function QuoteBuilderWorkspace({
                   <div>
                     <label className="mb-1 block text-sm font-medium">Aplica a</label>
                     <select
-                      className="w-full rounded-lg border p-3"
+                      className={`w-full rounded-lg border ${compact ? "p-2.5" : "p-3"}`}
                       value={item.discount_scope}
                       onChange={(event) =>
                         updateItem(index, { discount_scope: event.target.value })
@@ -752,7 +768,7 @@ export default function QuoteBuilderWorkspace({
                     <label className="mb-1 block text-sm font-medium">Motivo</label>
                     <input
                       type="text"
-                      className="w-full rounded-lg border p-3"
+                      className={`w-full rounded-lg border ${compact ? "p-2.5" : "p-3"}`}
                       value={item.discount_reason || ""}
                       placeholder="Combo, promocion, cliente frecuente..."
                       onChange={(event) =>
@@ -762,7 +778,7 @@ export default function QuoteBuilderWorkspace({
                   </div>
                 </div>
 
-                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                <div className={compact ? "mt-3 grid grid-cols-3 gap-2" : "mt-3 grid gap-3 md:grid-cols-3"}>
                   <div className="rounded-lg bg-gray-50 p-3 text-sm">
                     <p className="text-gray-500">Contado</p>
                     <p className="mt-1 font-semibold">
@@ -803,24 +819,34 @@ export default function QuoteBuilderWorkspace({
                     resumirse, pero no convertirse en venta hasta vincularlo a un producto activo.
                   </p>
                 ) : null}
+
+                {compact ? (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(index)}
+                    className="mt-3 w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white"
+                  >
+                    Quitar perfume
+                  </button>
+                ) : null}
               </div>
             ))}
           </div>
         </section>
 
-        <aside className="space-y-4 rounded-2xl border bg-white p-6 shadow-sm">
+        <aside className={compact ? "space-y-3 rounded-2xl border bg-white p-4 shadow-sm" : "space-y-4 rounded-2xl border bg-white p-6 shadow-sm"}>
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Resumen</p>
             <div className="mt-3 grid gap-3">
               <div className="rounded-xl border bg-gray-50 p-4">
                 <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Contado</p>
-                <p className="mt-2 text-2xl font-bold text-gray-900">{formatCRC(cashTotal)}</p>
+                <p className={compact ? "mt-2 text-xl font-bold text-gray-900" : "mt-2 text-2xl font-bold text-gray-900"}>{formatCRC(cashTotal)}</p>
               </div>
 
               {quote.type === "Credito" ? (
                 <div className="rounded-xl border bg-amber-50 p-4">
                   <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Credito</p>
-                  <p className="mt-2 text-2xl font-bold text-gray-900">
+                  <p className={compact ? "mt-2 text-xl font-bold text-gray-900" : "mt-2 text-2xl font-bold text-gray-900"}>
                     {formatCRC(creditTotal)}
                   </p>
                 </div>

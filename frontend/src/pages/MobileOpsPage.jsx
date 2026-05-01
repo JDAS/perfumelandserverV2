@@ -369,14 +369,14 @@ function PaymentPanel({ saleId, selectedSale, summary, loadingSummary, onSaleCha
 
 function QuotePanel() {
   return (
-    <section className="rounded-[2rem] border border-slate-200 bg-white p-3 shadow-sm">
+    <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 px-1">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
           Cotizacion
         </p>
         <h2 className="mt-1 text-xl font-black text-slate-950">Crear cotizacion</h2>
       </div>
-      <QuoteBuilderWorkspace />
+      <QuoteBuilderWorkspace compact />
     </section>
   );
 }
