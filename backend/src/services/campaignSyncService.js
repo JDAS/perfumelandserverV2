@@ -78,13 +78,22 @@ function buildParticipantIdentity(sale, clientRecord = null) {
   };
 }
 
+function normalizeEntryNumber(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^\d+$/.test(raw)) {
+    return String(Number(raw));
+  }
+  return raw;
+}
+
 function generateEntryPool(start, end) {
   const safeStart = Math.min(toNumber(start), toNumber(end));
   const safeEnd = Math.max(toNumber(start), toNumber(end));
-  const width = Math.max(String(safeStart).length, String(safeEnd).length, 2);
   const values = [];
 
   for (let value = safeStart; value <= safeEnd; value += 1) {
+    const width = Math.max(String(value).length, 2);
     values.push(String(value).padStart(width, "0"));
   }
 
@@ -252,15 +261,16 @@ async function recalculateCampaignParticipant({ campaign, identity, user = null 
   }
 
   const usedNumbers = new Set(
-    otherEntries.map((entry) => String(entry.entry_number)).concat(
-      retainedEntries.map((entry) => String(entry.entry_number))
-    )
+    otherEntries
+      .map((entry) => normalizeEntryNumber(entry.entry_number))
+      .concat(retainedEntries.map((entry) => normalizeEntryNumber(entry.entry_number)))
+      .filter(Boolean)
   );
 
   const availableNumbers = generateEntryPool(
     campaign.entry_start,
     campaign.entry_end
-  ).filter((entryNumber) => !usedNumbers.has(entryNumber));
+  ).filter((entryNumber) => !usedNumbers.has(normalizeEntryNumber(entryNumber)));
 
   const missingCount = Math.max(desiredEntryCount - retainedEntries.length, 0);
 
