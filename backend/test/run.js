@@ -12,6 +12,7 @@ require("./clientSummaryService.test");
 require("./salePaymentSummaryService.test");
 require("./salesPaymentHighlightService.test");
 require("./priceReviewReportService.test");
+require("./campaignPerformanceService.test");
 
 const { run } = require("./helpers/testHarness");
 

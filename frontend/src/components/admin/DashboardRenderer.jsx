@@ -37,6 +37,20 @@ function TableWidget({ widget, reportData }) {
 
   const rows = (reportData.rows || []).slice(0, 8);
 
+  const formatCell = (row, column) => {
+    const label = row[`${column.id}__label`];
+    if (label !== undefined && label !== null && label !== "") return label;
+
+    const value = row[column.id];
+    if (value === undefined || value === null || value === "") return "-";
+    if (column.type === "currency") return formatMetric(value, "currency");
+    if (column.id.endsWith("_progress") || column.id.endsWith("_margin") || column.id.endsWith("_coverage")) {
+      return formatMetric(value, "percent");
+    }
+    if (column.type === "number") return formatMetric(value, "number");
+    return value;
+  };
+
   if (!columns?.length) {
     return <p className="text-sm text-gray-500">Selecciona columnas para la tabla.</p>;
   }
@@ -58,7 +72,7 @@ function TableWidget({ widget, reportData }) {
             <tr key={`row-${index}`} className="hover:bg-gray-50">
               {columns.map((column) => (
                 <td key={column.id} className="border-b p-3 text-gray-700">
-                  {row[`${column.id}__label`] || row[column.id] || "-"}
+                  {formatCell(row, column)}
                 </td>
               ))}
             </tr>

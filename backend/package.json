@@ -29,6 +29,7 @@
     "diagnose:supplier-catalog": "node src/scripts/diagnoseSupplierCatalog.js",
     "sync:supplier-reference-metadata": "node src/scripts/syncSupplierReferenceMetadata.js",
     "sync:price-review-report": "node src/scripts/syncPriceReviewReport.js"
+    ,"sync:campaign-dashboard": "node src/scripts/syncCampaignDashboard.js"
   },
   "keywords": [],
   "author": "",

@@ -6,6 +6,7 @@ const { executePaymentsByDayReport } = require("../services/paymentsByDayReportS
 const { executePriceReviewReport } = require("../services/priceReviewReportService");
 const { executeUpcomingPaymentsReport } = require("../services/upcomingPaymentsReportService");
 const { executeStreetInvestmentReport } = require("../services/streetInvestmentReportService");
+const { executeCampaignPerformanceReport } = require("../services/campaignPerformanceService");
 const { createHttpError } = require("../utils/httpError");
 
 function normalizeApiName(value = "") {
@@ -87,6 +88,8 @@ exports.runReport = async (req, res) => {
     data = await executeUpcomingPaymentsReport(report, req.query || {});
   } else if (report.engine === "street_investment") {
     data = await executeStreetInvestmentReport(report, req.query || {});
+  } else if (report.engine === "campaign_performance") {
+    data = await executeCampaignPerformanceReport(report, req.query || {});
   } else {
     data = await executeReportDefinition(report);
   }

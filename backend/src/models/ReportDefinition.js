@@ -69,6 +69,7 @@ const reportDefinitionSchema = new mongoose.Schema(
         "price_review",
         "upcoming_payments",
         "street_investment",
+        "campaign_performance",
       ],
       default: "standard",
     },
