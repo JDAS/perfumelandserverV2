@@ -46,11 +46,17 @@ function buildCampaignPerformanceRows({
     let paidTotal = 0;
     let costTotal = 0;
     let revenueWithKnownCost = 0;
+    let commissionGenerated = 0;
+    let commissionPaid = 0;
     let unitsSold = 0;
 
     for (const sale of campaignSales) {
       salesTotal += toNumber(sale.total);
       paidTotal += toNumber(sale.total_paid);
+      commissionGenerated += toNumber(sale.commission_amount);
+      if (sale.commission_paid === true) {
+        commissionPaid += toNumber(sale.commission_amount);
+      }
 
       for (const item of itemsBySaleId.get(String(sale._id)) || []) {
         const quantity = Math.max(toNumber(item.quantity), 0);
@@ -77,6 +83,7 @@ function buildCampaignPerformanceRows({
     const capacity =
       Math.max(toNumber(campaign.entry_end) - toNumber(campaign.entry_start) + 1, 0);
     const grossProfit = revenueWithKnownCost - costTotal;
+    const expectedProfit = grossProfit - commissionGenerated;
 
     return {
       campaign_id: campaignId,
@@ -96,8 +103,14 @@ function buildCampaignPerformanceRows({
       cost_total: round(costTotal),
       revenue_with_known_cost: round(revenueWithKnownCost),
       gross_profit: round(grossProfit),
+      commission_generated: round(commissionGenerated),
+      commission_paid: round(commissionPaid),
+      expected_profit: round(expectedProfit),
       gross_margin: revenueWithKnownCost > 0
         ? round((grossProfit / revenueWithKnownCost) * 100, 2)
+        : 0,
+      expected_margin: revenueWithKnownCost > 0
+        ? round((expectedProfit / revenueWithKnownCost) * 100, 2)
         : 0,
       cost_coverage: salesTotal > 0
         ? round((revenueWithKnownCost / salesTotal) * 100, 2)
@@ -149,6 +162,9 @@ async function executeCampaignPerformanceReport(reportDefinition) {
       result.cost_total += row.cost_total;
       result.revenue_with_known_cost += row.revenue_with_known_cost;
       result.gross_profit += row.gross_profit;
+      result.commission_generated += row.commission_generated;
+      result.commission_paid += row.commission_paid;
+      result.expected_profit += row.expected_profit;
       return result;
     },
     {
@@ -162,10 +178,16 @@ async function executeCampaignPerformanceReport(reportDefinition) {
       cost_total: 0,
       revenue_with_known_cost: 0,
       gross_profit: 0,
+      commission_generated: 0,
+      commission_paid: 0,
+      expected_profit: 0,
     }
   );
   summary.gross_margin = summary.revenue_with_known_cost > 0
     ? round((summary.gross_profit / summary.revenue_with_known_cost) * 100, 2)
+    : 0;
+  summary.expected_margin = summary.revenue_with_known_cost > 0
+    ? round((summary.expected_profit / summary.revenue_with_known_cost) * 100, 2)
     : 0;
   summary.cost_coverage = summary.sales_total > 0
     ? round((summary.revenue_with_known_cost / summary.sales_total) * 100, 2)
@@ -192,7 +214,11 @@ async function executeCampaignPerformanceReport(reportDefinition) {
       { id: "paid_total", label: "Cobrado", type: "currency" },
       { id: "balance_due", label: "Pendiente", type: "currency" },
       { id: "gross_profit", label: "Ganancia bruta", type: "currency" },
+      { id: "commission_generated", label: "Comisiones generadas", type: "currency" },
+      { id: "commission_paid", label: "Comisiones pagadas", type: "currency" },
+      { id: "expected_profit", label: "Ganancia esperada", type: "currency" },
       { id: "gross_margin", label: "Margen %", type: "number" },
+      { id: "expected_margin", label: "Margen esperado %", type: "number" },
       { id: "cost_coverage", label: "Cobertura de costo %", type: "number" },
     ],
     rows,

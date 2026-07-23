@@ -14,7 +14,14 @@ test("campaign performance deduplicates sales linked to multiple participants", 
       { campaign_id: "c1", status: "Activo" },
     ],
     entries: [{ campaign_id: "c1", status: "Activa" }],
-    sales: [{ _id: "s1", status: "Completada", total: 22000, total_paid: 10000 }],
+    sales: [{
+      _id: "s1",
+      status: "Completada",
+      total: 22000,
+      total_paid: 10000,
+      commission_amount: 5000,
+      commission_paid: true,
+    }],
     saleItems: [
       { sale: "s1", quantity: 1, total: 22000, cost_snapshot: 13500 },
     ],
@@ -23,6 +30,9 @@ test("campaign performance deduplicates sales linked to multiple participants", 
   assert.equal(row.linked_sales, 1);
   assert.equal(row.sales_total, 22000);
   assert.equal(row.gross_profit, 8500);
+  assert.equal(row.commission_generated, 5000);
+  assert.equal(row.commission_paid, 5000);
+  assert.equal(row.expected_profit, 3500);
   assert.equal(row.participants, 2);
   assert.equal(row.entry_progress, 1);
 });
