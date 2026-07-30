@@ -1,18 +1,30 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  Banknote,
+  FilePlus2,
+  Home,
+  MessageCircle,
+  ReceiptText,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 import LookupField from "../components/fields/LookupField";
 import QuoteBuilderWorkspace from "../components/QuoteBuilderWorkspace";
 import { useToast } from "../components/ui/ToastContext";
 import {
   createRecord,
   getRecordById,
+  getRecords,
   getSalePaymentSummary,
 } from "../services/customService";
 import { formatCRC } from "../utils/paymentCalculator";
 
 const tabs = [
-  { id: "payment", label: "Pago" },
-  { id: "summary", label: "Resumen" },
-  { id: "quote", label: "Cotizar" },
+  { id: "home", label: "Inicio", icon: Home },
+  { id: "payment", label: "Cobrar", icon: Banknote },
+  { id: "summary", label: "Resumen", icon: MessageCircle },
+  { id: "quote", label: "Cotizar", icon: FilePlus2 },
 ];
 
 function todayInputValue() {
@@ -381,15 +393,220 @@ function QuotePanel() {
   );
 }
 
+function formatShortDate(value) {
+  if (!value) return "Sin fecha";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("es-CR", {
+    day: "2-digit",
+    month: "short",
+  }).format(date);
+}
+
+function SaleStatus({ sale }) {
+  const isPaid = safeAmount(sale?.balance_due) <= 0;
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-[0.65rem] font-black uppercase tracking-wide ${
+        isPaid
+          ? "bg-emerald-100 text-emerald-800"
+          : "bg-amber-100 text-amber-900"
+      }`}
+    >
+      {isPaid ? "Pagada" : "Pendiente"}
+    </span>
+  );
+}
+
+function RecentSaleCard({ sale, onSelect, onOpenSummary }) {
+  return (
+    <article className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+      <button type="button" onClick={() => onSelect(sale)} className="w-full text-left">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-base font-black text-slate-950">
+              {sale.name || "Venta sin nombre"}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">
+              {formatShortDate(sale.saledate || sale.createdAt)}
+            </p>
+          </div>
+          <SaleStatus sale={sale} />
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-[0.62rem] font-bold uppercase tracking-[0.18em] text-slate-400">
+              Total
+            </p>
+            <p className="mt-1 font-black text-slate-900">{formatCRC(sale.total)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[0.62rem] font-bold uppercase tracking-[0.18em] text-slate-400">
+              Pendiente
+            </p>
+            <p className="mt-1 font-black text-amber-700">
+              {formatCRC(sale.balance_due)}
+            </p>
+          </div>
+        </div>
+      </button>
+      <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+        <button
+          type="button"
+          onClick={() => onSelect(sale)}
+          className="rounded-2xl bg-slate-950 px-3 py-2.5 text-sm font-black text-white"
+        >
+          Registrar pago
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpenSummary(sale)}
+          className="rounded-2xl bg-slate-100 px-3 py-2.5 text-sm font-black text-slate-800"
+        >
+          Ver resumen
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function MobileHome({
+  recentSales,
+  loading,
+  onRefresh,
+  onSelectSale,
+  onOpenSummary,
+  onOpenQuote,
+}) {
+  const totals = useMemo(
+    () =>
+      recentSales.reduce(
+        (result, sale) => {
+          result.sales += 1;
+          result.pending += Math.max(safeAmount(sale.balance_due), 0);
+          return result;
+        },
+        { sales: 0, pending: 0 }
+      ),
+    [recentSales]
+  );
+
+  return (
+    <div className="space-y-5">
+      <section className="grid grid-cols-2 gap-3">
+        <div className="rounded-3xl bg-cyan-50 p-4 text-cyan-950">
+          <p className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-cyan-700">
+            Ventas recientes
+          </p>
+          <p className="mt-2 text-3xl font-black">{totals.sales}</p>
+        </div>
+        <div className="rounded-3xl bg-amber-50 p-4 text-amber-950">
+          <p className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-amber-700">
+            Pendiente
+          </p>
+          <p className="mt-2 text-xl font-black">{formatCRC(totals.pending)}</p>
+        </div>
+      </section>
+
+      <section>
+        <p className="px-1 text-xs font-black uppercase tracking-[0.22em] text-slate-500">
+          Acciones rápidas
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <Link
+            to="/admin/sales/new"
+            className="flex min-h-28 flex-col justify-between rounded-3xl bg-slate-950 p-4 text-white shadow-lg"
+          >
+            <ReceiptText size={24} />
+            <span className="text-base font-black">Nueva venta</span>
+          </Link>
+          <button
+            type="button"
+            onClick={onOpenQuote}
+            className="flex min-h-28 flex-col justify-between rounded-3xl bg-cyan-500 p-4 text-left text-slate-950 shadow-lg"
+          >
+            <FilePlus2 size={24} />
+            <span className="text-base font-black">Nueva cotización</span>
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <div className="flex items-center justify-between gap-3 px-1">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">
+              Últimas ventas
+            </p>
+            <p className="mt-1 text-sm text-slate-500">Toca una venta para cobrarla.</p>
+          </div>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={loading}
+            aria-label="Actualizar ventas"
+            className="rounded-full border border-slate-200 bg-white p-3 text-slate-700 disabled:opacity-50"
+          >
+            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+          </button>
+        </div>
+
+        <div className="mt-3 space-y-3">
+          {recentSales.map((sale) => (
+            <RecentSaleCard
+              key={sale._id}
+              sale={sale}
+              onSelect={onSelectSale}
+              onOpenSummary={onOpenSummary}
+            />
+          ))}
+          {!loading && recentSales.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center">
+              <Search className="mx-auto text-slate-400" />
+              <p className="mt-3 font-bold text-slate-700">No hay ventas recientes.</p>
+            </div>
+          ) : null}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function MobileOpsPage() {
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState("payment");
+  const [activeTab, setActiveTab] = useState("home");
   const [saleId, setSaleId] = useState("");
   const [selectedSale, setSelectedSale] = useState(null);
   const [summary, setSummary] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const [recentSales, setRecentSales] = useState([]);
+  const [loadingRecent, setLoadingRecent] = useState(false);
 
-  const loadSaleContext = async (nextSaleId) => {
+  const loadRecentSales = useCallback(async () => {
+    try {
+      setLoadingRecent(true);
+      const response = await getRecords("sales", {
+        page: 1,
+        limit: 8,
+        sortBy: "saledate",
+        sortOrder: "desc",
+        filters: JSON.stringify([
+          { field: "status", operator: "eq", value: "Completada" },
+        ]),
+      });
+      setRecentSales(response?.records || []);
+    } catch (error) {
+      console.error(error);
+      addToast("No se pudieron cargar las ventas recientes", "error");
+    } finally {
+      setLoadingRecent(false);
+    }
+  }, [addToast]);
+
+  useEffect(() => {
+    loadRecentSales();
+  }, [loadRecentSales]);
+
+  const loadSaleContext = async (nextSaleId, knownSale = null) => {
     if (!nextSaleId) {
       setSelectedSale(null);
       setSummary(null);
@@ -399,7 +616,7 @@ function MobileOpsPage() {
     try {
       setLoadingSummary(true);
       const [saleRecord, saleSummary] = await Promise.all([
-        getRecordById("sales", nextSaleId),
+        knownSale || getRecordById("sales", nextSaleId),
         getSalePaymentSummary(nextSaleId),
       ]);
 
@@ -420,62 +637,100 @@ function MobileOpsPage() {
 
   const refreshCurrentSale = async () => {
     await loadSaleContext(saleId);
+    await loadRecentSales();
+  };
+
+  const openSale = async (sale, destination = "payment") => {
+    setSaleId(String(sale._id));
+    setSelectedSale(sale);
+    setActiveTab(destination);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    await loadSaleContext(String(sale._id), sale);
   };
 
   return (
-    <div className="mx-auto max-w-lg space-y-4 pb-24">
-      <section className="overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200">
-          Vitra mobile
+    <div className="relative min-h-screen bg-slate-100 pb-28 sm:mx-auto sm:min-h-0 sm:max-w-lg sm:rounded-[2.5rem]">
+      <header className="bg-slate-950 px-5 pb-7 pt-[max(1.25rem,env(safe-area-inset-top))] text-white shadow-xl sm:rounded-t-[2.5rem]">
+        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300">
+          Vitra móvil
         </p>
-        <h1 className="mt-2 text-3xl font-black leading-tight">
-          Operacion rapida
-        </h1>
-        <p className="mt-2 text-sm text-slate-300">
-          Pagos, resumen para cliente y cotizaciones desde el telefono.
-        </p>
-      </section>
+        <div className="mt-2 flex items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-black leading-tight">Operación</h1>
+            <p className="mt-1 text-sm text-slate-300">
+              Vende, cobra y atiende desde el teléfono.
+            </p>
+          </div>
+          {selectedSale ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab("payment")}
+              className="max-w-32 truncate rounded-full bg-cyan-400 px-3 py-2 text-xs font-black text-slate-950"
+            >
+              {selectedSale.name || "Venta activa"}
+            </button>
+          ) : null}
+        </div>
+      </header>
 
-      <nav className="sticky top-2 z-20 grid grid-cols-3 gap-2 rounded-full border border-slate-200 bg-white/95 p-1 shadow-sm backdrop-blur">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`rounded-full px-3 py-3 text-sm font-black transition ${
-              activeTab === tab.id
-                ? "bg-slate-950 text-white"
-                : "text-slate-600"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <main className="space-y-4 px-4 py-5">
+        {activeTab === "home" ? (
+          <MobileHome
+            recentSales={recentSales}
+            loading={loadingRecent}
+            onRefresh={loadRecentSales}
+            onSelectSale={(sale) => openSale(sale, "payment")}
+            onOpenSummary={(sale) => openSale(sale, "summary")}
+            onOpenQuote={() => setActiveTab("quote")}
+          />
+        ) : null}
+
+        {activeTab === "payment" ? (
+          <PaymentPanel
+            saleId={saleId}
+            selectedSale={selectedSale}
+            summary={summary}
+            loadingSummary={loadingSummary}
+            onSaleChange={handleSaleChange}
+            onSaved={refreshCurrentSale}
+          />
+        ) : null}
+
+        {activeTab === "summary" ? (
+          <SaleSummaryPanel
+            saleId={saleId}
+            selectedSale={selectedSale}
+            summary={summary}
+            loading={loadingSummary}
+            onSaleChange={handleSaleChange}
+            onRefresh={refreshCurrentSale}
+          />
+        ) : null}
+
+        {activeTab === "quote" ? <QuotePanel /> : null}
+      </main>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-12px_35px_rgba(15,23,42,0.12)] backdrop-blur sm:absolute sm:rounded-b-[2.5rem]">
+        <div className="mx-auto grid max-w-lg grid-cols-4">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[0.68rem] font-black transition ${
+                  active ? "bg-slate-950 text-white" : "text-slate-500"
+                }`}
+              >
+                <Icon size={19} strokeWidth={active ? 2.7 : 2} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </nav>
-
-      {activeTab === "payment" ? (
-        <PaymentPanel
-          saleId={saleId}
-          selectedSale={selectedSale}
-          summary={summary}
-          loadingSummary={loadingSummary}
-          onSaleChange={handleSaleChange}
-          onSaved={refreshCurrentSale}
-        />
-      ) : null}
-
-      {activeTab === "summary" ? (
-        <SaleSummaryPanel
-          saleId={saleId}
-          selectedSale={selectedSale}
-          summary={summary}
-          loading={loadingSummary}
-          onSaleChange={handleSaleChange}
-          onRefresh={refreshCurrentSale}
-        />
-      ) : null}
-
-      {activeTab === "quote" ? <QuotePanel /> : null}
     </div>
   );
 }

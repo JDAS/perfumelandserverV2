@@ -374,6 +374,218 @@ Cuando vuelvas a entrar a este repo:
 4. Si afecta precios, pagos, ventas o cotizaciones, revisa tambien triggers/flows.
 5. Si afecta layout o formularios admin, revisa metadata antes de cambiar componentes a ciegas.
 
+## Dashboard de campanas
+
+En julio de 2026 se incorporo un reporte especializado y un dashboard para analizar
+el rendimiento financiero y operativo de las campanas.
+
+Archivos principales:
+
+- `backend/src/services/campaignPerformanceService.js`
+- `backend/src/scripts/syncCampaignDashboard.js`
+- `backend/test/campaignPerformanceService.test.js`
+- `frontend/src/components/admin/DashboardRenderer.jsx`
+
+Definiciones instaladas en MongoDB:
+
+- reporte `campaign_performance`
+- dashboard `campaign_overview`, visible como `Campañas Perfumeland`
+
+El dashboard cruza:
+
+- `campaign`
+- `campaign_sale_link`
+- `campaign_participant`
+- `campaign_entry`
+- `sales`
+- `sale_item`
+
+Metricas principales:
+
+- ventas unicas vinculadas
+- ventas generadas
+- dinero cobrado
+- saldo pendiente
+- costo conocido
+- ganancia bruta
+- comisiones generadas
+- comisiones pagadas
+- ganancia esperada
+- margen bruto y esperado
+- cobertura de costos
+- participantes
+- acciones asignadas y porcentaje de avance
+
+### Reglas de calculo
+
+Una venta puede tener varios registros en `campaign_sale_link` cuando participan
+varios nombres. Los calculos financieros deben deduplicar por `sale_id` dentro de
+cada campana.
+
+La ganancia se calcula con valores historicos de los productos:
+
+```text
+ganancia_bruta =
+  suma(sale_item.total) - suma(sale_item.cost_snapshot * sale_item.quantity)
+
+ganancia_esperada =
+  ganancia_bruta - suma(sales.commission_amount)
+```
+
+Para no sobreestimar la rentabilidad, la ganancia esperada descuenta todas las
+comisiones generadas, incluso si `commission_paid` todavia es falso.
+
+Tambien se informa `commission_paid` por separado.
+
+Los productos sin `cost_snapshot` no deben asumir costo cero como si la ganancia
+fuera definitiva. El dashboard calcula la ganancia sobre ingresos con costo
+conocido y muestra `cost_coverage`.
+
+### Ultima lectura de datos
+
+Lectura realizada el 2026-07-22/23:
+
+- 2 campanas
+- 50 ventas unicas vinculadas
+- 51 participantes
+- 265 acciones asignadas
+- CRC 1.794.000 vendidos
+- CRC 1.330.500 cobrados
+- CRC 463.500 pendientes
+- CRC 537.250 de ganancia bruta conocida
+- CRC 295.000 de comisiones generadas
+- CRC 250.000 de comisiones pagadas
+- CRC 242.250 de ganancia esperada
+- 14,28% de margen esperado
+- 94,54% de cobertura de costos
+
+Por campana:
+
+- Dia de la madre: CRC 87.000 de ganancia esperada
+- Dia del padre: CRC 155.250 de ganancia esperada
+
+Las cifras son dinamicas y deben consultarse nuevamente para conocer el estado
+actual.
+
+## Decisiones y principios para futuras tareas
+
+- Tratar Vitra como una plataforma CRM/ERP configurable, no solo como ecommerce.
+- Antes de crear una pantalla o regla fija, comprobar si corresponde a metadata.
+- Mantener separado el nucleo generico de Vitra de las reglas de Perfumeland.
+- En reportes financieros, deduplicar entidades y documentar claramente cada
+  formula.
+- Diferenciar ganancia bruta, ganancia esperada y dinero efectivamente cobrado.
+- Usar costos historicos (`cost_snapshot`) y mostrar cobertura cuando falten.
+- Considerar las comisiones generadas como obligacion aunque no esten pagadas.
+- No ejecutar migraciones, backfills o scripts de escritura sin revisar su alcance.
+- Una definicion nueva en MongoDB puede requerir tambien desplegar el backend que
+  conoce su motor. Si la metadata se actualiza antes del codigo publicado, los
+  widgets nuevos pueden aparecer en cero.
+
+## Mejoras prioritarias identificadas
+
+1. Completar y garantizar `cost_snapshot` en todas las ventas.
+2. Agregar auditoria visible para triggers y automatizaciones.
+3. Proteger operaciones compuestas con transacciones o idempotencia.
+4. Incorporar permisos por objeto, campo, accion y propietario.
+5. Versionar y publicar cambios de metadata de forma controlada.
+6. Escalar reportes mediante agregaciones e indices.
+7. Ampliar pruebas del frontend y de flujos financieros completos.
+8. Definir la atribucion cuando dos campanas se superponen.
+
+## Estado de validacion del dashboard
+
+- Backend: 42 pruebas aprobadas.
+- Frontend: build de produccion aprobado.
+- La definicion del reporte y dashboard fue instalada en MongoDB.
+- Los cambios de comisiones requieren un deploy posterior a su implementacion.
+
 ## Ultima actualizacion
 
-Generado el 2026-05-08 durante una exploracion del repo local.
+Actualizado el 2026-07-22 durante la implementacion del dashboard de campanas y
+la revision de las reglas de ganancia, costos y comisiones.
+
+## Nueva instancia: Renacer
+
+El 2026-07-24 se inicio el onboarding de una segunda empresa llamada Renacer.
+
+Decision de arquitectura:
+
+- compartir el codigo de Vitra
+- usar deployment independiente
+- usar base MongoDB independiente (`vitra_renacer`)
+- usar usuarios, JWT, secretos y carpeta Cloudinary independientes
+- no agregar datos de Renacer a las colecciones de Perfumeland
+
+La estructura inicial esta en `instances/renacer/`. Su estado es `discovery`; no
+se ha creado conexion, base, deploy, usuario, suite ni migracion. Antes de instalar
+objetos se debe completar `instances/renacer/DISCOVERY.md` y decidir que modulos
+de `commerce-ops` aplican realmente.
+
+## Experiencia movil
+
+El 2026-07-27 se inicio la reconstruccion funcional de `/admin/mobile`.
+
+Primera etapa implementada:
+
+- inicio operativo como pantalla predeterminada
+- listado de las ocho ventas completadas mas recientes
+- monto pendiente visible por venta
+- acceso directo a registrar pago o abrir resumen
+- acciones para nueva venta y nueva cotizacion
+- venta seleccionada conservada entre secciones
+- navegacion inferior persistente para uso con una mano
+- soporte de `safe-area` para telefonos
+- cabecera y espaciado de escritorio ocultos en movil
+- refresco de ventas despues de registrar un pago
+
+Archivos principales:
+
+- `frontend/src/pages/MobileOpsPage.jsx`
+- `frontend/src/layouts/AdminLayout.jsx`
+
+Validacion inicial:
+
+- `npm run lint`: aprobado
+- `npm run build`: aprobado
+
+Siguientes etapas sugeridas:
+
+1. formulario de venta verdaderamente movil, sin salir al formulario generico
+2. busqueda dedicada por cliente, telefono o saldo
+3. bandeja de cobros vencidos y proximos
+4. historial y comprobante despues de registrar pago
+5. pruebas en dispositivos y anchos reales
+
+## Laboratorio temporal de integraciones
+
+El 2026-07-29 se agrego una API temporal para probar frameworks de integracion
+donde Salesforce envia o consulta datos.
+
+Ruta base:
+
+- `/api/integration-lab`
+
+Caracteristicas:
+
+- deshabilitada por defecto mediante `INTEGRATION_LAB_ENABLED=false`
+- autenticacion Basic, Bearer estatico, API Key, OAuth 2.0 Client Credentials y HMAC
+- metodos GET, POST, PUT, PATCH y DELETE
+- escenarios configurables que fallan las primeras N llamadas
+- codigos de error configurables, incluyendo 429 y 5xx
+- contador persistente para validar reprocesos en ambientes serverless
+- historial temporal con request/correlation ID
+- TTL para eliminar automaticamente escenarios e intentos
+- colecciones dedicadas, sin usar objetos de negocio
+
+Archivos clave:
+
+- `docs/INTEGRATION_LAB.md`
+- `backend/src/routes/integrationLabRoutes.js`
+- `backend/src/controllers/integrationLabController.js`
+- `backend/src/services/integrationLabService.js`
+- `backend/src/models/IntegrationLabScenario.js`
+- `backend/src/models/IntegrationLabAttempt.js`
+
+Salesforce es responsable de implementar el retry. El laboratorio solamente
+responde con fallos deterministas y registra si Salesforce reenvio la solicitud.

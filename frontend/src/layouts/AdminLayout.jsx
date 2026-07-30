@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import UserMenu from "../components/UserMenu";
 import { useStorefront } from "../context/StorefrontContext";
 import { DEFAULT_LOGO_URL } from "../constants/branding";
@@ -10,6 +10,8 @@ import {
 
 function AdminLayout({ children }) {
   const { adminThemeSettings } = useStorefront();
+  const location = useLocation();
+  const isMobileOps = location.pathname === "/admin/mobile";
 
   return (
     <div
@@ -21,7 +23,9 @@ function AdminLayout({ children }) {
       }}
     >
       <header
-        className="flex justify-between items-center p-4 text-white border-b shadow-[0_16px_40px_rgba(17,24,39,0.24)]"
+        className={`justify-between items-center p-4 text-white border-b shadow-[0_16px_40px_rgba(17,24,39,0.24)] ${
+          isMobileOps ? "hidden sm:flex" : "flex"
+        }`}
         style={{
           background: adminGradient(),
           borderColor: "rgba(255,255,255,0.08)",
@@ -38,7 +42,7 @@ function AdminLayout({ children }) {
         <UserMenu />
       </header>
 
-      <main className="p-6">{children}</main>
+      <main className={isMobileOps ? "p-0 sm:p-6" : "p-6"}>{children}</main>
     </div>
   );
 }

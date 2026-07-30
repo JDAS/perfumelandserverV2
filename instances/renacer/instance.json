@@ -1,0 +1,47 @@
+{
+  "id": "renacer",
+  "name": "Renacer",
+  "status": "discovery",
+  "isolation": {
+    "strategy": "database-per-instance",
+    "databaseName": "vitra_renacer",
+    "cloudinaryFolder": "renacer/attachments",
+    "sharesDataWith": []
+  },
+  "deployment": {
+    "provider": "netlify",
+    "siteName": "",
+    "productionUrl": "",
+    "apiMode": "same-origin"
+  },
+  "branding": {
+    "displayName": "Renacer",
+    "logo": "",
+    "primaryColor": "",
+    "secondaryColor": "",
+    "currency": "CRC",
+    "locale": "es-CR",
+    "timezone": "America/Costa_Rica"
+  },
+  "modules": {
+    "catalog": "pending",
+    "inventory": "pending",
+    "clients": "pending",
+    "sales": "pending",
+    "credit": "pending",
+    "payments": "pending",
+    "sellers": "pending",
+    "commissions": "pending",
+    "quotes": "pending",
+    "campaigns": "pending",
+    "expenses": "pending",
+    "storefront": "pending",
+    "reports": "pending",
+    "dashboards": "pending"
+  },
+  "suite": {
+    "base": "",
+    "installApproved": false,
+    "notes": "No instalar commerce-ops hasta completar el descubrimiento y revisar reglas comerciales."
+  }
+}
