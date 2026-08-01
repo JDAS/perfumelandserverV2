@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Vitra Mobile — Propuesta visual</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #10264d; font-family: Inter, Arial, sans-serif; background: #e9eef5; }
+    .page { width: 210mm; height: 297mm; padding: 18mm; background: #f7f9fc; page-break-after: always; overflow: hidden; position: relative; }
+    .page:last-child { page-break-after: auto; }
+    .cover { color: white; background: radial-gradient(circle at 80% 15%, #10c7de 0, #10c7de 7%, transparent 28%), linear-gradient(145deg, #061a38 0%, #0b2c58 72%, #114f78 100%); }
+    .eyebrow { color: #0bbbd3; font-size: 10pt; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+    .cover .eyebrow { color: #70e6f2; }
+    h1 { margin: 8mm 0 5mm; font-size: 38pt; line-height: 1.04; letter-spacing: -.04em; }
+    h2 { margin: 3mm 0 5mm; font-size: 25pt; line-height: 1.1; letter-spacing: -.03em; }
+    h3 { margin: 0 0 2mm; font-size: 14pt; }
+    p { font-size: 11pt; line-height: 1.55; color: #52627b; }
+    .cover p { color: #c9d8eb; max-width: 130mm; font-size: 14pt; }
+    .cover-mark { margin-top: 18mm; display: inline-flex; align-items: center; gap: 4mm; font-size: 13pt; font-weight: 900; }
+    .dot { width: 11mm; height: 11mm; border-radius: 4mm; background: #11c6df; box-shadow: 0 0 45px rgba(17,198,223,.65); }
+    .cover-footer { position: absolute; left: 18mm; right: 18mm; bottom: 18mm; display: flex; justify-content: space-between; color: #9fb5d1; font-size: 9pt; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+    .card { padding: 6mm; border-radius: 6mm; background: white; box-shadow: 0 4mm 14mm rgba(15,36,68,.08); border: .3mm solid #e4eaf2; }
+    .card p { margin: 2mm 0 0; font-size: 10pt; }
+    .number { display: inline-flex; width: 9mm; height: 9mm; align-items: center; justify-content: center; border-radius: 3mm; color: #052449; background: #6de5f0; font-weight: 900; }
+    .flow { display: flex; align-items: center; gap: 2mm; margin-top: 8mm; }
+    .flow span { flex: 1; text-align: center; padding: 4mm 2mm; border-radius: 4mm; background: #0a2b56; color: white; font-size: 9pt; font-weight: 800; }
+    .flow b { color: #0dbdd5; }
+    .mock-layout { display: grid; grid-template-columns: 102mm 1fr; gap: 9mm; align-items: center; height: 244mm; }
+    .mock { width: 100%; max-height: 245mm; object-fit: contain; filter: drop-shadow(0 8mm 15mm rgba(10,35,70,.14)); }
+    .note { padding: 5mm; margin: 4mm 0; border-radius: 5mm; background: white; border-left: 2mm solid #0dbdd5; box-shadow: 0 3mm 10mm rgba(15,36,68,.06); }
+    .note p { margin: 1mm 0 0; font-size: 9.5pt; }
+    ul { margin: 3mm 0 0; padding-left: 5mm; color: #52627b; }
+    li { margin: 2.4mm 0; font-size: 10.5pt; line-height: 1.4; }
+    .tag { display: inline-block; margin: 1mm 1mm 0 0; padding: 2mm 3mm; border-radius: 99px; background: #e1f8fb; color: #087c8c; font-size: 8pt; font-weight: 800; }
+    .roadmap { display: grid; gap: 4mm; margin-top: 7mm; }
+    .roadmap .row { display: grid; grid-template-columns: 25mm 1fr; gap: 5mm; align-items: start; padding: 5mm; background: white; border-radius: 5mm; border: .3mm solid #e3eaf2; }
+    .phase { font-weight: 900; color: #087f91; }
+    .small { font-size: 8.5pt; color: #77869b; }
+    .disclaimer { position: absolute; left: 18mm; right: 18mm; bottom: 10mm; padding-top: 3mm; border-top: .3mm solid #dce5ef; font-size: 8pt; color: #8491a3; }
+  </style>
+</head>
+<body>
+  <section class="page cover">
+    <div class="cover-mark"><span class="dot"></span> VITRA</div>
+    <div style="margin-top:48mm" class="eyebrow">Propuesta de experiencia móvil</div>
+    <h1>Vender, cobrar y atender<br/>desde el teléfono.</h1>
+    <p>Mockups conceptuales para convertir Vitra Mobile en una herramienta operativa completa para Perfumeland.</p>
+    <div style="margin-top:18mm">
+      <span class="tag">Venta móvil</span><span class="tag">Cobros</span><span class="tag">Crédito</span><span class="tag">WhatsApp</span><span class="tag">Integridad financiera</span>
+    </div>
+    <div class="cover-footer"><span>Propuesta para revisión</span><span>31 julio 2026</span></div>
+  </section>
+
+  <section class="page">
+    <div class="eyebrow">Dirección de producto</div>
+    <h2>Una interfaz para trabajar,<br/>no un admin reducido.</h2>
+    <p>La experiencia móvil debe priorizar las tareas de campo y mostrador. La configuración de metadata, layouts y automatizaciones continúa siendo una función de escritorio.</p>
+    <div class="grid" style="margin-top:8mm">
+      <div class="card"><span class="number">1</span><h3 style="margin-top:4mm">Acción inmediata</h3><p>Las tareas más frecuentes quedan a uno o dos toques: vender, cobrar, buscar y compartir.</p></div>
+      <div class="card"><span class="number">2</span><h3 style="margin-top:4mm">Contexto financiero</h3><p>Total, pagado, pendiente, cuota y estado se muestran antes de confirmar una acción.</p></div>
+      <div class="card"><span class="number">3</span><h3 style="margin-top:4mm">Controles grandes</h3><p>Navegación inferior, botones de al menos 44 px y contenido legible desde 360 px.</p></div>
+      <div class="card"><span class="number">4</span><h3 style="margin-top:4mm">Datos confiables</h3><p>Costo histórico, idempotencia y validaciones acompañan cada venta desde su creación.</p></div>
+    </div>
+    <div class="flow"><span>Cliente</span><b>→</b><span>Productos</span><b>→</b><span>Pago</span><b>→</b><span>Confirmar</span><b>→</b><span>WhatsApp</span></div>
+    <div class="note" style="margin-top:10mm"><h3>Meta de la primera entrega</h3><p>Crear una venta de contado o crédito, registrar el primer pago y enviar el resumen al cliente desde un teléfono.</p></div>
+    <div class="disclaimer">Mockups conceptuales. Los nombres, productos, fechas y montos son ficticios.</div>
+  </section>
+
+  <section class="page">
+    <div class="mock-layout">
+      <img class="mock" src="mockups/vitra-mobile-home.png" alt="Mockup inicio móvil" />
+      <div>
+        <div class="eyebrow">Pantalla 01</div><h2>Inicio operativo</h2>
+        <div class="note"><h3>Lectura rápida</h3><p>Ventas recientes y dinero pendiente visibles al abrir la aplicación.</p></div>
+        <div class="note"><h3>Acciones directas</h3><p>Nueva venta, cotización, resumen y pago sin navegar por objetos técnicos.</p></div>
+        <div class="note"><h3>Continuidad</h3><p>Las últimas ventas funcionan como punto de entrada a cobro y atención al cliente.</p></div>
+        <ul><li>Navegación para uso con una mano.</li><li>Estados pagado y pendiente por color.</li><li>Montos en colones.</li><li>Resumen sin abrir un dashboard.</li></ul>
+      </div>
+    </div>
+    <div class="disclaimer">Dirección visual propuesta; no representa datos reales de Perfumeland.</div>
+  </section>
+
+  <section class="page">
+    <div class="mock-layout">
+      <img class="mock" src="mockups/vitra-mobile-sale.png" alt="Mockup nueva venta móvil" />
+      <div>
+        <div class="eyebrow">Pantalla 02</div><h2>Nueva venta</h2>
+        <div class="note"><h3>Proceso guiado</h3><p>Cliente, productos, pago y confirmación se convierten en pasos visibles y recuperables.</p></div>
+        <div class="note"><h3>Decisiones en contexto</h3><p>Disponibilidad, modalidad de precio, cantidad y subtotal aparecen en cada línea.</p></div>
+        <div class="note"><h3>Confirmación segura</h3><p>El total permanece visible y la venta no se escribe hasta la confirmación final.</p></div>
+        <ul><li>Buscar o crear cliente.</li><li>Inventario antes de agregar.</li><li>Contado o crédito.</li><li>Costo histórico capturado.</li><li>Protección contra doble envío.</li></ul>
+      </div>
+    </div>
+    <div class="disclaimer">Los productos y límites mostrados son ficticios y sirven únicamente para ilustrar el flujo.</div>
+  </section>
+
+  <section class="page">
+    <div class="mock-layout">
+      <img class="mock" src="mockups/vitra-mobile-collections.png" alt="Mockup bandeja de cobros" />
+      <div>
+        <div class="eyebrow">Pantalla 03</div><h2>Bandeja de cobros</h2>
+        <div class="note"><h3>Prioridad visible</h3><p>Separación clara entre vencidos, próximos y pagos del día.</p></div>
+        <div class="note"><h3>Cobro en un toque</h3><p>Cada tarjeta lleva directamente al registro del pago con cliente, cuota y saldo ya seleccionados.</p></div>
+        <div class="note"><h3>Trazabilidad</h3><p>Después del pago se actualizan saldo, cuota, resumen e historial.</p></div>
+        <ul><li>Búsqueda por cliente o teléfono.</li><li>Filtro por vendedor y fecha.</li><li>Pago parcial o total.</li><li>Comprobante para compartir.</li></ul>
+      </div>
+    </div>
+    <div class="disclaimer">Las entidades y cifras de esta pantalla son ficticias; el diseño se adaptará al modelo real de Vitra.</div>
+  </section>
+
+  <section class="page">
+    <div class="eyebrow">Propuesta de ejecución</div><h2>Construcción incremental</h2>
+    <p>La experiencia se implementa por entregas pequeñas para validar reglas de negocio antes de ampliar el alcance.</p>
+    <div class="roadmap">
+      <div class="row"><div class="phase">Entrega A</div><div><h3>Base móvil</h3><p>Inicio, búsqueda y bandeja de cobros. El inicio y la navegación ya tienen una primera implementación.</p></div></div>
+      <div class="row"><div class="phase">Entrega B</div><div><h3>Venta móvil</h3><p>Cliente, productos, precios, crédito, primer pago, confirmación y WhatsApp.</p></div></div>
+      <div class="row"><div class="phase">Entrega C</div><div><h3>Integridad financiera</h3><p>Costo histórico obligatorio o excepción auditada, ganancia, comisiones y anulaciones.</p></div></div>
+      <div class="row"><div class="phase">Entrega D</div><div><h3>Gobierno</h3><p>Auditoría, idempotencia, reconciliación y permisos por rol.</p></div></div>
+    </div>
+    <div class="grid" style="margin-top:8mm">
+      <div class="card"><h3>Decisiones necesarias</h3><ul><li>Venta sin costo o inventario.</li><li>Límites de descuento.</li><li>Primer pago obligatorio.</li><li>Datos mínimos del cliente.</li></ul></div>
+      <div class="card"><h3>Indicadores</h3><ul><li>Tiempo para crear una venta.</li><li>% de ventas desde móvil.</li><li>% con costo completo.</li><li>Duplicados e incidencias.</li></ul></div>
+    </div>
+    <div class="disclaimer">Documento complementario: docs/VITRA_IMPROVEMENT_PROPOSAL.md</div>
+  </section>
+</body>
+</html>

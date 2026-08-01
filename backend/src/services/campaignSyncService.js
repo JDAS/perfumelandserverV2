@@ -109,6 +109,18 @@ function pickRandomValues(source = [], count = 0) {
   return values.slice(0, Math.max(count, 0));
 }
 
+function resolveEntryAssignment({ missingCount = 0, availableNumbers = [] }) {
+  const requestedCount = Math.max(toNumber(missingCount), 0);
+  const assignableCount = Math.min(requestedCount, availableNumbers.length);
+
+  return {
+    requestedCount,
+    assignableCount,
+    unassignedCount: Math.max(requestedCount - assignableCount, 0),
+    selectedNumbers: pickRandomValues(availableNumbers, assignableCount),
+  };
+}
+
 async function getSaleContext(saleId) {
   const SaleModel = getCustomRecordModel("sales");
   const ClientModel = getCustomRecordModel("client");
@@ -274,15 +286,8 @@ async function recalculateCampaignParticipant({ campaign, identity, user = null 
 
   const missingCount = Math.max(desiredEntryCount - retainedEntries.length, 0);
 
-  if (missingCount > availableNumbers.length) {
-    const error = new Error(
-      `La campana ${campaign.name} no tiene suficientes acciones disponibles para ${identity.participantName}`
-    );
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const selectedNumbers = pickRandomValues(availableNumbers, missingCount);
+  const assignment = resolveEntryAssignment({ missingCount, availableNumbers });
+  const selectedNumbers = assignment.selectedNumbers;
 
   if (selectedNumbers.length > 0) {
     await EntryModel.create(
@@ -328,6 +333,9 @@ async function recalculateCampaignParticipant({ campaign, identity, user = null 
     salesCount: sales.length,
     totalSalesAmount,
     desiredEntryCount,
+    assignedEntryCount: retainedEntries.length + selectedNumbers.length,
+    unassignedEntryCount: assignment.unassignedCount,
+    assignmentPartial: assignment.unassignedCount > 0,
     carryBalance,
     addedEntries: selectedNumbers.length,
     removedEntries: removableEntries.length,
@@ -431,10 +439,15 @@ async function syncSaleCampaigns({ saleId, user = null }) {
     processedCampaigns: [...new Set(summary.map((item) => item.campaignId))].length,
     addedEntries: summary.reduce((sum, item) => sum + toNumber(item.addedEntries), 0),
     removedEntries: summary.reduce((sum, item) => sum + toNumber(item.removedEntries), 0),
+    unassignedEntries: summary.reduce(
+      (sum, item) => sum + toNumber(item.unassignedEntryCount),
+      0
+    ),
     summary,
   };
 }
 
 module.exports = {
+  resolveEntryAssignment,
   syncSaleCampaigns,
 };

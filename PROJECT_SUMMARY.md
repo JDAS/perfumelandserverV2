@@ -589,3 +589,69 @@ Archivos clave:
 
 Salesforce es responsable de implementar el retry. El laboratorio solamente
 responde con fallos deterministas y registra si Salesforce reenvio la solicitud.
+
+Pruebas publicas realizadas el 2026-07-30 en
+`https://perfumelandweb.netlify.app/api/integration-lab`:
+
+- health: 200
+- administracion anonima: 401
+- credenciales invalidas para todos los modos: 401
+- API Key valida: 503, 503 y 200 en tres intentos
+- historial persistido: tres intentos con el mismo `X-Request-Id`
+- Basic valido: 200
+- Bearer estatico valido: 200
+- OAuth 2.0 Client Credentials: token emitido y callout 200
+- HMAC positivo pendiente porque falta `INTEGRATION_LAB_HMAC_SECRET` en el `.env`
+  local
+
+Los escenarios `salesforce-retry-test` y `auth-smoke-test` fueron creados con TTL
+de una hora y se eliminan automaticamente.
+
+## Propuesta de evolucion
+
+El 2026-07-31 se documento una propuesta formal en
+`docs/VITRA_IMPROVEMENT_PROPOSAL.md`.
+
+Orden recomendado:
+
+1. operacion y venta movil completa
+2. integridad financiera y costo historico
+3. auditoria, idempotencia y permisos
+4. producto multiempresa y onboarding de Renacer
+
+La meta inicial propuesta es crear una venta de contado o credito, registrar el
+primer pago y enviar el resumen desde un telefono, con costo historico e
+idempotencia.
+
+## Campanas agotadas y planes de pago
+
+El 2026-07-31 se corrigio un bloqueo entre campañas y planes de pago.
+
+Comportamiento anterior:
+
+- si una campaña no tenia suficientes acciones, `campaignSyncService` lanzaba 400
+- el error hacia parecer fallida la operacion y podia dejar una venta sin completar
+  procesos posteriores
+
+Comportamiento nuevo:
+
+- asignar todas las acciones disponibles
+- no bloquear venta ni plan de pago
+- devolver `assignedEntryCount`, `unassignedEntryCount` y `assignmentPartial`
+- agregar `unassignedEntries` al resumen de sincronizacion
+
+Tambien se agrego una defensa para planes de pago:
+
+- `sales.saledate` es obligatorio y tiene hoy como valor predeterminado
+- si una venta historica no tiene fecha, el generador usa `createdAt`
+
+Se reparo la venta `6a6d6f0fb47505395ea32acf` con fecha local 2026-07-31:
+
+- plan generado: 4 cuotas por un total de CRC 55.000
+- acciones deseadas: 5
+- acciones disponibles y asignadas: 2 (`08` y `68`)
+- vinculo de campaña creado
+
+Validacion: 49 pruebas de backend aprobadas. El cambio de comportamiento requiere
+deploy para aplicarse automaticamente a futuras operaciones; la metadata y la
+venta indicada ya fueron actualizadas directamente.

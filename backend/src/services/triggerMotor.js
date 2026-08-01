@@ -320,7 +320,7 @@ async function generatePaymentPlanRecords(config = {}, record) {
     if (!saleId) return;
 
     const normalizedType = normalizePaymentKeyword(record?.[typeField]);
-    const salesDate = record?.[salesDateField];
+    const salesDate = record?.[salesDateField] || record?.createdAt;
     const total = Number(record?.[totalField]);
 
     if (

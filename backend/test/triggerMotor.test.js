@@ -556,3 +556,56 @@ test("generatePaymentPlan clears generated plans when sale is not payable", asyn
     },
   ]);
 });
+
+test("generatePaymentPlan uses record creation date when sale date is missing", async () => {
+  const createdPlans = [];
+  const PaymentPlanModel = {
+    find: () => ({ lean: async () => [] }),
+    deleteMany: async () => {},
+    create: async (drafts) => {
+      createdPlans.push(...drafts);
+      return drafts.map((draft, index) => ({ ...draft, _id: `fallback-plan-${index}` }));
+    },
+  };
+  const PaymentModel = {
+    find: () => ({ sort: () => ({ lean: async () => [] }) }),
+    bulkWrite: async () => {},
+  };
+  const { runTriggers: runTriggersWithMocks } = loadWithMocks("src/services/triggerMotor.js", {
+    "../models/CustomRecord": {
+      getCustomRecordModel: (apiName) =>
+        apiName === "payment_plan" ? PaymentPlanModel : PaymentModel,
+    },
+    "./automationFlowService": { listExecutableFlows: async () => [] },
+  });
+
+  await runTriggersWithMocks({
+    objectDefinition: {
+      automationTriggers: [{
+        name: "Generar plan",
+        isActive: true,
+        when: "afterUpdate",
+        stopOnError: true,
+        actions: [{ type: "generatePaymentPlan", config: {} }],
+      }],
+    },
+    when: "afterUpdate",
+    objectApiName: "sales",
+    record: {
+      _id: "sale-without-date",
+      total: 55000,
+      type: "Credito",
+      credittype: "Normal",
+      quotes: 1,
+      saledate: null,
+      createdAt: "2026-07-31T15:00:00.000Z",
+    },
+  });
+
+  assert.ok(createdPlans.length > 0);
+  assert.equal(
+    createdPlans.reduce((sum, plan) => sum + Number(plan.planned_amount || 0), 0),
+    55000
+  );
+  assert.ok(createdPlans[0].due_date);
+});

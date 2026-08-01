@@ -14,6 +14,7 @@ require("./salesPaymentHighlightService.test");
 require("./priceReviewReportService.test");
 require("./campaignPerformanceService.test");
 require("./integrationLabService.test");
+require("./campaignSyncService.test");
 
 const { run } = require("./helpers/testHarness");
 
