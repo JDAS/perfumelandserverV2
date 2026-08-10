@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { runReport } from "../../services/customService";
 import ChartWidget from "./ChartWidget";
 
+const EMPTY_REPORT_PARAMS = {};
+
 function formatMetric(value, format = "number") {
   if (value === undefined || value === null) return "-";
 
@@ -102,7 +104,7 @@ function KpiWidget({ widget, report, reportData }) {
   );
 }
 
-export default function DashboardRenderer({ dashboard }) {
+export default function DashboardRenderer({ dashboard, reportParams = EMPTY_REPORT_PARAMS }) {
   const [reportResults, setReportResults] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -129,7 +131,7 @@ export default function DashboardRenderer({ dashboard }) {
         setLoading(true);
         const entries = await Promise.all(
           reportIds.map(async (reportId) => {
-            const data = await runReport(reportId);
+            const data = await runReport(reportId, reportParams);
             return [reportId, data];
           })
         );
@@ -151,7 +153,7 @@ export default function DashboardRenderer({ dashboard }) {
     return () => {
       cancelled = true;
     };
-  }, [reportIds]);
+  }, [reportIds, reportParams]);
 
   if (!dashboard) {
     return (

@@ -70,6 +70,8 @@ const reportDefinitionSchema = new mongoose.Schema(
         "upcoming_payments",
         "street_investment",
         "campaign_performance",
+        "seller_campaign_performance",
+        "cash_profitability",
       ],
       default: "standard",
     },

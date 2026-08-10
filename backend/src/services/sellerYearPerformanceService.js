@@ -7,19 +7,30 @@ function toNumber(value) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-async function executeSellerYearPerformanceReport(reportDefinition) {
+function normalizeYear(value) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed >= 2000 && parsed <= 2100
+    ? parsed
+    : new Date().getFullYear();
+}
+
+async function executeSellerYearPerformanceReport(reportDefinition, options = {}) {
   const targetDb = mongoose.connection.useDb(TARGET_DB_NAME, { useCache: true });
-  const currentYear = new Date().getFullYear();
-  const startDate = `${currentYear}-01-01`;
-  const endDate = `${currentYear}-12-31`;
+  const selectedYear = normalizeYear(options.year);
+  const selectedSellerId = String(options.sellerId || "").trim();
+  const startDate = `${selectedYear}-01-01`;
+  const endDate = `${selectedYear}-12-31`;
+
+  const salesFilter = {
+    status: "Completada",
+    saledate: { $gte: startDate, $lte: endDate },
+    seller_id: { $exists: true, $ne: "" },
+  };
+  if (selectedSellerId) salesFilter.seller_id = selectedSellerId;
 
   const sales = await targetDb
     .collection("sales")
-    .find({
-      status: "Completada",
-      saledate: { $gte: startDate, $lte: endDate },
-      seller_id: { $exists: true, $ne: "" },
-    })
+    .find(salesFilter)
     .project({
       seller_id: 1,
       total: 1,
@@ -27,6 +38,9 @@ async function executeSellerYearPerformanceReport(reportDefinition) {
       estimated_earnings: 1,
       legacyRealEarnings: 1,
       real_earnings: 1,
+      commission_amount: 1,
+      total_paid: 1,
+      balance_due: 1,
     })
     .toArray();
 
@@ -83,6 +97,9 @@ async function executeSellerYearPerformanceReport(reportDefinition) {
       expected_earnings: 0,
       real_earnings: 0,
       sales_count: 0,
+      paid_total: 0,
+      balance_due: 0,
+      commission_generated: 0,
     };
 
     current.perfumes_sold += lineTotals.perfumesVendidos;
@@ -92,6 +109,9 @@ async function executeSellerYearPerformanceReport(reportDefinition) {
     current.real_earnings +=
       toNumber(sale.legacyRealEarnings) || toNumber(sale.real_earnings);
     current.sales_count += 1;
+    current.paid_total += toNumber(sale.total_paid);
+    current.balance_due += toNumber(sale.balance_due);
+    current.commission_generated += toNumber(sale.commission_amount);
     rowsBySeller.set(sellerId, current);
   }
 
@@ -109,7 +129,8 @@ async function executeSellerYearPerformanceReport(reportDefinition) {
     sourceObjectLabel: "Ventas y ganancias por vendedor",
     totalSourceRecords: sales.length,
     period: {
-      year: currentYear,
+      year: selectedYear,
+      selectedSellerId,
       startDate,
       endDate,
     },
@@ -120,6 +141,9 @@ async function executeSellerYearPerformanceReport(reportDefinition) {
       { id: "expected_earnings", label: "Ganancias esperadas", type: "metric", format: "currency" },
       { id: "real_earnings", label: "Ganancias reales", type: "metric", format: "currency" },
       { id: "sales_count", label: "Ventas", type: "metric", format: "number" },
+      { id: "paid_total", label: "Total cobrado", type: "metric", format: "currency" },
+      { id: "balance_due", label: "Saldo pendiente", type: "metric", format: "currency" },
+      { id: "commission_generated", label: "Comisiones", type: "metric", format: "currency" },
     ],
     rows,
     summary: {
@@ -128,6 +152,9 @@ async function executeSellerYearPerformanceReport(reportDefinition) {
       expected_earnings: rows.reduce((sum, row) => sum + toNumber(row.expected_earnings), 0),
       real_earnings: rows.reduce((sum, row) => sum + toNumber(row.real_earnings), 0),
       sales_count: rows.reduce((sum, row) => sum + toNumber(row.sales_count), 0),
+      paid_total: rows.reduce((sum, row) => sum + toNumber(row.paid_total), 0),
+      balance_due: rows.reduce((sum, row) => sum + toNumber(row.balance_due), 0),
+      commission_generated: rows.reduce((sum, row) => sum + toNumber(row.commission_generated), 0),
     },
   };
 }

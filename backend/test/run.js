@@ -13,6 +13,8 @@ require("./salePaymentSummaryService.test");
 require("./salesPaymentHighlightService.test");
 require("./priceReviewReportService.test");
 require("./campaignPerformanceService.test");
+require("./sellerCampaignPerformanceService.test");
+require("./cashProfitabilityReportService.test");
 require("./integrationLabService.test");
 require("./campaignSyncService.test");
 
