@@ -163,7 +163,7 @@ test("convertQuoteToSale syncs campaigns after creating the sale", async () => {
 
   const ProductModel = {
     find: () => ({
-      lean: async () => [{ _id: "product-3", name: "Producto activo", isactive: true }],
+      lean: async () => [{ _id: "product-3", name: "Producto activo", isactive: true, available: 1 }],
     }),
   };
 

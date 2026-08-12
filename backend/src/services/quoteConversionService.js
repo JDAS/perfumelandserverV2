@@ -95,7 +95,7 @@ async function convertQuoteToSale({ quoteId, user = null }) {
 
   const productIds = [...new Set(quoteItems.map((item) => String(item.product || "")).filter(Boolean))];
   const productDocs = productIds.length
-    ? await ProductModel.find({ _id: { $in: productIds } }, { isactive: 1, name: 1 }).lean()
+    ? await ProductModel.find({ _id: { $in: productIds } }, { isactive: 1, name: 1, available: 1 }).lean()
     : [];
   const productMap = new Map(productDocs.map((product) => [String(product._id), product]));
   const inactiveProducts = quoteItems.filter((item) => {
@@ -114,6 +114,24 @@ async function convertQuoteToSale({ quoteId, user = null }) {
     );
     error.statusCode = 400;
     throw error;
+  }
+
+  const requestedByProduct = quoteItems.reduce((map, item) => {
+    const productId = String(item.product || "");
+    map.set(productId, (map.get(productId) || 0) + (Number(item.quantity) || 0));
+    return map;
+  }, new Map());
+  for (const [productId, requested] of requestedByProduct) {
+    const product = productMap.get(productId);
+    const available = Math.max(Number(product?.available) || 0, 0);
+    if (requested > available) {
+      const error = new Error(
+        `No se puede convertir la cotizacion: stock insuficiente para ${product?.name || "el producto"}. Solicitado: ${requested}; disponible: ${available}`
+      );
+      error.statusCode = 400;
+      error.code = "INSUFFICIENT_STOCK";
+      throw error;
+    }
   }
 
   const saleResult = await saveRecord({

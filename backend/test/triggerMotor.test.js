@@ -125,6 +125,9 @@ test("syncSaleItemStatus recalculates parent rollups after syncing sale items", 
     "./automationFlowService": {
       listExecutableFlows: async () => [],
     },
+    "./saleStockValidationService": {
+      validateSaleCompletionStock: async () => {},
+    },
   });
 
   await runTriggersWithMocks({
@@ -186,6 +189,9 @@ test("syncSaleItemStatus safely skips sales without sale items", async () => {
     },
     "./automationFlowService": {
       listExecutableFlows: async () => [],
+    },
+    "./saleStockValidationService": {
+      validateSaleCompletionStock: async () => {},
     },
   });
 

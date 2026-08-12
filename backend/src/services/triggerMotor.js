@@ -2,6 +2,7 @@ const { getCustomRecordModel } = require("../models/CustomRecord");
 const { calculatePayments } = require("../utils/paymentEngine");
 const CustomObject = require("../models/CustomObject");
 const { listExecutableFlows } = require("./automationFlowService");
+const { validateSaleCompletionStock } = require("./saleStockValidationService");
 
 function getValueByPath(obj, path) {
     if (!obj || !path) return undefined;
@@ -588,6 +589,10 @@ async function syncSaleItemStatus(config = {}, context) {
 
     if (!saleItems.length) {
         return record;
+    }
+
+    if (nextStatus === completedStatus) {
+        await validateSaleCompletionStock(saleItems, completedStatus);
     }
 
     await SaleItemModel.updateMany(

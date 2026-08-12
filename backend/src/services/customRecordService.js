@@ -7,6 +7,7 @@ const { runTriggers } = require("./triggerMotor");
 const { syncInventoryForProducts } = require("./inventorySyncService");
 const { syncSaleCampaigns } = require("./campaignSyncService");
 const { shouldSyncCampaignsForSale } = require("./campaignSyncHooks");
+const { validateSaleItemStock } = require("./saleStockValidationService");
 const {
   resolveLookupData,
   listRecords: listRecordsWithMetadata,
@@ -184,6 +185,10 @@ async function saveRecord({ objectApiName, recordId = null, payload = {}, user =
   // Reaplicar formulas por si un trigger cambia campos base
   finalData = applyFormulaFields(objectDefinition.fields, finalData);
   // ===== FIN BEFORE TRIGGERS =====
+
+  if (objectApiName === "sale_item") {
+    await validateSaleItemStock({ record: finalData, previousRecord });
+  }
 
   let record;
   if (isUpdate) {
