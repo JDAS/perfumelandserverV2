@@ -16,6 +16,8 @@ require("./campaignPerformanceService.test");
 require("./sellerCampaignPerformanceService.test");
 require("./cashProfitabilityReportService.test");
 require("./inventoryReconciliationReportService.test");
+require("./financialSummaryService.test");
+require("./cashAvailableReportService.test");
 require("./integrationLabService.test");
 require("./campaignSyncService.test");
 

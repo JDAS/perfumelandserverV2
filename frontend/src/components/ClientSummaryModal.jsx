@@ -69,6 +69,13 @@ export default function ClientSummaryModal({
                 <p className="mt-2 text-lg font-semibold text-gray-900">{summary.totalDiscountsFormatted}</p>
               </div>
             ) : null}
+            {summary.prizeCredit > 0 ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-xs uppercase tracking-[0.24em] text-amber-700">Credito de premio</p>
+                <p className="mt-2 text-lg font-semibold text-amber-900">{summary.prizeCreditFormatted}</p>
+                {summary.prizeReference ? <p className="mt-1 text-xs text-amber-700">{summary.prizeReference}</p> : null}
+              </div>
+            ) : null}
             {summary.totalSaleFormatted ? (
               <div className="rounded-xl border p-4">
                 <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Total venta</p>

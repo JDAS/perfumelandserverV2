@@ -28,6 +28,7 @@ function defaultItem() {
     discount: 0,
     discount_scope: "Sin descuento",
     discount_reason: "",
+    commission_applies: true,
   };
 }
 
@@ -88,6 +89,8 @@ export default function QuoteBuilderWorkspace({
     credittype: "Normal",
     seller_id: "",
     quotes: 1,
+    prize_credit: 0,
+    prize_reference: "",
   });
   const [items, setItems] = useState([defaultItem()]);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -129,6 +132,8 @@ export default function QuoteBuilderWorkspace({
             credittype: quoteRecord.credittype || "Normal",
             seller_id: quoteRecord.seller_id || "",
             quotes: Number(quoteRecord.quotes) || 1,
+            prize_credit: Number(quoteRecord.prize_credit) || 0,
+            prize_reference: quoteRecord.prize_reference || "",
           }));
 
           const nextItems = (relatedItems.records || []).map((item) => ({
@@ -147,6 +152,7 @@ export default function QuoteBuilderWorkspace({
             discount: Number(item.discount) || 0,
             discount_scope: normalizeDiscountScope(item.discount_scope, item.discount),
             discount_reason: item.discount_reason || "",
+            commission_applies: item.commission_applies !== false,
           }));
 
           setItems(nextItems.length ? nextItems : [defaultItem()]);
@@ -159,6 +165,8 @@ export default function QuoteBuilderWorkspace({
             credittype: "Normal",
             seller_id: "",
             quotes: 1,
+            prize_credit: 0,
+            prize_reference: "",
           });
           setItems([defaultItem()]);
         }
@@ -209,6 +217,7 @@ export default function QuoteBuilderWorkspace({
           discount,
           discount_scope: discountScope,
           discount_reason: String(item.discount_reason || "").trim(),
+          commission_applies: item.commission_applies !== false,
           subtotal,
           cashSubtotal,
           cashDiscount,
@@ -240,16 +249,20 @@ export default function QuoteBuilderWorkspace({
     [computedItems, quote.type]
   );
 
+  const prizeCredit = Math.max(Number(quote.prize_credit) || 0, 0);
+  const netCashTotal = Math.max(cashTotal - prizeCredit, 0);
+  const netCreditTotal = Math.max(creditTotal - prizeCredit, 0);
+
   const paymentPreview = useMemo(
     () =>
       calculatePayments({
-        total: creditTotal,
+        total: netCreditTotal,
         type: quote.type,
         creditType: quote.credittype,
         quotes: quote.quotes,
         salesDate: quote.quote_date,
       }),
-    [creditTotal, quote]
+    [netCreditTotal, quote]
   );
 
   const updateItem = (index, changes) => {
@@ -324,6 +337,11 @@ export default function QuoteBuilderWorkspace({
       addToast("Agrega al menos un perfume a la cotizacion", "warning");
       return;
     }
+    const activeGrossTotal = quote.type === "Credito" ? creditTotal : cashTotal;
+    if (prizeCredit > activeGrossTotal) {
+      addToast("El credito del premio no puede superar el total de la cotizacion", "warning");
+      return;
+    }
 
     try {
       setSaving(true);
@@ -336,6 +354,8 @@ export default function QuoteBuilderWorkspace({
         credittype: quote.credittype,
         seller_id: quote.seller_id || "",
         quotes: Number(quote.quotes) || 1,
+        prize_credit: prizeCredit,
+        prize_reference: String(quote.prize_reference || "").trim(),
       };
 
       let nextQuoteId = quoteId;
@@ -376,6 +396,7 @@ export default function QuoteBuilderWorkspace({
             discount: item.discount || 0,
             discount_scope: normalizeDiscountScope(item.discount_scope, item.discount),
             discount_reason: String(item.discount_reason || "").trim(),
+            commission_applies: item.commission_applies !== false,
           };
 
           return item._id
@@ -586,6 +607,35 @@ export default function QuoteBuilderWorkspace({
                 </div>
               </>
             ) : null}
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">Credito de premio</label>
+              <input
+                type="number"
+                min={0}
+                className={`w-full rounded-lg border ${compact ? "p-2.5" : "p-3"}`}
+                value={quote.prize_credit || 0}
+                onChange={(event) =>
+                  setQuote((prev) => ({
+                    ...prev,
+                    prize_credit: Math.max(Number(event.target.value) || 0, 0),
+                  }))
+                }
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">Referencia del premio</label>
+              <input
+                type="text"
+                className={`w-full rounded-lg border ${compact ? "p-2.5" : "p-3"}`}
+                value={quote.prize_reference || ""}
+                placeholder="Ej. Premio campaña Día de la Madre"
+                onChange={(event) =>
+                  setQuote((prev) => ({ ...prev, prize_reference: event.target.value }))
+                }
+              />
+            </div>
           </div>
 
           <div className={compact ? "space-y-3" : "space-y-4"}>
@@ -778,6 +828,17 @@ export default function QuoteBuilderWorkspace({
                   </div>
                 </div>
 
+                <label className="mt-3 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={item.commission_applies !== false}
+                    onChange={(event) =>
+                      updateItem(index, { commission_applies: event.target.checked })
+                    }
+                  />
+                  Genera comisión para el vendedor
+                </label>
+
                 <div className={compact ? "mt-3 grid grid-cols-3 gap-2" : "mt-3 grid gap-3 md:grid-cols-3"}>
                   <div className="rounded-lg bg-gray-50 p-3 text-sm">
                     <p className="text-gray-500">Contado</p>
@@ -840,15 +901,17 @@ export default function QuoteBuilderWorkspace({
             <div className="mt-3 grid gap-3">
               <div className="rounded-xl border bg-gray-50 p-4">
                 <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Contado</p>
-                <p className={compact ? "mt-2 text-xl font-bold text-gray-900" : "mt-2 text-2xl font-bold text-gray-900"}>{formatCRC(cashTotal)}</p>
+                <p className={compact ? "mt-2 text-xl font-bold text-gray-900" : "mt-2 text-2xl font-bold text-gray-900"}>{formatCRC(netCashTotal)}</p>
+                {prizeCredit > 0 ? <p className="mt-1 text-xs text-gray-500">Antes del premio: {formatCRC(cashTotal)}</p> : null}
               </div>
 
               {quote.type === "Credito" ? (
                 <div className="rounded-xl border bg-amber-50 p-4">
                   <p className="text-xs uppercase tracking-[0.24em] text-gray-500">Credito</p>
                   <p className={compact ? "mt-2 text-xl font-bold text-gray-900" : "mt-2 text-2xl font-bold text-gray-900"}>
-                    {formatCRC(creditTotal)}
+                    {formatCRC(netCreditTotal)}
                   </p>
+                  {prizeCredit > 0 ? <p className="mt-1 text-xs text-gray-500">Antes del premio: {formatCRC(creditTotal)}</p> : null}
                 </div>
               ) : null}
             </div>

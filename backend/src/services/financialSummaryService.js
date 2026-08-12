@@ -64,50 +64,6 @@ async function getOutstandingLoans(targetDb, sourceDb) {
   }, 0);
 }
 
-async function getInventoryPurchaseTotal(targetDb, sourceDb) {
-  const stockTotals = await aggregateSingle(targetDb.collection("stock"), [
-    {
-      $match: {
-        legacy_inventory_seed: { $ne: true },
-      },
-    },
-    {
-      $group: {
-        _id: null,
-        total: {
-          $sum: {
-            $multiply: [
-              { $ifNull: ["$wholesaleprice", 0] },
-              { $ifNull: ["$purchased", 0] },
-            ],
-          },
-        },
-      },
-    },
-  ]);
-
-  const stockTotal = toNumber(stockTotals.total);
-  if (stockTotal > 0) return stockTotal;
-
-  const legacyInventoryTotals = await aggregateSingle(sourceDb.collection("inventory"), [
-    {
-      $group: {
-        _id: null,
-        total: {
-          $sum: {
-            $multiply: [
-              { $ifNull: ["$wholesalePrice", 0] },
-              { $ifNull: ["$quantity", 0] },
-            ],
-          },
-        },
-      },
-    },
-  ]).catch(() => ({}));
-
-  return toNumber(legacyInventoryTotals.total);
-}
-
 async function getInventoryRemainingValue(targetDb) {
   const [stocks, saleItems] = await Promise.all([
     targetDb.collection("stock")
@@ -115,7 +71,7 @@ async function getInventoryRemainingValue(targetDb) {
       .project({ product: 1, purchased: 1, wholesaleprice: 1, createdAt: 1 })
       .toArray(),
     targetDb.collection("sale_item")
-      .find({ sale_status: { $ne: "Cancelada" }, product: { $exists: true, $ne: "" } })
+      .find({ sale_status: "Completada", product: { $exists: true, $ne: "" } })
       .project({
         sale: 1,
         product: 1,
@@ -130,6 +86,30 @@ async function getInventoryRemainingValue(targetDb) {
   return rows.reduce((sum, row) => sum + toNumber(row.fifo_remaining_value), 0);
 }
 
+function calculateFinancialPosition({
+  soldPerfumeCost,
+  unsoldInventoryCost,
+  paidCommissions,
+  expenses,
+  paidBonuses,
+  totalReceived,
+  outstandingLoans,
+}) {
+  const totalPayments =
+    toNumber(soldPerfumeCost) +
+    toNumber(unsoldInventoryCost) +
+    toNumber(paidCommissions) +
+    toNumber(expenses) +
+    toNumber(paidBonuses);
+  return {
+    totalPayments,
+    currentBudget:
+      toNumber(totalReceived) -
+      totalPayments -
+      toNumber(outstandingLoans),
+  };
+}
+
 async function executeFinancialSummaryReport(reportDefinition) {
   const defaultConn = mongoose.connection;
   const targetDb = defaultConn.useDb(TARGET_DB_NAME, { useCache: true });
@@ -141,7 +121,7 @@ async function executeFinancialSummaryReport(reportDefinition) {
   const saleItemTotals = await aggregateSingle(targetDb.collection("sale_item"), [
     {
       $match: {
-        sale_status: { $ne: "Cancelada" },
+        sale_status: "Completada",
       },
     },
     {
@@ -262,20 +242,27 @@ async function executeFinancialSummaryReport(reportDefinition) {
 
   const presupuestoInicial = INITIAL_BUDGET;
   const pagosPerfumes = toNumber(saleItemTotals.pagosPerfumes);
-  const pagoInventario = await getInventoryPurchaseTotal(targetDb, sourceDb);
   const valorInventarioStock = await getInventoryRemainingValue(targetDb);
   const pagosComisiones = toNumber(salesTotals.pagosComisiones);
   const gastosAdicionales = toNumber(expensesTotals.gastosAdicionales);
   const bonosVendedores = toNumber(sellerBonusTotals.total);
-  const totalPagos =
-    pagosPerfumes + pagosComisiones + gastosAdicionales + pagoInventario + bonosVendedores;
   const totalRecibido = toNumber(salesTotals.totalRecibido);
   const enCalle = toNumber(salesTotals.enCalle);
   const outstandingLoans = await getOutstandingLoans(targetDb, sourceDb);
+  const financialPosition = calculateFinancialPosition({
+    soldPerfumeCost: pagosPerfumes,
+    unsoldInventoryCost: valorInventarioStock,
+    paidCommissions: pagosComisiones,
+    expenses: gastosAdicionales,
+    paidBonuses: bonosVendedores,
+    totalReceived: totalRecibido,
+    outstandingLoans,
+  });
+  const totalPagos = financialPosition.totalPayments;
   const gananciasEsperadas =
     toNumber(salesTotals.gananciasEsperadasBase) - gastosAdicionales;
   const gananciasReales = toNumber(salesTotals.gananciasReales);
-  const presupuestoActual = totalRecibido - totalPagos - outstandingLoans;
+  const presupuestoActual = financialPosition.currentBudget;
   const porcentajeGanancias = totalPagos > 0 ? (gananciasEsperadas / totalPagos) * 100 : 0;
   const diferenciaGastos = totalRecibido - totalPagos;
   const promedioGanancia =
@@ -309,7 +296,7 @@ async function executeFinancialSummaryReport(reportDefinition) {
     },
     {
       id: "valor_inventario_stock",
-      label: "Valor del inventario en stock",
+      label: "Pago inventario (productos sin vender)",
       value: valorInventarioStock,
       formatted: formatCurrency(valorInventarioStock),
       format: "currency",
@@ -448,13 +435,16 @@ async function executeFinancialSummaryReport(reportDefinition) {
     metrics,
     notes: [
       "Pagos de perfumes se calcula desde cost_snapshot en sale_item.",
-      "Total pagos incluye compras actuales registradas en stock.",
-      "Valor del inventario en stock usa el costo FIFO de los lotes comprados que aun no han sido consumidos por ventas.",
+      "Pago inventario incluye solamente el costo FIFO de productos que aun no se han vendido.",
+      "Cada producto queda una sola vez: en Pagos de perfumes si fue vendido o en Pago inventario si sigue en stock.",
+      "El presupuesto inicial se muestra solo como referencia historica porque ya fue retirado.",
+      "Presupuesto actual usa lo recibido menos pagos y prestamos pendientes.",
       "Presupuesto actual descuenta prestamos pendientes cuando existen.",
     ],
   };
 }
 
 module.exports = {
+  calculateFinancialPosition,
   executeFinancialSummaryReport,
 };

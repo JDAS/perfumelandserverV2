@@ -42,3 +42,20 @@ test("inventory reconciliation flags sales without supporting purchases", () => 
   assert.equal(row.affected_sales[0].sale_name, "Venta TEST-001");
   assert.match(row.affected_sales_label, /TEST-001.*s1/);
 });
+
+test("inventory reconciliation orders MongoDB Date values chronologically", () => {
+  const [row] = buildInventoryReconciliationRows({
+    products: [{ _id: "p1", name: "Perfume", available: 1 }],
+    stocks: [
+      { _id: "new", product: "p1", purchased: 1, wholesaleprice: 52000, createdAt: new Date("2026-08-12") },
+      { _id: "old", product: "p1", purchased: 1, wholesaleprice: 50000, createdAt: new Date("2025-10-22") },
+    ],
+    saleItems: [
+      { _id: "sale", product: "p1", quantity: 1, cost_snapshot: 50000, createdAt: new Date("2026-04-09") },
+    ],
+  });
+
+  assert.equal(row.fifo_sold_cost, 50000);
+  assert.equal(row.fifo_remaining_value, 52000);
+  assert.equal(row.status, "Conciliado");
+});

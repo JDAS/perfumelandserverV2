@@ -9,6 +9,14 @@ function normalizeId(value) {
   return value ? String(value) : "";
 }
 
+function compareChronologically(left, right) {
+  const leftTime = new Date(left.createdAt || 0).getTime();
+  const rightTime = new Date(right.createdAt || 0).getTime();
+  const safeLeftTime = Number.isFinite(leftTime) ? leftTime : 0;
+  const safeRightTime = Number.isFinite(rightTime) ? rightTime : 0;
+  return safeLeftTime - safeRightTime || normalizeId(left._id).localeCompare(normalizeId(right._id));
+}
+
 function formatCurrency(value) {
   return new Intl.NumberFormat("es-CR", {
     style: "currency",
@@ -52,12 +60,8 @@ function buildInventoryReconciliationRows({ products = [], stocks = [], saleItem
   }
 
   return [...groups.entries()].map(([productId, group]) => {
-    const orderedStocks = [...group.stocks].sort((a, b) =>
-      String(a.createdAt || a._id).localeCompare(String(b.createdAt || b._id))
-    );
-    const orderedItems = [...group.items].sort((a, b) =>
-      String(a.createdAt || a._id).localeCompare(String(b.createdAt || b._id))
-    );
+    const orderedStocks = [...group.stocks].sort(compareChronologically);
+    const orderedItems = [...group.items].sort(compareChronologically);
     const layers = orderedStocks.map((stock) => ({
       remaining: Math.max(toNumber(stock.purchased), 0),
       unitCost: Math.max(toNumber(stock.wholesaleprice), 0),
@@ -157,7 +161,7 @@ async function executeInventoryReconciliationReport(reportDefinition, options = 
     StockModel.find({ purchased: { $gt: 0 } })
       .select("product purchased wholesaleprice legacy_inventory_seed createdAt")
       .lean(),
-    SaleItemModel.find({ sale_status: { $ne: "Cancelada" } })
+    SaleItemModel.find({ sale_status: "Completada" })
       .select("sale product quantity cost_snapshot cost_snapshot_total createdAt sale_status")
       .lean(),
   ]);

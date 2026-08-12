@@ -126,6 +126,8 @@ async function convertQuoteToSale({ quoteId, user = null }) {
       credittype: quote.credittype || "Normal",
       seller_id: quote.seller_id,
       quotes: Number(quote.quotes) || 1,
+      prize_credit: Math.max(Number(quote.prize_credit) || 0, 0),
+      prize_reference: String(quote.prize_reference || "").trim(),
     },
     user,
   });
@@ -156,6 +158,9 @@ async function convertQuoteToSale({ quoteId, user = null }) {
       list_price: listPrice,
       cost_snapshot: costSnapshot,
       discount,
+      discount_scope: quoteItem.discount_scope || "Sin descuento",
+      discount_reason: String(quoteItem.discount_reason || "").trim(),
+      commission_applies: quoteItem.commission_applies !== false,
       subtotal,
       total,
       sale_status: saleRecord.status || "Borrador",

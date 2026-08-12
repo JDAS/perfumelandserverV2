@@ -282,6 +282,7 @@ async function buildSalesClientSummary(recordId) {
   const totalOriginal = products.reduce((sum, product) => sum + product.originalPrice, 0);
   const totalDiscounts = products.reduce((sum, product) => sum + product.discountAmount, 0);
   const totalSale = toNumber(sale.total);
+  const prizeCredit = Math.max(toNumber(sale.prize_credit), 0);
   const totalPaid = toNumber(sale.total_paid);
   const balanceDue = toNumber(sale.balance_due);
 
@@ -297,6 +298,9 @@ async function buildSalesClientSummary(recordId) {
     totalDiscountsFormatted: formatCRC(totalDiscounts),
     totalSale,
     totalSaleFormatted: formatCRC(totalSale),
+    prizeCredit,
+    prizeCreditFormatted: formatCRC(prizeCredit),
+    prizeReference: String(sale.prize_reference || "").trim(),
     totalPaid,
     totalPaidFormatted: formatCRC(totalPaid),
     balanceDue,
@@ -395,8 +399,10 @@ async function buildQuoteClientSummary(recordId) {
     0
   );
   const normalizedType = normalizePaymentKeyword(quote.type);
+  const prizeCredit = Math.max(toNumber(quote.prize_credit), 0);
+  const grossSaleTotal = products.reduce((sum, product) => sum + product.salePrice, 0);
   const payments = calculatePayments({
-    total: products.reduce((sum, product) => sum + product.salePrice, 0),
+    total: Math.max(grossSaleTotal - prizeCredit, 0),
     type: normalizedType === "credito" ? "credito" : "contado",
     creditType: normalizePaymentKeyword(quote.credittype),
     quotes: quote.quotes,
@@ -414,8 +420,11 @@ async function buildQuoteClientSummary(recordId) {
     totalOriginalFormatted: formatCRC(totalOriginal),
     totalDiscounts,
     totalDiscountsFormatted: formatCRC(totalDiscounts),
-    cashTotal,
-    cashTotalFormatted: formatCRC(cashTotal),
+    prizeCredit,
+    prizeCreditFormatted: formatCRC(prizeCredit),
+    prizeReference: String(quote.prize_reference || "").trim(),
+    cashTotal: Math.max(cashTotal - prizeCredit, 0),
+    cashTotalFormatted: formatCRC(Math.max(cashTotal - prizeCredit, 0)),
     cashDiscountTotal,
     cashDiscountTotalFormatted: formatCRC(cashDiscountTotal),
     creditDiscountTotal,
