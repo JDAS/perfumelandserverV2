@@ -72,6 +72,7 @@ const reportDefinitionSchema = new mongoose.Schema(
         "campaign_performance",
         "seller_campaign_performance",
         "cash_profitability",
+        "inventory_reconciliation",
       ],
       default: "standard",
     },

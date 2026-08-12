@@ -44,6 +44,50 @@ function FinancialSummaryTable({ preview }) {
   );
 }
 
+function InventoryReconciliationTable({ preview }) {
+  const summary = preview.summary || {};
+  const cards = [
+    ["Productos con diferencia", summary.products_with_differences || 0, "text-rose-700"],
+    ["Vendidas sin compra", summary.unbacked_sold_units || 0, "text-amber-700"],
+    ["Diferencia de costo", summary.cost_difference_formatted || "-", "text-rose-700"],
+    ["Inventario restante FIFO", summary.fifo_remaining_value_formatted || "-", "text-emerald-700"],
+  ];
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-4">
+        {cards.map(([label, value, tone]) => (
+          <div key={label} className="rounded-2xl border bg-white p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-gray-500">{label}</p>
+            <p className={`mt-2 text-xl font-bold ${tone}`}>{value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="overflow-x-auto rounded-2xl border bg-white">
+        <table className="min-w-[1500px] w-full border-collapse text-sm">
+          <thead><tr className="bg-gray-50 text-left">
+            {(preview.columns || []).map((column) => (
+              <th key={column.id} className="border-b p-3 font-semibold text-gray-700">{column.label}</th>
+            ))}
+          </tr></thead>
+          <tbody>{(preview.rows || []).map((row) => (
+            <tr key={row.product_id} className={row.has_difference ? "bg-rose-50/40" : ""}>
+              {(preview.columns || []).map((column) => (
+                <td key={column.id} className="border-b p-3 text-gray-700">{row[column.id] ?? "-"}</td>
+              ))}
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+      {preview.notes?.length ? (
+        <div className="rounded-2xl border bg-amber-50 p-4 text-sm text-gray-700">
+          <p className="font-semibold text-gray-900">Cómo leerlo</p>
+          <ul className="mt-2 space-y-1">{preview.notes.map((note) => <li key={note}>{note}</li>)}</ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function PaymentsByDayTable({ preview }) {
   return (
     <div className="space-y-4">
@@ -406,6 +450,10 @@ function ReportResultsTable({ preview }) {
 
   if (preview.viewType === "financial_summary") {
     return <FinancialSummaryTable preview={preview} />;
+  }
+
+  if (preview.viewType === "inventory_reconciliation") {
+    return <InventoryReconciliationTable preview={preview} />;
   }
 
   if (preview.viewType === "payments_by_day") {

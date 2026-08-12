@@ -32,7 +32,8 @@
     ,"sync:campaign-dashboard": "node src/scripts/syncCampaignDashboard.js",
     "sync:sale-date-metadata": "node src/scripts/syncSaleDateMetadata.js",
     "sync:seller-sales-dashboard": "node src/scripts/syncSellerSalesDashboard.js",
-    "sync:cash-profitability-report": "node src/scripts/syncCashProfitabilityReport.js"
+    "sync:cash-profitability-report": "node src/scripts/syncCashProfitabilityReport.js",
+    "sync:inventory-reconciliation-report": "node src/scripts/syncInventoryReconciliationReport.js"
   },
   "keywords": [],
   "author": "",
