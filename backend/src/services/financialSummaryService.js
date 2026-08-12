@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { buildInventoryReconciliationRows } = require("./inventoryReconciliationReportService");
 
 const TARGET_DB_NAME = process.env.MIGRATION_TARGET_DB || "test";
 const SOURCE_DB_NAME = process.env.MIGRATION_SOURCE_DB || "perfumeland";
@@ -105,6 +106,28 @@ async function getInventoryPurchaseTotal(targetDb, sourceDb) {
   ]).catch(() => ({}));
 
   return toNumber(legacyInventoryTotals.total);
+}
+
+async function getInventoryRemainingValue(targetDb) {
+  const [stocks, saleItems] = await Promise.all([
+    targetDb.collection("stock")
+      .find({ purchased: { $gt: 0 } })
+      .project({ product: 1, purchased: 1, wholesaleprice: 1, createdAt: 1 })
+      .toArray(),
+    targetDb.collection("sale_item")
+      .find({ sale_status: { $ne: "Cancelada" }, product: { $exists: true, $ne: "" } })
+      .project({
+        sale: 1,
+        product: 1,
+        quantity: 1,
+        cost_snapshot: 1,
+        cost_snapshot_total: 1,
+        createdAt: 1,
+      })
+      .toArray(),
+  ]);
+  const rows = buildInventoryReconciliationRows({ stocks, saleItems });
+  return rows.reduce((sum, row) => sum + toNumber(row.fifo_remaining_value), 0);
 }
 
 async function executeFinancialSummaryReport(reportDefinition) {
@@ -240,6 +263,7 @@ async function executeFinancialSummaryReport(reportDefinition) {
   const presupuestoInicial = INITIAL_BUDGET;
   const pagosPerfumes = toNumber(saleItemTotals.pagosPerfumes);
   const pagoInventario = await getInventoryPurchaseTotal(targetDb, sourceDb);
+  const valorInventarioStock = await getInventoryRemainingValue(targetDb);
   const pagosComisiones = toNumber(salesTotals.pagosComisiones);
   const gastosAdicionales = toNumber(expensesTotals.gastosAdicionales);
   const bonosVendedores = toNumber(sellerBonusTotals.total);
@@ -281,6 +305,13 @@ async function executeFinancialSummaryReport(reportDefinition) {
       label: "Pagos comisiones",
       value: pagosComisiones,
       formatted: formatCurrency(pagosComisiones),
+      format: "currency",
+    },
+    {
+      id: "valor_inventario_stock",
+      label: "Valor del inventario en stock",
+      value: valorInventarioStock,
+      formatted: formatCurrency(valorInventarioStock),
       format: "currency",
     },
     {
@@ -410,6 +441,7 @@ async function executeFinancialSummaryReport(reportDefinition) {
       total_pagos: totalPagos,
       total_recibido: totalRecibido,
       en_calle: enCalle,
+      valor_inventario_stock: valorInventarioStock,
       primer_pago_pendiente: primerPagoPendiente,
       total_vendidos: totalVendidos,
     },
@@ -417,6 +449,7 @@ async function executeFinancialSummaryReport(reportDefinition) {
     notes: [
       "Pagos de perfumes se calcula desde cost_snapshot en sale_item.",
       "Total pagos incluye compras actuales registradas en stock.",
+      "Valor del inventario en stock usa el costo FIFO de los lotes comprados que aun no han sido consumidos por ventas.",
       "Presupuesto actual descuenta prestamos pendientes cuando existen.",
     ],
   };

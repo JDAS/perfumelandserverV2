@@ -31,8 +31,9 @@ function consumeLayers(layers, quantity) {
   return { cost, missingUnits: pending };
 }
 
-function buildInventoryReconciliationRows({ products = [], stocks = [], saleItems = [] }) {
+function buildInventoryReconciliationRows({ products = [], stocks = [], saleItems = [], sales = [] }) {
   const productMap = new Map(products.map((product) => [normalizeId(product._id), product]));
+  const saleMap = new Map(sales.map((sale) => [normalizeId(sale._id), sale]));
   const groups = new Map();
   const getGroup = (productId) => {
     if (!groups.has(productId)) {
@@ -76,10 +77,29 @@ function buildInventoryReconciliationRows({ products = [], stocks = [], saleItem
     }, 0);
     let fifoSoldCost = 0;
     let unbackedSoldUnits = 0;
+    const affectedSales = [];
     for (const item of orderedItems) {
       const consumed = consumeLayers(layers, item.quantity);
       fifoSoldCost += consumed.cost;
       unbackedSoldUnits += consumed.missingUnits;
+      const quantity = Math.max(toNumber(item.quantity), 0);
+      const recordedCost = toNumber(item.cost_snapshot_total) || toNumber(item.cost_snapshot) * quantity;
+      const itemDifference = recordedCost - consumed.cost;
+      if (consumed.missingUnits > 0 || Math.abs(itemDifference) >= 1) {
+        const saleId = normalizeId(item.sale);
+        const sale = saleMap.get(saleId) || {};
+        affectedSales.push({
+          sale_id: saleId,
+          sale_name: sale.name || saleId || "Venta sin identificar",
+          sale_date: sale.saledate || sale.createdAt || "",
+          sale_item_id: normalizeId(item._id),
+          quantity,
+          recorded_cost: Math.round(recordedCost),
+          fifo_cost: Math.round(consumed.cost),
+          cost_difference: Math.round(itemDifference),
+          unbacked_units: consumed.missingUnits,
+        });
+      }
     }
     const fifoRemainingUnits = layers.reduce((sum, layer) => sum + layer.remaining, 0);
     const fifoRemainingValue = layers.reduce(
@@ -111,6 +131,11 @@ function buildInventoryReconciliationRows({ products = [], stocks = [], saleItem
       fifo_remaining_value: Math.round(fifoRemainingValue),
       fifo_remaining_value_formatted: formatCurrency(fifoRemainingValue),
       unbacked_sold_units: unbackedSoldUnits,
+      affected_sales: affectedSales,
+      affected_sales_count: affectedSales.length,
+      affected_sales_label: affectedSales.length
+        ? affectedSales.map((entry) => `${entry.sale_name} (${entry.sale_id})`).join(" | ")
+        : "-",
       status: hasDifference ? "Revisar" : "Conciliado",
       has_difference: hasDifference,
     };
@@ -124,6 +149,7 @@ async function executeInventoryReconciliationReport(reportDefinition, options = 
   const ProductModel = getCustomRecordModel("product");
   const StockModel = getCustomRecordModel("stock");
   const SaleItemModel = getCustomRecordModel("sale_item");
+  const SalesModel = getCustomRecordModel("sales");
   const onlyDifferences = String(options.onlyDifferences || "true") !== "false";
 
   const [products, stocks, saleItems] = await Promise.all([
@@ -132,11 +158,15 @@ async function executeInventoryReconciliationReport(reportDefinition, options = 
       .select("product purchased wholesaleprice legacy_inventory_seed createdAt")
       .lean(),
     SaleItemModel.find({ sale_status: { $ne: "Cancelada" } })
-      .select("product quantity cost_snapshot cost_snapshot_total createdAt sale_status")
+      .select("sale product quantity cost_snapshot cost_snapshot_total createdAt sale_status")
       .lean(),
   ]);
+  const saleIds = [...new Set(saleItems.map((item) => normalizeId(item.sale)).filter(Boolean))];
+  const sales = saleIds.length
+    ? await SalesModel.find({ _id: { $in: saleIds } }).select("name saledate createdAt").lean()
+    : [];
 
-  const allRows = buildInventoryReconciliationRows({ products, stocks, saleItems });
+  const allRows = buildInventoryReconciliationRows({ products, stocks, saleItems, sales });
   const rows = onlyDifferences ? allRows.filter((row) => row.has_difference) : allRows;
   const summary = allRows.reduce((result, row) => {
     result.products += 1;
@@ -185,6 +215,7 @@ async function executeInventoryReconciliationReport(reportDefinition, options = 
       { id: "system_available_units", label: "Disponible sistema", type: "number" },
       { id: "unit_difference", label: "Dif. unidades", type: "number" },
       { id: "unbacked_sold_units", label: "Vendidas sin compra", type: "number" },
+      { id: "affected_sales_label", label: "Ventas afectadas (nombre e ID)", type: "text" },
       { id: "purchase_value_formatted", label: "Valor compras", type: "text" },
       { id: "recorded_sold_cost_formatted", label: "Costo ventas guardado", type: "text" },
       { id: "fifo_sold_cost_formatted", label: "Costo ventas FIFO", type: "text" },

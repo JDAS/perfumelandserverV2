@@ -29,11 +29,16 @@ test("inventory reconciliation flags sales without supporting purchases", () => 
   const [row] = buildInventoryReconciliationRows({
     products: [{ _id: "p1", name: "Perfume", available: 0 }],
     stocks: [{ _id: "a", product: "p1", purchased: 1, wholesaleprice: 10000 }],
-    saleItems: [{ _id: "s1", product: "p1", quantity: 2, cost_snapshot: 12000 }],
+    saleItems: [{ _id: "i1", sale: "s1", product: "p1", quantity: 2, cost_snapshot: 12000 }],
+    sales: [{ _id: "s1", name: "Venta TEST-001" }],
   });
   assert.equal(row.unbacked_sold_units, 1);
   assert.equal(row.recorded_sold_cost, 24000);
   assert.equal(row.fifo_sold_cost, 10000);
   assert.equal(row.cost_difference, 14000);
   assert.equal(row.status, "Revisar");
+  assert.equal(row.affected_sales_count, 1);
+  assert.equal(row.affected_sales[0].sale_id, "s1");
+  assert.equal(row.affected_sales[0].sale_name, "Venta TEST-001");
+  assert.match(row.affected_sales_label, /TEST-001.*s1/);
 });

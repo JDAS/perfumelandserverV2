@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { getRecords, getReports, runReport } from "../../services/customService";
 
 function getTodayDateInput() {
@@ -45,6 +45,7 @@ function FinancialSummaryTable({ preview }) {
 }
 
 function InventoryReconciliationTable({ preview }) {
+  const [expandedProduct, setExpandedProduct] = useState("");
   const summary = preview.summary || {};
   const cards = [
     ["Productos con diferencia", summary.products_with_differences || 0, "text-rose-700"],
@@ -70,11 +71,45 @@ function InventoryReconciliationTable({ preview }) {
             ))}
           </tr></thead>
           <tbody>{(preview.rows || []).map((row) => (
-            <tr key={row.product_id} className={row.has_difference ? "bg-rose-50/40" : ""}>
-              {(preview.columns || []).map((column) => (
-                <td key={column.id} className="border-b p-3 text-gray-700">{row[column.id] ?? "-"}</td>
-              ))}
-            </tr>
+            <Fragment key={row.product_id}>
+              <tr className={row.has_difference ? "bg-rose-50/40" : ""}>
+                {(preview.columns || []).map((column) => (
+                  <td key={column.id} className="border-b p-3 text-gray-700">
+                    {column.id === "affected_sales_label" && row.affected_sales_count ? (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedProduct((current) => current === row.product_id ? "" : row.product_id)}
+                        className="rounded-lg border border-rose-200 bg-white px-3 py-1.5 font-semibold text-rose-700"
+                      >
+                        {expandedProduct === row.product_id ? "Ocultar" : `Ver ${row.affected_sales_count} venta(s)`}
+                      </button>
+                    ) : row[column.id] ?? "-"}
+                  </td>
+                ))}
+              </tr>
+              {expandedProduct === row.product_id ? (
+                <tr>
+                  <td colSpan={preview.columns?.length || 1} className="border-b bg-slate-50 p-4">
+                    <p className="mb-3 font-semibold text-slate-900">Ventas que generan la diferencia</p>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      {(row.affected_sales || []).map((sale) => (
+                        <div key={sale.sale_item_id} className="rounded-xl border bg-white p-3 text-sm">
+                          <p className="font-bold text-slate-900">{sale.sale_name}</p>
+                          <p className="mt-1 break-all text-xs text-slate-500">Venta ID: {sale.sale_id}</p>
+                          <p className="break-all text-xs text-slate-500">Línea ID: {sale.sale_item_id}</p>
+                          <div className="mt-2 grid grid-cols-2 gap-2 text-slate-700">
+                            <span>Cantidad: {sale.quantity}</span>
+                            <span>Sin compra: {sale.unbacked_units}</span>
+                            <span>Costo guardado: ₡{Number(sale.recorded_cost || 0).toLocaleString("es-CR")}</span>
+                            <span>Costo FIFO: ₡{Number(sale.fifo_cost || 0).toLocaleString("es-CR")}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ) : null}
+            </Fragment>
           ))}</tbody>
         </table>
       </div>
